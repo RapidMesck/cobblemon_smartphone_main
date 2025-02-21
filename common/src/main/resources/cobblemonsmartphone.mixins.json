@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "com.nbp.cobblemon_smartphone.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "mixins": [
+    "EntityMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "ItemRendererMixin",
+    "ModelLoaderMixin"
+  ]
+}

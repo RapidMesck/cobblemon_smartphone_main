@@ -1,0 +1,19 @@
+{
+  "message.nbp.heal.battle_error": "You cannot heal Pokémon during a battle!",
+  "message.nbp.heal.success": "Your Pokémon have been healed!",
+  "message.nbp.pc.battle_error": "You cannot open your PC during a battle!",
+  "message.nbp.heal.cooldown": "You need to wait %d seconds before using heal again",
+  "message.nbp.pc.cooldown": "You need to wait %d seconds before open your PC again",
+  "message.nbp.cloud.cooldown": "You need to wait %d seconds before open your Ender Chest again",
+  "message.nbp.heal.disabled": "The healing feature is disabled on this server",
+  "message.nbp.pc.disabled": "The PC feature is disabled on this server",
+  "message.nbp.cloud.disabled": "The cloud feature is disabled on this server",
+  "item.cobblemon_smartphone.red_smartphone": "Red Smartphone",
+  "item.cobblemon_smartphone.yellow_smartphone": "Yellow Smartphone",
+  "item.cobblemon_smartphone.green_smartphone": "Green Smartphone",
+  "item.cobblemon_smartphone.blue_smartphone": "Blue Smartphone",
+  "item.cobblemon_smartphone.pink_smartphone": "Pink Smartphone",
+  "item.cobblemon_smartphone.black_smartphone": "Black Smartphone",
+  "item.cobblemon_smartphone.white_smartphone": "White Smartphone",
+  "itemGroup.cobblemon_smartphone.smartphone_group": "Cobblemon Smartphone"
+}

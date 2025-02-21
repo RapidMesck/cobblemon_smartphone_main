@@ -1,0 +1,28 @@
+modLoader="kotlinforforge"
+loaderVersion="[5.5,)"
+#issueTrackerURL = ""
+license = "MIT"
+
+[[mods]]
+modId = "cobblemon_smartphone"
+version = "${version}"
+displayName = "Cobblemon Smartphone"
+authors = "RapidMesck, ZungGames"
+description = 'A smartphone with cobblemon integration for quick and portable functions like team healing, open your pc and your ender chest.'
+
+[[dependencies.cobblemon_smartphone]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.cobblemon_smartphone]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[mixins]]
+config = "cobblemonsmartphone.mixins.json"

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "cobblemon_smartphone",
+  "version": "${version}",
+  "name": "Cobblemon Smartphone",
+  "description": "A smartphone with cobblemon integration for quick and portable functions like team healing, open your pc and your ender chest.",
+  "authors": [
+    "RapidMesck",
+    "ZungGames"
+  ],
+  "contact": {
+    "homepage": "https://fabricmc.net/",
+    "sources": "https://github.com/FabricMC/fabric-example-mod"
+  },
+  "license": "MIT",
+  "icon": "assets/cobblemon_smartphone/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.nbp.cobblemon_smartphone.CobblemonSmartphoneFabric"
+    ],
+    "client": [
+      "com.nbp.cobblemon_smartphone.client.CobblemonSmartphoneFabricClient"
+    ]
+  },
+  "mixins": [
+    "cobblemonsmartphone.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.5",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}

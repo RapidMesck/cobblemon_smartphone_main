@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IDQ",
+    "CRA",
+    "IDQ"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "Q": {
+      "item": "minecraft:quartz"
+    },
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "A": {
+      "item": "minecraft:amethyst_shard"
+    },
+    "C": {
+      "item": "cobblemon:green_apricorn"
+    }
+  },
+  "result": {
+    "id": "cobblemon_smartphone:green_smartphone",
+    "count": 1
+  },
+  "category": "misc"
+}
