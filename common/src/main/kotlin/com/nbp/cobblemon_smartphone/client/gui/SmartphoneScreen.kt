@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.client.gui
 
 import com.cobblemon.mod.common.CobblemonSounds
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.HealPokemonPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenEnderChestPacket
@@ -16,22 +17,26 @@ class SmartphoneScreen(private val color: SmartphoneColor) : Screen(Component.li
     private var screenX = 0
     private var screenY = 0
 
+    override fun isPauseScreen(): Boolean {
+        return false
+    }
+
     init {
-        //if (CobblemonSmartphone.config.features.enableHeal) {
+        if (CobblemonSmartphone.config.features.enableHeal) {
             enabledButtons.add(SmartphoneButton(
                 ButtonType.HEAL, HEAL_BUTTON, HEAL_BUTTON_HOVER, ::executeHealCommand
             ))
-        //}
-        //if (CobblemonSmartphone.config.features.enablePC) {
+        }
+        if (CobblemonSmartphone.config.features.enablePC) {
             enabledButtons.add(SmartphoneButton(
                 ButtonType.PC, PC_BUTTON, PC_BUTTON_HOVER, ::executePCCommand
             ))
-        //}
-        //if (CobblemonSmartphone.config.features.enableCloud) {
+        }
+        if (CobblemonSmartphone.config.features.enableCloud) {
             enabledButtons.add(SmartphoneButton(
                 ButtonType.CLOUD, CLOUD_BUTTON, CLOUD_BUTTON_HOVER, ::executeCloudCommand
             ))
-        //}
+        }
     }
 
     override fun init() {
