@@ -3,13 +3,23 @@ package com.nbp.cobblemon_smartphone.item
 import net.minecraft.resources.ResourceLocation
 
 enum class SmartphoneColor(val modelName: String) {
-    RED("red"),
+
+    WHITE("white"),
+    ORANGE("orange"),
+    MAGENTA("magenta"),
+    LIGHT_BLUE("light_blue"),
     YELLOW("yellow"),
-    GREEN("green"),
-    BLUE("blue"),
+    LIME("lime"),
     PINK("pink"),
-    BLACK("black"),
-    WHITE("white");
+    GRAY("gray"),
+    LIGHT_GRAY("light_gray"),
+    CYAN("cyan"),
+    PURPLE("purple"),
+    BLUE("blue"),
+    BROWN("brown"),
+    GREEN("green"),
+    RED("red"),
+    BLACK("black");
 
     // 2D (inventário)
     fun getInventoryModelPath(): ResourceLocation {
