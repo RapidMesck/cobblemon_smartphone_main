@@ -1,33 +1,18 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "IDQ",
+    "CDQ",
     "CRA",
     "IDQ"
   ],
   "key": {
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "Q": {
-      "item": "minecraft:quartz"
-    },
-    "D": {
-      "item": "minecraft:diamond"
-    },
-    "R": {
-      "item": "minecraft:redstone"
-    },
-    "A": {
-      "item": "minecraft:amethyst_shard"
-    },
-    "C": {
-      "item": "cobblemon:blue_apricorn"
-    }
+    "I": { "item": "minecraft:iron_ingot" },
+    "Q": { "item": "minecraft:quartz" },
+    "D": { "item": "minecraft:diamond" },
+    "R": { "item": "minecraft:redstone" },
+    "A": { "item": "minecraft:amethyst_shard" },
+    "C": { "item": "cobblemon:blue_apricorn" }
   },
-  "result": {
-    "id": "cobblemon_smartphone:blue_smartphone",
-    "count": 1
-  },
+  "result": { "id": "cobblemon_smartphone:blue_smartphone", "count": 1 },
   "category": "misc"
 }

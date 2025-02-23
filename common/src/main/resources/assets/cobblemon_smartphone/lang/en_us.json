@@ -8,12 +8,26 @@
   "message.nbp.heal.disabled": "The healing feature is disabled on this server",
   "message.nbp.pc.disabled": "The PC feature is disabled on this server",
   "message.nbp.cloud.disabled": "The cloud feature is disabled on this server",
-  "item.cobblemon_smartphone.red_smartphone": "Red Smartphone",
-  "item.cobblemon_smartphone.yellow_smartphone": "Yellow Smartphone",
-  "item.cobblemon_smartphone.green_smartphone": "Green Smartphone",
-  "item.cobblemon_smartphone.blue_smartphone": "Blue Smartphone",
-  "item.cobblemon_smartphone.pink_smartphone": "Pink Smartphone",
-  "item.cobblemon_smartphone.black_smartphone": "Black Smartphone",
+
   "item.cobblemon_smartphone.white_smartphone": "White Smartphone",
+  "item.cobblemon_smartphone.orange_smartphone": "Orange Smartphone",
+  "item.cobblemon_smartphone.magenta_smartphone": "Magenta Smartphone",
+  "item.cobblemon_smartphone.light_blue_smartphone": "Light Blue Smartphone",
+
+  "item.cobblemon_smartphone.yellow_smartphone": "Yellow Smartphone",
+  "item.cobblemon_smartphone.lime_smartphone": "Lime Smartphone",
+  "item.cobblemon_smartphone.gray_smartphone": "Gray Smartphone",
+  "item.cobblemon_smartphone.pink_smartphone": "Pink Smartphone",
+
+  "item.cobblemon_smartphone.light_gray_smartphone": "Light Gray Smartphone",
+  "item.cobblemon_smartphone.cyan_smartphone": "Cyan Smartphone",
+  "item.cobblemon_smartphone.purple_smartphone": "Purple Smartphone",
+  "item.cobblemon_smartphone.blue_smartphone": "Blue Smartphone",
+
+  "item.cobblemon_smartphone.brown_smartphone": "Brown Smartphone",
+  "item.cobblemon_smartphone.green_smartphone": "Green Smartphone",
+  "item.cobblemon_smartphone.red_smartphone": "Red Smartphone",
+  "item.cobblemon_smartphone.black_smartphone": "Black Smartphone",
+
   "itemGroup.cobblemon_smartphone.smartphone_group": "Cobblemon Smartphone"
 }
