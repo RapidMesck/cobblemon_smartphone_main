@@ -1,8 +1,8 @@
 {
   "credit": "Made with Blockbench",
   "textures": {
-    "0": "cobblemon_smartphone:item/black_smartphone_3d",
-    "particle": "cobblemon_smartphone:item/black_smartphone_3d"
+    "0": "cobblemon_smartphone:item/light_gray_smartphone_3d",
+    "particle": "cobblemon_smartphone:item/light_gray_smartphone_3d"
   },
   "elements": [
     {
