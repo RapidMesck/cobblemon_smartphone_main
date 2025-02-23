@@ -27,16 +27,16 @@
       "translation": [-1.5, 6.25, 0]
     },
     "firstperson_righthand": {
-      "rotation": [-19, -27, 0],
+      "rotation": [-19, -7, 0],
       "translation": [0, 7.75, 1.75]
     },
     "firstperson_lefthand": {
-      "rotation": [-19, -27, 0],
+      "rotation": [-19, -9, 0],
       "translation": [-4.5, 7.75, 1.75]
     },
     "ground": {
       "rotation": [-89, 0, 90],
-      "translation": [-4, -4.5, -2.25]
+      "translation": [-4, -1.50, -2.25]
     },
     "gui": {
       "rotation": [-38, -27, -30],
