@@ -13,6 +13,6 @@
     "A": { "item": "minecraft:amethyst_shard" },
     "C": { "item": "cobblemon:yellow_apricorn" }
   },
-  "result": { "id": "cobblemon_smartphone:white_smartphone", "count": 1 },
+  "result": { "id": "cobblemon_smartphone:yellow_smartphone", "count": 1 },
   "category": "misc"
 }
