@@ -9,8 +9,8 @@
     "ZungGames"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://modrinth.com/mod/cobblemon-smartphone",
+    "sources": "https://github.com/RapidMesck/cobblemon_smartphone_main"
   },
   "license": "MIT",
   "icon": "assets/cobblemon_smartphone/icon.png",
@@ -33,6 +33,6 @@
     "fabric-api": "*"
   },
   "suggests": {
-    "another-mod": "*"
+    "waystones": "*"
   }
 }

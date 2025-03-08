@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.client.gui
 
 import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.isModLoaded
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.HealPokemonPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenEnderChestPacket
@@ -37,6 +38,12 @@ class SmartphoneScreen(private val color: SmartphoneColor) : Screen(Component.li
                 ButtonType.CLOUD, CLOUD_BUTTON, CLOUD_BUTTON_HOVER, ::executeCloudCommand
             ))
         }
+        // Adiciona o botão do Waystones se o mod estiver presente
+        //if (isModLoaded("waystones")) {
+        //    enabledButtons.add(SmartphoneButton(
+        //        ButtonType.WAYSTONE, WAYSTONE_BUTTON, WAYSTONE_BUTTON_HOVER, ::executeWaystoneCommand
+        //    ))
+        //}
     }
 
     override fun init() {
@@ -96,6 +103,14 @@ class SmartphoneScreen(private val color: SmartphoneColor) : Screen(Component.li
         onClose()
     }
 
+    private fun executeWaystoneCommand() {
+        // Exemplo: reproduz o som de clique
+        Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
+        // Aqui você pode adicionar a integração com o Waystones. Por exemplo, abrir sua GUI ou enviar um pacote.
+        // Caso ainda não haja API definida, você pode apenas fechar a tela.
+        onClose()
+    }
+
     private fun isHovered(mouseX: Int, mouseY: Int, x: Int, y: Int): Boolean {
         return mouseX >= screenX + x && mouseX <= screenX + x + BUTTON_WIDTH &&
                 mouseY >= screenY + y && mouseY <= screenY + y + BUTTON_HEIGHT
@@ -127,12 +142,14 @@ class SmartphoneScreen(private val color: SmartphoneColor) : Screen(Component.li
         private val HEAL_BUTTON = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/heal.png")
         private val PC_BUTTON = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/pc.png")
         private val CLOUD_BUTTON = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/cloud.png")
+        private val WAYSTONE_BUTTON = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/waystone.png")
         private val HEAL_BUTTON_HOVER = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/heal_hover.png")
         private val PC_BUTTON_HOVER = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/pc_hover.png")
         private val CLOUD_BUTTON_HOVER = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/cloud_hover.png")
+        private val WAYSTONE_BUTTON_HOVER = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/waystone_hover.png")
     }
 
     private enum class ButtonType {
-        HEAL, PC, CLOUD
+        HEAL, PC, CLOUD, WAYSTONE
     }
 }

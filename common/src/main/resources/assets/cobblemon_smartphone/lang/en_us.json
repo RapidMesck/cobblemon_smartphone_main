@@ -29,5 +29,8 @@
   "item.cobblemon_smartphone.red_smartphone": "Red Smartphone",
   "item.cobblemon_smartphone.black_smartphone": "Black Smartphone",
 
-  "itemGroup.cobblemon_smartphone.smartphone_group": "Cobblemon Smartphone"
+  "itemGroup.cobblemon_smartphone.smartphone_group": "Cobblemon Smartphone",
+
+  "key.categories.cobblemon_smartphone": "Cobblemon Smartphone",
+  "key.cobblemon_smartphone.open": "Open Smartphone"
 }

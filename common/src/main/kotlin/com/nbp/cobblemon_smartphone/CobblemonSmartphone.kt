@@ -1,6 +1,8 @@
 package com.nbp.cobblemon_smartphone
 
+import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.config.SmartphoneConfig
+import net.minecraft.client.Minecraft
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
