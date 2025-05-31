@@ -13,7 +13,7 @@ object SmartphoneKeybinds {
     // Define o keybind com a tecla "P"
     val OPEN_SMARTPHONE: KeyMapping = KeyMapping(
         "key.cobblemon_smartphone.open",
-        GLFW.GLFW_KEY_P,
+        GLFW.GLFW_KEY_K,
         CATEGORY
     )
 
