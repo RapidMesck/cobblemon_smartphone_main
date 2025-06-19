@@ -20,8 +20,6 @@ class CobblemonSmartphoneNeoForge : Implementation {
 
     init {
         CobblemonSmartphone.init(this)
-        CobblemonSmartphoneNeoForgeClient
-        CobblemonSmartphoneNeoForgeTickHandler
         with(MOD_BUS) {
             addListener(networkManager::registerMessages)
         }

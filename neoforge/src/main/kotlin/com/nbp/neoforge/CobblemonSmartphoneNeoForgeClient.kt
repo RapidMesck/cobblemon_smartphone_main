@@ -2,10 +2,12 @@ package com.nbp.neoforge
 
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import net.neoforged.api.distmarker.Dist
+import net.neoforged.api.distmarker.OnlyIn
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent
 
+@OnlyIn(Dist.CLIENT)
 @EventBusSubscriber(modid = "cobblemon_smartphone", bus = EventBusSubscriber.Bus.MOD, value = [Dist.CLIENT])
 object CobblemonSmartphoneNeoForgeClient {
     // A propriedade é inicializada de forma lazy para garantir que o key mapping ainda não exista
