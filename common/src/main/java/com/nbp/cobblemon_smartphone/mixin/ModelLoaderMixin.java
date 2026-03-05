@@ -1,6 +1,5 @@
 package com.nbp.cobblemon_smartphone.mixin;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.renderer.block.model.BlockModel;

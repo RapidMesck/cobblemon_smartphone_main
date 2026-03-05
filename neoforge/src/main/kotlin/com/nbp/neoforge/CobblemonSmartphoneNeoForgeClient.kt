@@ -10,12 +10,14 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent
 @OnlyIn(Dist.CLIENT)
 @EventBusSubscriber(modid = "cobblemon_smartphone", bus = EventBusSubscriber.Bus.MOD, value = [Dist.CLIENT])
 object CobblemonSmartphoneNeoForgeClient {
-    // A propriedade é inicializada de forma lazy para garantir que o key mapping ainda não exista
+    // Lazy init so the key mapping object is created only when the event fires.
     private val OPEN_SMARTPHONE by lazy { SmartphoneKeybinds.OPEN_SMARTPHONE }
 
-    // O método é chamado durante o evento RegisterKeyMappingsEvent, que ocorre apenas no cliente físico
     @SubscribeEvent
     fun registerKeyMappings(event: RegisterKeyMappingsEvent) {
         event.register(OPEN_SMARTPHONE)
     }
+    // 3D hand model registration is handled by ModelLoaderMixin (common module),
+    // which injects into ModelBakery.<init> and registers all smartphone_3d models
+    // under the "inventory" variant for both Fabric and NeoForge.
 }

@@ -127,28 +127,6 @@ The smartphone comes with three main features that can be toggled in the configu
 2. PC Access - Open your Pokémon PC storage system on the go
 3. Cloud Storage - Access your Ender Chest anywhere
 
-## Available Colors
-Express your style with different smartphone colors:
-- Red
-- Yellow
-- Green
-- Blue
-- Pink
-- Black
-- White
-
-  1.0.2 or later
-
-- Brown
-- Cyan
-- Gray
-- Light gray
-- Light blue
-- Lime
-- Magenta
-- Orange
-- Purple
-
 ## Configuration Options
 
 ### Feature Toggles
@@ -164,23 +142,10 @@ Customize the cooldown times for each feature:
 - Cloud Storage: 5 seconds (default)
 
 ## Usage
-- Smartphones can be found in the Tools and Utilities tab in the creative inventory
 - Right-click while holding the smartphone to open its interface
 - Click on the desired function button to activate it
 - The interface includes hover effects for better user experience
 - Press **K** (default) to quickly open your smartphone if it's in your inventory
-
-## Trinkets Compatibility (Fabric Only)
-
-Cobblemon Smartphone has **optional** compatibility with the [Trinkets](https://modrinth.com/mod/trinkets) mod!
-
-When Trinkets is installed:
-- A new **Smartphone** slot will appear in the hand slot group in your inventory
-- You can equip your smartphone in this dedicated slot
-- The keybind (K) will detect smartphones in both Trinkets slots AND your regular inventory
-- Trinkets slots are checked first, then the regular inventory
-
-This is completely optional - the mod works perfectly fine without Trinkets installed.
 
 ## Technical Details
 - Built for the Fabric mod loader

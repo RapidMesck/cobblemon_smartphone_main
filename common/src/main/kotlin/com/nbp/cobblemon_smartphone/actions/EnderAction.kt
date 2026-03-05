@@ -21,6 +21,6 @@ object EnderAction : SmartphoneAction {
 
     override fun isEnabled(): Boolean {
         // Optionally check config or any other condition
-        return CobblemonSmartphone.config.features.enableHeal
+        return CobblemonSmartphone.config.features.enableCloud
     }
 }
