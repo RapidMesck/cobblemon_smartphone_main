@@ -33,6 +33,7 @@
     "fabric-api": "*"
   },
   "suggests": {
-    "trinkets": ">=3.10.0"
+    "trinkets": ">=3.10.0",
+    "cobblenav": "*"
   }
 }
