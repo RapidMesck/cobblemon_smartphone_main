@@ -27,6 +27,10 @@ object OpenCobblenavAction : SmartphoneAction {
     }
 
     override fun isEnabled(): Boolean {
+        if (!CobblemonSmartphone.config.features.enablePokenav) {
+            return false
+        }
+
         if (!isModLoaded(COBBLENAV_NAMESPACE)) {
             return false
         }

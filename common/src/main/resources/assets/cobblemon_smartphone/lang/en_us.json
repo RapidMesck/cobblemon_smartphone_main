@@ -10,6 +10,8 @@
   "message.nbp.cloud.disabled": "The cloud feature is disabled on this server",
   "message.nbp.cobblenav.unavailable": "CobbleNav is not installed on this server",
   "message.nbp.cobblenav.no_pokenav_item": "You need a CobbleNav PokeNav item in your inventory",
+  "message.nbp.cobbledollars.unavailable": "CobbleDollars is not installed on this server",
+  "message.nbp.cobbledollars.open_failed": "Could not open CobbleDollars shop",
 
   "item.cobblemon_smartphone.white_smartphone": "White Smartphone",
   "item.cobblemon_smartphone.orange_smartphone": "Orange Smartphone",

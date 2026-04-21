@@ -21,6 +21,8 @@ class SmartphoneConfig {
         val enableHeal: Boolean = true
         val enablePC: Boolean = true
         val enableCloud: Boolean = true
+        val enablePokenav: Boolean = true
+        val enableCobbleDollars: Boolean = true
     }
 
     companion object {

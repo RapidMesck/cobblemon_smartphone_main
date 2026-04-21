@@ -3,6 +3,7 @@ package com.nbp.cobblemon_smartphone
 import com.nbp.cobblemon_smartphone.actions.EnderAction
 import com.nbp.cobblemon_smartphone.actions.HealAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavAction
+import com.nbp.cobblemon_smartphone.actions.OpenCobbledollarsAction
 import com.nbp.cobblemon_smartphone.actions.OpenPcAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
@@ -23,6 +24,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(OpenPcAction)
         SmartphoneActionRegistry.register(EnderAction)
         SmartphoneActionRegistry.register(OpenCobblenavAction)
+        SmartphoneActionRegistry.register(OpenCobbledollarsAction)
     }
 
     fun init(implementation: Implementation) {

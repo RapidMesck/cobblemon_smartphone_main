@@ -1,5 +1,5 @@
 @file:JvmName("ModCheckerImpl")
-package com.nbp.neoforge
+package com.nbp.cobblemon_smartphone.neoforge
 
 import com.nbp.cobblemon_smartphone.isModLoaded
 import net.neoforged.fml.ModList
