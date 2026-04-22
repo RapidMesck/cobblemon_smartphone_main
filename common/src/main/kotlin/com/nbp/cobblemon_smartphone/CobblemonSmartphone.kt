@@ -5,6 +5,7 @@ import com.nbp.cobblemon_smartphone.actions.HealAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobbledollarsAction
 import com.nbp.cobblemon_smartphone.actions.OpenPcAction
+import com.nbp.cobblemon_smartphone.actions.OpenWaystonesAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
 import com.nbp.cobblemon_smartphone.client.BuiltinResourcePack
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
@@ -38,6 +39,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(EnderAction)
         SmartphoneActionRegistry.register(OpenCobblenavAction)
         SmartphoneActionRegistry.register(OpenCobbledollarsAction)
+        SmartphoneActionRegistry.register(OpenWaystonesAction)
     }
 
     fun init(implementation: Implementation) {

@@ -15,6 +15,7 @@ class SmartphoneConfig {
         val healButton: Int = 60  // 1 minuto em segundos
         val pcButton: Int = 5     // 5 segundos
         val cloudButton: Int = 5  // 5 segundos
+        val waystoneButton: Int = 5 // 5 segundos
     }
 
     class Features {
@@ -23,6 +24,7 @@ class SmartphoneConfig {
         val enableCloud: Boolean = true
         val enablePokenav: Boolean = true
         val enableCobbleDollars: Boolean = true
+        val enableWaystone: Boolean = true
     }
 
     companion object {

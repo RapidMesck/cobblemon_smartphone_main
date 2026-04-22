@@ -45,5 +45,12 @@ versionRange = "[0,)"
 ordering = "AFTER"
 side = "BOTH"
 
+[[dependencies.cobblemon_smartphone]]
+modId = "waystones"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
 [[mixins]]
 config = "cobblemonsmartphone.mixins.json"

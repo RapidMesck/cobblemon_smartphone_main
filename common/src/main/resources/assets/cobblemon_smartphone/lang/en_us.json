@@ -12,6 +12,11 @@
   "message.nbp.cobblenav.no_pokenav_item": "You need a CobbleNav PokeNav item in your inventory",
   "message.nbp.cobbledollars.unavailable": "CobbleDollars is not installed on this server",
   "message.nbp.cobbledollars.open_failed": "Could not open CobbleDollars shop",
+  "message.nbp.waystones.disabled": "The Waystones feature is disabled on this server",
+  "message.nbp.waystones.unavailable": "Waystones is not installed on this server",
+  "message.nbp.waystones.no_warp_stone_item": "You need a Waystones Warp Stone in your inventory",
+  "message.nbp.waystones.cooldown": "You need to wait %d seconds before using Waystones again",
+  "message.nbp.waystones.open_failed": "Could not open Waystones Warp Stone interface",
 
   "item.cobblemon_smartphone.white_smartphone": "White Smartphone",
   "item.cobblemon_smartphone.orange_smartphone": "Orange Smartphone",

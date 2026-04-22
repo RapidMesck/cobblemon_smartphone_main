@@ -35,6 +35,7 @@
   "suggests": {
     "trinkets": ">=3.10.0",
     "cobblenav": "*",
-    "cobbledollars": "*"
+    "cobbledollars": "*",
+    "waystones": "*"
   }
 }
