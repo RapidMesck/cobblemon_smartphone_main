@@ -1,5 +1,6 @@
 package com.nbp.cobblemon_smartphone.client.gui
 
+import com.nbp.cobblemon_smartphone.actions.PokedexAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import net.minecraft.client.Minecraft
@@ -22,6 +23,7 @@ class SmartphoneScreen(private val color: SmartphoneColor) : Screen(Component.li
     override fun init() {
         screenX = (width - GUI_WIDTH) / 2
         screenY = (height - GUI_HEIGHT) / 2
+        PokedexAction.requestedPokedexType = color.toPokedexType()
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {

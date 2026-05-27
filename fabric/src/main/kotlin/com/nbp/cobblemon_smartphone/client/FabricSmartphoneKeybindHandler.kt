@@ -1,7 +1,7 @@
 package com.nbp.cobblemon_smartphone.client
 
 import com.cobblemon.mod.common.CobblemonSounds
-import com.cobblemon.mod.common.client.CobblemonClient
+import com.cobblemon.mod.common.client.pokedex.PokedexType
 import com.nbp.cobblemon_smartphone.client.gui.SmartphoneScreen
 import com.nbp.cobblemon_smartphone.client.scanner.ScannerManager
 import com.nbp.cobblemon_smartphone.compat.SmartphoneCompatManager
@@ -24,13 +24,13 @@ object FabricSmartphoneKeybindHandler {
     fun handleScannerKeybind() {
         val player = Minecraft.getInstance().player ?: return
 
-        val hasSmartphone = SmartphoneCompatManager.getSmartphoneItem(player) != null
-        if (!hasSmartphone) return
+        val smartphoneItem = SmartphoneCompatManager.getSmartphoneItem(player)
+        if (smartphoneItem == null) return
 
         if (ScannerManager.isActive) {
             ScannerManager.deactivate()
         } else {
-            ScannerManager.activate()
+            ScannerManager.activate(smartphoneItem.getColor().toPokedexType())
         }
         player.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
     }

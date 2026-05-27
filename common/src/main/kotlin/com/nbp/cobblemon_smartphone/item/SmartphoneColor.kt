@@ -1,5 +1,6 @@
 package com.nbp.cobblemon_smartphone.item
 
+import com.cobblemon.mod.common.client.pokedex.PokedexType
 import net.minecraft.resources.ResourceLocation
 
 enum class SmartphoneColor(val modelName: String) {
@@ -20,6 +21,17 @@ enum class SmartphoneColor(val modelName: String) {
     GREEN("green"),
     RED("red"),
     BLACK("black");
+
+    fun toPokedexType(): PokedexType = when (this) {
+        WHITE -> PokedexType.WHITE
+        YELLOW -> PokedexType.YELLOW
+        PINK -> PokedexType.PINK
+        BLUE -> PokedexType.BLUE
+        GREEN -> PokedexType.GREEN
+        RED -> PokedexType.RED
+        BLACK -> PokedexType.BLACK
+        else -> PokedexType.RED // fallback for colors without a matching Pokedex
+    }
 
     // 2D (inventário)
     fun getInventoryModelPath(): ResourceLocation {

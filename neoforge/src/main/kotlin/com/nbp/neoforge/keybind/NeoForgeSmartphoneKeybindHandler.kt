@@ -25,13 +25,13 @@ object NeoForgeSmartphoneKeybindHandler {
     fun handleScannerKeybind() {
         val player = Minecraft.getInstance().player ?: return
 
-        val hasSmartphone = SmartphoneCompatManager.getSmartphone(player) != null
-        if (!hasSmartphone) return
+        val smartphoneItem = SmartphoneCompatManager.getSmartphoneItem(player)
+        if (smartphoneItem == null) return
 
         if (ScannerManager.isActive) {
             ScannerManager.deactivate()
         } else {
-            ScannerManager.activate()
+            ScannerManager.activate(smartphoneItem.getColor().toPokedexType())
         }
         player.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
     }

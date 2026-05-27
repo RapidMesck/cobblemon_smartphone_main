@@ -1,7 +1,6 @@
 package com.nbp.cobblemon_smartphone.network.handler
 
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
-import com.cobblemon.mod.common.client.pokedex.PokedexType
 import com.cobblemon.mod.common.net.messages.client.ui.PokedexUIPacket
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokedexPacket
@@ -38,7 +37,7 @@ object OpenPokedexHandler : ServerNetworkPacketHandler<OpenPokedexPacket> {
             }
 
             buttonCooldowns[playerId] = now
-            PokedexUIPacket(type = PokedexType.RED).sendToPlayer(player)
+            PokedexUIPacket(type = packet.type).sendToPlayer(player)
         }
     }
 }

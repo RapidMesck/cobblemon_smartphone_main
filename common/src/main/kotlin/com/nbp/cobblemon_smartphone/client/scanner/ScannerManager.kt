@@ -17,13 +17,13 @@ object ScannerManager {
     val pokedexUsageContext: PokedexUsageContext
         get() = CobblemonClient.pokedexUsageContext
 
-    fun activate() {
+    fun activate(type: PokedexType = PokedexType.RED) {
         if (isActive) return
         isActive = true
         ticksActive = 0
         wantClose = false
 
-        pokedexUsageContext.type = PokedexType.RED
+        pokedexUsageContext.type = type
         pokedexUsageContext.transitionIntervals = PokedexUsageContext.TRANSITION_INTERVALS
     }
 
@@ -50,7 +50,6 @@ object ScannerManager {
         ticksActive++
         pokedexUsageContext.useTick(player, ticksActive, true)
 
-        // Handle attack key for progressive scanning info
         val keyAttack = Minecraft.getInstance().options.keyAttack
         pokedexUsageContext.attackKeyHeld(keyAttack.isDown)
     }

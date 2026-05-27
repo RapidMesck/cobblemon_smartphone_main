@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.actions
 
 import com.cobblemon.mod.common.CobblemonSounds
+import com.cobblemon.mod.common.client.pokedex.PokedexType
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.api.SmartphoneAction
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokedexPacket
@@ -12,10 +13,12 @@ object PokedexAction : SmartphoneAction {
     override val texture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/buttons/pokedex.png")
     override val hoverTexture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/buttons/pokedex_hover.png")
 
+    var requestedPokedexType: PokedexType = PokedexType.RED
+
     override fun onClick() {
         val player = Minecraft.getInstance().player ?: return
         player.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
-        OpenPokedexPacket().sendToServer()
+        OpenPokedexPacket(requestedPokedexType).sendToServer()
         Minecraft.getInstance().setScreen(null)
     }
 
