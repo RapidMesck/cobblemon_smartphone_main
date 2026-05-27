@@ -11,6 +11,8 @@
   },
   "client": [
     "ItemRendererMixin",
-    "ModelLoaderMixin"
+    "ModelLoaderMixin",
+    "MixinPlayerExtensionsKt",
+    "MixinPokedexUsageContext"
   ]
 }

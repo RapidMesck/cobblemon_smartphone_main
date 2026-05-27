@@ -11,9 +11,6 @@ import net.minecraft.client.Minecraft
 
 class CobblemonSmartphoneFabricClient : ClientModInitializer {
     override fun onInitializeClient() {
-        // Force the 3D hand models to be baked (they are not tied to a registered item).
-        // The ModelLoaderMixin registers them under the "inventory" variant; this call
-        // ensures the JSON is loaded into the unbaked model cache before that happens.
         ModelLoadingPlugin.register { context ->
             SmartphoneColor.entries.forEach { color ->
                 context.addModels(color.getHandModelPath())
@@ -21,12 +18,16 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
         }
 
         KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.OPEN_SMARTPHONE)
+        KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.SCANNER)
 
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: Minecraft ->
             while (SmartphoneKeybinds.OPEN_SMARTPHONE.consumeClick()) {
-                // Use Fabric-specific handler that supports Trinkets
                 FabricSmartphoneKeybindHandler.handleKeybind()
             }
+            while (SmartphoneKeybinds.SCANNER.consumeClick()) {
+                FabricSmartphoneKeybindHandler.handleScannerKeybind()
+            }
+            FabricSmartphoneKeybindHandler.onClientTick(client)
         })
 
         CobblemonSmartphoneFabricNetworkManager.registerClientHandlers()

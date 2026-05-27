@@ -14,10 +14,12 @@ import net.neoforged.neoforge.client.event.ClientTickEvent
 object CobblemonSmartphoneNeoForgeTickHandler {
     @SubscribeEvent
     fun onClientTick(event: ClientTickEvent.Post) {
-        // Loop para tratar múltiplos cliques registrados no mesmo tick
         while (SmartphoneKeybinds.OPEN_SMARTPHONE.consumeClick()) {
-            // Use NeoForge-specific handler that supports Curios
             NeoForgeSmartphoneKeybindHandler.handleKeybind()
         }
+        while (SmartphoneKeybinds.SCANNER.consumeClick()) {
+            NeoForgeSmartphoneKeybindHandler.handleScannerKeybind()
+        }
+        NeoForgeSmartphoneKeybindHandler.onClientTick(net.minecraft.client.Minecraft.getInstance())
     }
 }

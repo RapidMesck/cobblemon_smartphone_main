@@ -10,14 +10,18 @@ import org.lwjgl.glfw.GLFW
 object SmartphoneKeybinds {
     private const val CATEGORY = "key.categories.cobblemon_smartphone"
 
-    // Define o keybind com a tecla "P"
     val OPEN_SMARTPHONE: KeyMapping = KeyMapping(
         "key.cobblemon_smartphone.open",
         GLFW.GLFW_KEY_K,
         CATEGORY
     )
 
-    // Essa função deve ser chamada a cada tick do cliente para tratar os keybinds
+    val SCANNER: KeyMapping = KeyMapping(
+        "key.cobblemon_smartphone.scanner",
+        GLFW.GLFW_KEY_C,
+        CATEGORY
+    )
+
     fun handleKeybinds() {
             val player = Minecraft.getInstance().player ?: return
 
