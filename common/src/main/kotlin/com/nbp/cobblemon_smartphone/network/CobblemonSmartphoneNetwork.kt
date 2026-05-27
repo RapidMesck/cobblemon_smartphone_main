@@ -5,6 +5,7 @@ import com.nbp.cobblemon_smartphone.network.handler.HealPokemonHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavPokenavHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenCobbledollarsShopHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenPCHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenPokedexHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandler
 import com.nbp.cobblemon_smartphone.network.handler.server.OpenEnderChestHandler
 import com.nbp.cobblemon_smartphone.network.packet.HealPokemonPacket
@@ -12,6 +13,7 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavPokenavPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenCobbledollarsShopPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenEnderChestPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPCPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenPokedexPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
 
 object CobblemonSmartphoneNetwork {
@@ -33,6 +35,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(OpenCobblenavPokenavPacket.ID, OpenCobblenavPokenavPacket::decode, OpenCobblenavPokenavHandler))
         list.add(PacketRegisterInfo(OpenCobbledollarsShopPacket.ID, OpenCobbledollarsShopPacket::decode, OpenCobbledollarsShopHandler))
         list.add(PacketRegisterInfo(OpenWaystonesWarpStonePacket.ID, OpenWaystonesWarpStonePacket::decode, OpenWaystonesWarpStoneHandler))
+        list.add(PacketRegisterInfo(OpenPokedexPacket.ID, OpenPokedexPacket::decode, OpenPokedexHandler))
 
         return list
     }

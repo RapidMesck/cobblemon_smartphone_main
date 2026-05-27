@@ -17,6 +17,8 @@
   "message.nbp.waystones.no_warp_stone_item": "You need a Waystones Warp Stone in your inventory",
   "message.nbp.waystones.cooldown": "You need to wait %d seconds before using Waystones again",
   "message.nbp.waystones.open_failed": "Could not open Waystones Warp Stone interface",
+  "message.nbp.pokedex.disabled": "The Pokedex feature is disabled on this server",
+  "message.nbp.pokedex.cooldown": "You need to wait %d seconds before opening the Pokedex again",
 
   "item.cobblemon_smartphone.white_smartphone": "White Smartphone",
   "item.cobblemon_smartphone.orange_smartphone": "Orange Smartphone",
