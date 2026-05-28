@@ -48,6 +48,7 @@ object CobblemonSmartphone {
         config = SmartphoneConfig.load()
         this.implementation = implementation
         implementation.registerItems()
+        implementation.registerReloadListeners()
         registerDefaultActions()
     }
 

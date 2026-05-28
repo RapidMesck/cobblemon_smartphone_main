@@ -8,4 +8,6 @@ interface Implementation {
     fun registerItems()
 
     fun registerCommands()
+
+    fun registerReloadListeners()
 }

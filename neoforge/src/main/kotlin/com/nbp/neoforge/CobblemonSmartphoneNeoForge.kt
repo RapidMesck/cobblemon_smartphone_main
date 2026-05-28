@@ -2,7 +2,10 @@ package com.nbp.neoforge
 
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.Implementation
+import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
+import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
+import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.neoforge.compat.SmartphoneCompatManager
 import net.minecraft.core.registries.BuiltInRegistries
@@ -23,7 +26,10 @@ import net.minecraft.world.item.ItemStack
 import net.neoforged.fml.common.Mod
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent
 import net.neoforged.fml.ModList
+import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.AddPackFindersEvent
+import net.neoforged.neoforge.event.AddReloadListenerEvent
+import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.registries.RegisterEvent
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import java.util.Optional
@@ -38,6 +44,16 @@ class CobblemonSmartphoneNeoForge : Implementation {
             addListener(networkManager::registerMessages)
             addListener(::onCommonSetup)
             addListener(::onAddPackFinders)
+        }
+
+        NeoForge.EVENT_BUS.addListener(::onAddReloadListener)
+
+        NeoForge.EVENT_BUS.addListener<PlayerEvent.PlayerLoggedInEvent> { event ->
+            val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
+            val data = DatapackActionLoader.getDefinitions().map { def ->
+                SyncedActionData(def.id, def.texture, def.hoverTexture)
+            }
+            SyncDatapackActionsPacket(data).sendToPlayer(player)
         }
     }
     
@@ -71,6 +87,14 @@ class CobblemonSmartphoneNeoForge : Implementation {
     }
 
     override fun registerCommands() {
+    }
+
+    override fun registerReloadListeners() {
+        // Handled via AddReloadListenerEvent in init block
+    }
+
+    private fun onAddReloadListener(event: AddReloadListenerEvent) {
+        event.addListener(DatapackActionLoader)
     }
 
     private fun onAddPackFinders(event: AddPackFindersEvent) {
