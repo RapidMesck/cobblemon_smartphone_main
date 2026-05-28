@@ -2,6 +2,9 @@
 
 A Cobblemon addon that adds smartphones to enhance your Pokémon training experience in Cobblemon!
 
+# ⚙️ [NEW] Cobblemon Smartphone Datapack API
+
+View full tutorial in [DATAPACK_TUTORIAL.md](DATAPACK_TUTORIAL.md)
 
 # ⚙️ [NEW] Cobblemon Smartphone Mod Addon API Example
 
