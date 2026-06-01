@@ -5,10 +5,10 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.api.SmartphoneAction
 import com.nbp.cobblemon_smartphone.isModLoaded
 import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavPokenavPacket
-import net.minecraft.core.registries.BuiltInRegistries
+import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.item.ItemStack
 
 object OpenCobblenavAction : SmartphoneAction {
     private const val COBBLENAV_NAMESPACE = "cobblenav"
@@ -36,17 +36,7 @@ object OpenCobblenavAction : SmartphoneAction {
         }
 
         val player = Minecraft.getInstance().player ?: return false
-        return player.inventory.items.any(::isCobblenavPokenav) || isCobblenavPokenav(player.offhandItem)
-    }
-
-    private fun isCobblenavPokenav(stack: ItemStack): Boolean {
-        if (stack.isEmpty) {
-            return false
-        }
-
-        val itemId = BuiltInRegistries.ITEM.getKey(stack.item)
-        return itemId.namespace == COBBLENAV_NAMESPACE
-            && itemId.path.startsWith(POKENAV_PATH_PREFIX)
-            && itemId.path != LEGACY_POKENAV_ITEM
+        val smartphone = SmartphoneHelper.getSmartphone(player) ?: return false
+        return smartphone.hasUpgrade("upgrade_pokenav")
     }
 }

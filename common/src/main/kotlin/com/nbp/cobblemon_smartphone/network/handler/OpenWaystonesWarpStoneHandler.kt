@@ -3,6 +3,9 @@ package com.nbp.cobblemon_smartphone.network.handler
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
+import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
+import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -40,17 +43,38 @@ object OpenWaystonesWarpStoneHandler : ServerNetworkPacketHandler<OpenWaystonesW
                 return@execute
             }
 
-            val warpStoneUse = findWarpStoneForUse(player)
-            if (warpStoneUse == null) {
-                player.displayClientMessage(Component.translatable("message.nbp.waystones.no_warp_stone_item").withColor(0xfd0100), true)
+            // Check if smartphone has the Waystone upgrade
+            val smartphone = SmartphoneHelper.getSmartphone(player)
+            if (smartphone == null || !smartphone.hasUpgrade("upgrade_waystone")) {
+                player.displayClientMessage(Component.translatable("message.nbp.waystones.no_waystone_upgrade").withColor(0xfd0100), true)
                 return@execute
             }
 
             buttonCooldowns[playerId] = now
 
+            // Try to use warp stone from inventory (backward compat)
+            val warpStoneUse = findWarpStoneForUse(player)
+            if (warpStoneUse != null) {
+                try {
+                    player.startUsingItem(warpStoneUse.hand)
+                    warpStoneUse.stack.item.finishUsingItem(warpStoneUse.stack, player.level(), player)
+                } catch (_: Exception) {
+                    player.displayClientMessage(Component.translatable("message.nbp.waystones.open_failed").withColor(0xfd0100), true)
+                }
+                return@execute
+            }
+
+            // Fallback: simulate warp stone use via smartphone upgrade
+            if (SimulatedItemUse.useWaystone(player)) {
+                return@execute
+            }
+
+            // Last resort: try command fallback
             try {
-                player.startUsingItem(warpStoneUse.hand)
-                warpStoneUse.stack.item.finishUsingItem(warpStoneUse.stack, player.level(), player)
+                server.commands.performPrefixedCommand(
+                    player.createCommandSourceStack(),
+                    "waystones"
+                )
             } catch (_: Exception) {
                 player.displayClientMessage(Component.translatable("message.nbp.waystones.open_failed").withColor(0xfd0100), true)
             }

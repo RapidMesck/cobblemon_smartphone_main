@@ -7,6 +7,7 @@ import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.neoforge.compat.SmartphoneCompatManager
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
@@ -61,6 +62,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
         event.enqueueWork {
             // Initialize optional mod compatibility (Curios)
             SmartphoneCompatManager.init()
+            SmartphoneHelper.getSmartphoneImpl = { player -> SmartphoneCompatManager.getSmartphone(player) }
         }
     }
 

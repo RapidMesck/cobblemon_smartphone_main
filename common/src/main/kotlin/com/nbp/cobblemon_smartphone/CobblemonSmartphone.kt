@@ -12,6 +12,8 @@ import com.nbp.cobblemon_smartphone.client.BuiltinResourcePack
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.config.SmartphoneConfig
+import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgrade
+import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
 import net.minecraft.client.Minecraft
 import net.minecraft.server.packs.PackType
 import org.slf4j.Logger
@@ -44,12 +46,30 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(PokedexAction)
     }
 
+    fun registerDefaultUpgrades() {
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = "upgrade_pokenav",
+                nbtKey = "upgrade_pokenav",
+                requiredModId = "cobblenav"
+            )
+        )
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = "upgrade_waystone",
+                nbtKey = "upgrade_waystone",
+                requiredModId = "waystones"
+            )
+        )
+    }
+
     fun init(implementation: Implementation) {
         config = SmartphoneConfig.load()
         this.implementation = implementation
         implementation.registerItems()
         implementation.registerReloadListeners()
         registerDefaultActions()
+        registerDefaultUpgrades()
     }
 
     fun getSmartphoneActionRegistry() = SmartphoneActionRegistry

@@ -2,6 +2,8 @@ package com.nbp.cobblemon_smartphone.api
 
 import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.network.packet.ExecuteDatapackActionPacket
+import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.ResourceLocation
 
@@ -29,6 +31,9 @@ class DatapackAction(private val definition: DatapackActionDefinition) : Smartph
     }
 
     override fun isEnabled(): Boolean {
-        return true
+        val upgradeKey = definition.requireUpgrade ?: return true
+        val player = Minecraft.getInstance().player ?: return false
+        val smartphone = SmartphoneHelper.getSmartphone(player) ?: return false
+        return smartphone.hasUpgrade(upgradeKey)
     }
 }

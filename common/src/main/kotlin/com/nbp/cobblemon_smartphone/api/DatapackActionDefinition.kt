@@ -13,7 +13,9 @@ data class DatapackActionDefinition(
     @SerializedName("require_mod")
     val requireMod: String? = null,
     @SerializedName("cooldown_seconds")
-    val cooldownSeconds: Int = 0
+    val cooldownSeconds: Int = 0,
+    @SerializedName("require_upgrade")
+    val requireUpgrade: String? = null
 ) {
     companion object {
         val GSON = Gson()

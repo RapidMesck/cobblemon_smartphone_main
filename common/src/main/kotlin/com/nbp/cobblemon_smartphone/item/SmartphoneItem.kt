@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.item
 
 import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.client.gui.SmartphoneScreen
+import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
@@ -59,5 +60,14 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         tooltipFlag: TooltipFlag
     ) {
         list.add(Component.translatable(BASE_TOOLTIP_TRANSLATION_KEY + model.modelName + BASE_REGISTRY_KEY).withStyle(ChatFormatting.GRAY))
+
+        // Show installed upgrades
+        val upgrades = SmartphoneUpgradeRegistry.getInstalledUpgrades(itemStack)
+        for (upgrade in upgrades) {
+            val name = upgrade.displayName ?: Component.translatable(
+                "upgrade.cobblemon_smartphone.${upgrade.id}"
+            )
+            list.add(name.copy().withStyle(ChatFormatting.GREEN))
+        }
     }
 }

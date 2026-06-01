@@ -4,7 +4,8 @@
   "compatibilityLevel": "JAVA_21",
   "minVersion": "0.8",
   "mixins": [
-    "EntityMixin"
+    "EntityMixin",
+    "MixinSmithingTransformRecipe"
   ],
   "injectors": {
     "defaultRequire": 1

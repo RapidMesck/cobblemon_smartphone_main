@@ -6,6 +6,7 @@ import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
@@ -27,6 +28,8 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
         networkManager.registerMessages()
         networkManager.registerServerHandlers()
         registerReloadListeners()
+
+        SmartphoneHelper.getSmartphoneImpl = { player -> SmartphoneCompatManager.getSmartphone(player) }
 
         val modContainer = FabricLoader.getInstance().getModContainer(CobblemonSmartphone.ID).orElse(null)
         if (modContainer != null) {

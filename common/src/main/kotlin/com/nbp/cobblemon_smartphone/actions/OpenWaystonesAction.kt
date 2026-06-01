@@ -4,10 +4,11 @@ import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.api.SmartphoneAction
 import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
+import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.item.ItemStack
 
 object OpenWaystonesAction : SmartphoneAction {
     private const val WAYSTONES_MOD_ID = "waystones"
@@ -34,16 +35,8 @@ object OpenWaystonesAction : SmartphoneAction {
         }
 
         val player = Minecraft.getInstance().player ?: return false
-        return player.inventory.items.any(::isWarpStone) || isWarpStone(player.offhandItem)
-    }
-
-    private fun isWarpStone(stack: ItemStack): Boolean {
-        if (stack.isEmpty) {
-            return false
-        }
-
-        val itemId = BuiltInRegistries.ITEM.getKey(stack.item)
-        return itemId.namespace == WAYSTONES_MOD_ID && itemId.path.endsWith(WARP_STONE_SUFFIX)
+        val smartphone = SmartphoneHelper.getSmartphone(player) ?: return false
+        return smartphone.hasUpgrade("upgrade_waystone")
     }
 
     private fun isWaystonesLoaded(): Boolean {
