@@ -1,4 +1,4 @@
-# Cobblemon Smartphone — Developer Documentation
+# Cobblemon Smartphone
 
 Welcome to the Cobblemon Smartphone developer documentation. This mod provides a smartphone item for Cobblemon that can be extended with custom actions through two APIs:
 
