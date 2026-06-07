@@ -13,10 +13,11 @@ object FabricSmartphoneKeybindHandler {
     fun handleKeybind() {
         val player = Minecraft.getInstance().player ?: return
 
-        val smartphoneItem = SmartphoneCompatManager.getSmartphoneItem(player)
+        val smartphoneStack = SmartphoneCompatManager.getSmartphone(player)
 
-        if (smartphoneItem != null) {
-            Minecraft.getInstance().setScreen(SmartphoneScreen(smartphoneItem.getColor()))
+        if (smartphoneStack != null) {
+            val smartphoneItem = smartphoneStack.item as? SmartphoneItem ?: return
+            Minecraft.getInstance().setScreen(SmartphoneScreen(smartphoneItem.getColor(), smartphoneStack))
             player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.5f, 1f)
         }
     }

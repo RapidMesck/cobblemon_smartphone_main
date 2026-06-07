@@ -16,8 +16,8 @@ object NeoForgeSmartphoneKeybindHandler {
         val smartphone = SmartphoneCompatManager.getSmartphone(player)
 
         if (smartphone != null) {
-            val smartphoneItem = smartphone.item as SmartphoneItem
-            Minecraft.getInstance().setScreen(SmartphoneScreen(smartphoneItem.getColor()))
+            val smartphoneItem = smartphone.item as? SmartphoneItem ?: return
+            Minecraft.getInstance().setScreen(SmartphoneScreen(smartphoneItem.getColor(), smartphone))
             player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.5f, 1f)
         }
     }

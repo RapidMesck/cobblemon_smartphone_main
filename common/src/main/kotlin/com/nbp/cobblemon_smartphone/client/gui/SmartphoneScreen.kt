@@ -3,14 +3,19 @@ package com.nbp.cobblemon_smartphone.client.gui
 import com.nbp.cobblemon_smartphone.actions.PokedexAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.item.ItemStack
 
-class SmartphoneScreen(private val color: SmartphoneColor) : Screen(Component.literal("Smartphone")) {
-    private val actions = SmartphoneActionRegistry.getEnabledActions()
+class SmartphoneScreen(
+    private val color: SmartphoneColor,
+    private val smartphoneStack: ItemStack? = null
+) : Screen(Component.literal("Smartphone")) {
+    private val actions get() = SmartphoneActionRegistry.getEnabledActions()
     private var screenX = 0
     private var screenY = 0
     private var currentPage = 0
@@ -24,6 +29,13 @@ class SmartphoneScreen(private val color: SmartphoneColor) : Screen(Component.li
         screenX = (width - GUI_WIDTH) / 2
         screenY = (height - GUI_HEIGHT) / 2
         PokedexAction.requestedPokedexType = color.toPokedexType()
+        // Set context so isEnabled() checks THIS smartphone's upgrades
+        SmartphoneHelper.contextSmartphone = smartphoneStack
+    }
+
+    override fun removed() {
+        SmartphoneHelper.contextSmartphone = null
+        super.removed()
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {

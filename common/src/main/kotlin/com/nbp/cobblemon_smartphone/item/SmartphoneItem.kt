@@ -43,7 +43,8 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         interactionHand: InteractionHand
     ): InteractionResultHolder<ItemStack> {
         if (level.isClientSide()) {
-            Minecraft.getInstance().setScreen(SmartphoneScreen(model))
+            val stack = player.getItemInHand(interactionHand)
+            Minecraft.getInstance().setScreen(SmartphoneScreen(model, stack))
             player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.5f, 1f)
         }
         return InteractionResultHolder.success(player.getItemInHand(interactionHand))
