@@ -25,9 +25,8 @@ object OpenCobblenavPokenavHandler : ServerNetworkPacketHandler<OpenCobblenavPok
                 return@execute
             }
 
-            // Check if smartphone has the PokeNav upgrade
-            val smartphone = SmartphoneHelper.getSmartphone(player)
-            if (smartphone == null || !smartphone.hasUpgrade("upgrade_pokenav")) {
+            // Check if ANY smartphone in the player's possession has the PokeNav upgrade
+            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_pokenav")) {
                 player.displayClientMessage(Component.translatable("message.nbp.cobblenav.no_pokenav_upgrade").withColor(0xfd0100), true)
                 return@execute
             }

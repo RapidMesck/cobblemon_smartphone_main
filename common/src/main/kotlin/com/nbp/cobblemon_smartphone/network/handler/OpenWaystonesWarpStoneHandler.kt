@@ -43,9 +43,8 @@ object OpenWaystonesWarpStoneHandler : ServerNetworkPacketHandler<OpenWaystonesW
                 return@execute
             }
 
-            // Check if smartphone has the Waystone upgrade
-            val smartphone = SmartphoneHelper.getSmartphone(player)
-            if (smartphone == null || !smartphone.hasUpgrade("upgrade_waystone")) {
+            // Check if ANY smartphone in the player's possession has the Waystone upgrade
+            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_waystone")) {
                 player.displayClientMessage(Component.translatable("message.nbp.waystones.no_waystone_upgrade").withColor(0xfd0100), true)
                 return@execute
             }
