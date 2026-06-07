@@ -52,7 +52,7 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
         // Sync datapack actions to players when they join
         ServerPlayConnectionEvents.JOIN.register { handler, _sender, _server ->
             val data = DatapackActionLoader.getDefinitions().map { def ->
-                SyncedActionData(def.id, def.texture, def.hoverTexture)
+                SyncedActionData(def.id, def.texture, def.hoverTexture, def.requireUpgrade, def.requireMod, def.cooldownSeconds)
             }
             SyncDatapackActionsPacket(data).sendToPlayer(handler.player)
         }

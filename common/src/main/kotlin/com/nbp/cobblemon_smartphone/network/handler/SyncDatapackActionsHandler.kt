@@ -15,7 +15,10 @@ object SyncDatapackActionsHandler : ClientNetworkPacketHandler<SyncDatapackActio
             val definition = DatapackActionDefinition(
                 id = actionData.id,
                 texture = actionData.texture,
-                hoverTexture = actionData.hoverTexture
+                hoverTexture = actionData.hoverTexture,
+                requireUpgrade = actionData.requireUpgrade,
+                requireMod = actionData.requireMod,
+                cooldownSeconds = actionData.cooldownSeconds
             )
             SmartphoneActionRegistry.registerDatapackAction(DatapackAction(definition))
         }

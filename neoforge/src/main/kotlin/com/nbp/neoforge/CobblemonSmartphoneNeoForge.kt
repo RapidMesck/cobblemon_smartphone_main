@@ -52,7 +52,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
         NeoForge.EVENT_BUS.addListener<PlayerEvent.PlayerLoggedInEvent> { event ->
             val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
             val data = DatapackActionLoader.getDefinitions().map { def ->
-                SyncedActionData(def.id, def.texture, def.hoverTexture)
+                SyncedActionData(def.id, def.texture, def.hoverTexture, def.requireUpgrade, def.requireMod, def.cooldownSeconds)
             }
             SyncDatapackActionsPacket(data).sendToPlayer(player)
         }
