@@ -41,11 +41,13 @@ Restart the server or run `/reload` — the button appears automatically.
 | `order` | Integer | `0` | Sort order. Lower numbers appear first. |
 | `cooldown_seconds` | Integer | `0` | Cooldown in seconds between uses. `0` = no cooldown. |
 | `require_mod` | String | `null` | Mod ID required for this action. If the mod is not loaded, the action is completely hidden. |
-| `require_upgrade` | String | `null` | Upgrade NBT key required on the smartphone. The action is hidden unless the player's smartphone has this upgrade installed. See [Upgrade Support](#upgrade-support). |
+| `require_upgrade` | String | `null` | Upgrade NBT key required on the smartphone. The action is hidden unless the player's smartphone has this upgrade installed, unless `ignoreUpgrades` is enabled in the mod config. See [Upgrade Support](#upgrade-support). |
 
 ## Upgrade Support
 
 The `require_upgrade` field locks an action behind a smartphone upgrade. When set, the button only appears if the player's smartphone has the corresponding upgrade NBT tag.
+
+Server owners can bypass all upgrade requirements by setting `ignoreUpgrades` to `true` in `config/cobblemon_smartphone.json`. When enabled, datapack actions with `require_upgrade` appear and can be clicked without the matching smartphone upgrade. Other requirements, such as `require_mod`, still apply.
 
 ### How It Works
 
@@ -96,7 +98,7 @@ The `require_upgrade` field locks an action behind a smartphone upgrade. When se
 }
 ```
 
-**Result**: The player must use `cobblemon:upgrade` + their smartphone + an ender pearl in a smithing table. After upgrading, the portal button appears on their smartphone.
+**Result**: By default, the player must use `cobblemon:upgrade` + their smartphone + an ender pearl in a smithing table. After upgrading, the portal button appears on their smartphone. If `ignoreUpgrades` is enabled in the mod config, the portal button appears without this smithing upgrade.
 
 ### NBT Structure
 
@@ -154,7 +156,7 @@ An action that:
 
 | Problem | Solution |
 |---|---|
-| Button not appearing | Check `require_mod` — is the mod installed? Check `require_upgrade` — is the smartphone upgraded? Verify the JSON file is in `smartphone_actions/` folder. Run `/reload`. |
+| Button not appearing | Check `require_mod` — is the mod installed? Check `require_upgrade` — is the smartphone upgraded, or is `ignoreUpgrades` enabled? Verify the JSON file is in `smartphone_actions/` folder. Run `/reload`. |
 | Command not running | Commands execute as the player. Ensure the player has permission for the command. Check server logs for errors. |
 | Texture not showing | Verify the texture path matches `<namespace>:textures/gui/buttons/<file>.png`. Check the file exists in your assets. |
 | Cooldown not working | `cooldown_seconds` must be a positive integer. Zero = no cooldown. |

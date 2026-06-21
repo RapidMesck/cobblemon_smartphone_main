@@ -89,6 +89,8 @@ Called to determine if the button should appear. Return `false` to hide it. Comm
 - Required mod loaded
 - Player has required item or upgrade
 
+For upgrade-gated actions, prefer `SmartphoneHelper.satisfiesUpgradeRequirement(player, upgradeKey)` so your action respects the mod config's `ignoreUpgrades` setting.
+
 **Important**: `isEnabled()` runs on the **render thread**. Keep it fast — no network calls or file I/O.
 
 ## Server-Side Handling with Network Packets
@@ -172,6 +174,27 @@ val smartphone = SmartphoneHelper.getSmartphone(player) ?: return false
 
 **Note**: For Fabric, `SmartphoneHelper` needs to be initialized with the platform-specific compat manager. If you are building your own mod that registers actions, this is already set up by the Cobblemon Smartphone mod during its init. You only need to set this if you are forking or embedding the API.
 
+## Reading Mod Configuration
+
+The active config is available through `CobblemonSmartphone.config` after the mod initializes:
+
+```kotlin
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+
+val config = CobblemonSmartphone.config
+val upgradesIgnored = config.ignoreUpgrades
+val healEnabled = config.features.enableHeal
+val healCooldownSeconds = config.cooldowns.healButton
+```
+
+The config is loaded from `config/cobblemon_smartphone.json`.
+
+| Field | Type | Description |
+|---|---|---|
+| `ignoreUpgrades` | Boolean | If `true`, upgrade requirements should be treated as satisfied. |
+| `cooldowns` | `SmartphoneConfig.Cooldowns` | Built-in action cooldowns in seconds. |
+| `features` | `SmartphoneConfig.Features` | Built-in feature toggles. |
+
 ## Upgrade System
 
 The upgrade system allows actions to be permanently unlocked via smithing table recipes. The smartphone stores upgrade state as NBT data.
@@ -210,14 +233,12 @@ fun registerUpgrades() {
 ### Checking Upgrade in isEnabled()
 
 ```kotlin
-import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 
 override fun isEnabled(): Boolean {
     val player = Minecraft.getInstance().player ?: return false
-    val smartphone = SmartphoneHelper.getSmartphone(player) ?: return false
-    return smartphone.hasUpgrade("upgrade_my_feature")
+    return SmartphoneHelper.satisfiesUpgradeRequirement(player, "upgrade_my_feature")
 }
 ```
 
@@ -228,8 +249,7 @@ In your packet handler:
 ```kotlin
 override fun handle(packet: MyPacket, server: MinecraftServer, player: ServerPlayer) {
     server.execute {
-        val smartphone = SmartphoneHelper.getSmartphone(player)
-        if (smartphone == null || !smartphone.hasUpgrade("upgrade_my_feature")) {
+        if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_my_feature")) {
             player.displayClientMessage(
                 Component.translatable("message.mymod.need_upgrade").withColor(0xfd0100),
                 true
@@ -379,7 +399,6 @@ import com.nbp.cobblemon_smartphone.api.SmartphoneAction
 import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgrade
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
-import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.example.mymod.network.MyActionPacket
 import net.minecraft.client.Minecraft
@@ -402,8 +421,7 @@ object MyUpgradedAction : SmartphoneAction {
 
     override fun isEnabled(): Boolean {
         val player = Minecraft.getInstance().player ?: return false
-        val smartphone = SmartphoneHelper.getSmartphone(player) ?: return false
-        return smartphone.hasUpgrade(UPGRADE_KEY)
+        return SmartphoneHelper.satisfiesUpgradeRequirement(player, UPGRADE_KEY)
     }
 }
 
@@ -431,7 +449,6 @@ package com.example.mymod.network
 
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
-import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -441,8 +458,7 @@ object MyActionHandler : ServerNetworkPacketHandler<MyActionPacket> {
     override fun handle(packet: MyActionPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
             // Check upgrade
-            val smartphone = SmartphoneHelper.getSmartphone(player)
-            if (smartphone == null || !smartphone.hasUpgrade("upgrade_my_feature")) {
+            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_my_feature")) {
                 player.displayClientMessage(
                     Component.translatable("message.mymod.need_upgrade").withColor(0xfd0100),
                     true
@@ -485,6 +501,12 @@ object SmartphoneHelper {
 
     // Find player's smartphone (Trinkets → Curios → Inventory)
     fun getSmartphone(player: Player): ItemStack?
+
+    // Check an upgrade requirement while respecting config/cobblemon_smartphone.json
+    fun satisfiesUpgradeRequirement(player: Player, upgradeKey: String): Boolean
+
+    // Server-side helper that checks all smartphones and respects ignoreUpgrades
+    fun hasUpgradeOnAnySmartphone(player: Player, upgradeKey: String): Boolean
 }
 ```
 

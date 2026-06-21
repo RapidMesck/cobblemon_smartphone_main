@@ -87,15 +87,31 @@ class SmartphoneScreen(
             }
         }
         // Handle page controls
-        if (isInPrevButton(mouseX.toInt(), mouseY.toInt()) && currentPage > 0) {
-            currentPage--
-            return true
+        if (isInPrevButton(mouseX.toInt(), mouseY.toInt())) {
+            return changePage(-1)
         }
-        if (isInNextButton(mouseX.toInt(), mouseY.toInt()) && currentPage < maxPage) {
-            currentPage++
-            return true
+        if (isInNextButton(mouseX.toInt(), mouseY.toInt())) {
+            return changePage(1)
         }
         return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
+        if (maxPage == 0 || verticalAmount == 0.0) {
+            return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
+        }
+
+        return changePage(if (verticalAmount < 0.0) 1 else -1)
+    }
+
+    private fun changePage(offset: Int): Boolean {
+        val nextPage = (currentPage + offset).coerceIn(0, maxPage)
+        if (nextPage == currentPage) {
+            return false
+        }
+
+        currentPage = nextPage
+        return true
     }
 
     private fun isHovered(mouseX: Int, mouseY: Int, x: Int, y: Int): Boolean {

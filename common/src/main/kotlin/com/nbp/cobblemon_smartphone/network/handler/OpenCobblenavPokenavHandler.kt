@@ -4,7 +4,6 @@ import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.nbp.cobblemon_smartphone.isModLoaded
 import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavPokenavPacket
 import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
-import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component

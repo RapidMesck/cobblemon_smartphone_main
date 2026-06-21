@@ -22,6 +22,7 @@
   "message.nbp.waystones.open_failed": "Could not open Waystones Warp Stone interface",
   "message.nbp.pokedex.disabled": "The Pokedex feature is disabled on this server",
   "message.nbp.pokedex.cooldown": "You need to wait %d seconds before opening the Pokedex again",
+  "message.nbp.scanner.disabled": "The Pokedex scanner feature is disabled on this server",
   "message.nbp.datapack_action.cooldown": "You need to wait %d seconds before using this action again",
 
   "item.cobblemon_smartphone.white_smartphone": "White Smartphone",

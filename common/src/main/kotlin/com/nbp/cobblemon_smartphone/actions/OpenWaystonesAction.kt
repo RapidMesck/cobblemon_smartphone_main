@@ -4,7 +4,6 @@ import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.api.SmartphoneAction
 import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
-import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.core.registries.BuiltInRegistries
@@ -35,8 +34,7 @@ object OpenWaystonesAction : SmartphoneAction {
         }
 
         val player = Minecraft.getInstance().player ?: return false
-        val smartphone = SmartphoneHelper.getSmartphone(player) ?: return false
-        return smartphone.hasUpgrade("upgrade_waystone")
+        return SmartphoneHelper.satisfiesUpgradeRequirement(player, "upgrade_waystone")
     }
 
     private fun isWaystonesLoaded(): Boolean {

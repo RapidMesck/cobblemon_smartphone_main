@@ -5,7 +5,6 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.api.SmartphoneAction
 import com.nbp.cobblemon_smartphone.isModLoaded
 import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavPokenavPacket
-import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.ResourceLocation
@@ -36,7 +35,6 @@ object OpenCobblenavAction : SmartphoneAction {
         }
 
         val player = Minecraft.getInstance().player ?: return false
-        val smartphone = SmartphoneHelper.getSmartphone(player) ?: return false
-        return smartphone.hasUpgrade("upgrade_pokenav")
+        return SmartphoneHelper.satisfiesUpgradeRequirement(player, "upgrade_pokenav")
     }
 }

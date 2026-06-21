@@ -8,6 +8,7 @@ import java.io.FileReader
 import java.io.FileWriter
 
 class SmartphoneConfig {
+    val ignoreUpgrades: Boolean = false
     val cooldowns = Cooldowns()
     val features = Features()
 
@@ -27,6 +28,7 @@ class SmartphoneConfig {
         val enableCobbleDollars: Boolean = true
         val enableWaystone: Boolean = true
         val enablePokedex: Boolean = true
+        val enableScanner: Boolean = true
     }
 
     companion object {

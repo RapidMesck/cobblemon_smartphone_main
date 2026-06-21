@@ -12,6 +12,7 @@ Welcome to the Cobblemon Smartphone developer documentation. This mod provides a
 | Add a button that runs commands | [Datapack API](datapack-api.md) |
 | Add a button that opens a GUI / custom logic | [Mod API](mod-api.md) |
 | Require a smartphone upgrade to unlock an action | Both APIs support this |
+| Configure cooldowns, feature toggles, or upgrade checks | [Mod Configuration](#mod-configuration) |
 
 ## Supported Versions
 
@@ -72,9 +73,50 @@ Both APIs support the **smartphone upgrade** mechanic. Upgrades allow actions to
 
 | Feature | Datapack API | Mod API |
 |---|---|---|
-| Require upgrade for action | `"require_upgrade": "upgrade_<name>"` | Check `hasUpgrade()` in `isEnabled()` |
+| Require upgrade for action | `"require_upgrade": "upgrade_<name>"` | Use `SmartphoneHelper.satisfiesUpgradeRequirement()` in `isEnabled()` |
 | Define upgrade/item | Via smithing recipe JSON | Register `SmartphoneUpgrade` |
 | Simulate item use | ❌ (use commands) | `SimulatedItemUse.simulate()` |
+
+If `ignoreUpgrades` is enabled in the mod config, upgrade-locked actions are shown and can be used without the matching smartphone upgrade.
+
+## Mod Configuration
+
+Cobblemon Smartphone writes its config to:
+
+```
+config/cobblemon_smartphone.json
+```
+
+The file is created automatically on first load and rewritten with any missing default fields.
+
+```json
+{
+  "ignoreUpgrades": false,
+  "cooldowns": {
+    "healButton": 60,
+    "pcButton": 5,
+    "cloudButton": 5,
+    "waystoneButton": 5,
+    "pokedexButton": 1
+  },
+  "features": {
+    "enableHeal": true,
+    "enablePC": true,
+    "enableCloud": true,
+    "enablePokenav": true,
+    "enableCobbleDollars": true,
+    "enableWaystone": true,
+    "enablePokedex": true,
+    "enableScanner": true
+  }
+}
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `ignoreUpgrades` | Boolean | `false` | When `true`, upgrade requirements are ignored. Built-in and datapack actions locked by upgrades appear without requiring smithing upgrades. |
+| `cooldowns` | Object | See example | Cooldown values, in seconds, for built-in actions. |
+| `features` | Object | See example | Toggles for built-in smartphone actions. Disabled features remain hidden even when `ignoreUpgrades` is enabled. |
 
 ## Upgrade Smithing Recipe Format
 
