@@ -1,5 +1,7 @@
 package com.nbp.cobblemon_smartphone.client.gui
 
+import com.cobblemon.mod.common.api.gui.blitk
+import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.actions.PokedexAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
@@ -16,6 +18,10 @@ class SmartphoneScreen(
     private val smartphoneStack: ItemStack? = null
 ) : Screen(Component.literal("Smartphone")) {
     private val actions get() = SmartphoneActionRegistry.getEnabledActions()
+    private val frameTexture = ResourceLocation.fromNamespaceAndPath(
+        "cobblemon_smartphone",
+        "textures/gui/smartphone_${color.modelName}.png"
+    )
     private var screenX = 0
     private var screenY = 0
     private var currentPage = 0
@@ -39,42 +45,44 @@ class SmartphoneScreen(
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
-        // Background
-        val backgroundTexture = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/smartphone_${color.modelName}.png"
+        val matrices = guiGraphics.pose()
+
+        // Smartphone frame background
+        blitk(
+            matrixStack = matrices,
+            texture = frameTexture,
+            x = screenX,
+            y = screenY,
+            width = GUI_WIDTH,
+            height = GUI_HEIGHT
         )
-        guiGraphics.blit(backgroundTexture, screenX, screenY, 0f, 0f, GUI_WIDTH, GUI_HEIGHT, GUI_WIDTH, GUI_HEIGHT)
+
+        // Screen content
+        blitk(
+            matrixStack = matrices,
+            texture = HOME_SCREEN_TEXTURE,
+            x = screenX,
+            y = screenY,
+            width = GUI_WIDTH,
+            height = GUI_HEIGHT
+        )
 
         // Render actions as buttons
         pagedActions().forEachIndexed { index, action ->
             val (x, y) = getButtonPosition(index)
             val texture = if (isHovered(mouseX, mouseY, x, y)) action.hoverTexture else action.texture
-            guiGraphics.blit(
-                texture, screenX + x, screenY + y,
-                0f, 0f, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_WIDTH, BUTTON_HEIGHT
+            blitk(
+                matrixStack = matrices,
+                texture = texture,
+                x = screenX + x,
+                y = screenY + y,
+                width = BUTTON_WIDTH,
+                height = BUTTON_HEIGHT
             )
         }
 
-        // Render page controls if needed
-        val prevEnabled = currentPage > 0
-        val nextEnabled = currentPage < maxPage
-
-        if (prevEnabled) {
-            guiGraphics.drawString(
-                font, "<", screenX + PAGE_BUTTON_X, screenY + PAGE_BUTTON_Y, 0xFFFFFF, false
-            )
-        }
-        if (nextEnabled) {
-            guiGraphics.drawString(
-                font, ">", screenX + PAGE_BUTTON_X + 36, screenY + PAGE_BUTTON_Y, 0xFFFFFF, false
-            )
-        }
-        // Page number
-        val pageLabel = "${currentPage + 1}/${maxPage + 1}"
-        guiGraphics.drawString(
-            font, pageLabel, screenX + PAGE_BUTTON_X + PAGE_BUTTON_WIDTH / 2 + 6, screenY + PAGE_BUTTON_Y, 0xFFFFFF, false
-        )
+        renderPageDots(guiGraphics)
+        renderFooterButtons(guiGraphics, mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -87,16 +95,30 @@ class SmartphoneScreen(
             }
         }
         // Handle page controls
-        if (isInPrevButton(mouseX.toInt(), mouseY.toInt())) {
-            return changePage(-1)
+        if (isInFooterButton(mouseX.toInt(), mouseY.toInt(), FOOTER_PREV_X)) {
+            playClickSound()
+            changePage(-1)
+            return true
         }
-        if (isInNextButton(mouseX.toInt(), mouseY.toInt())) {
-            return changePage(1)
+        if (isInFooterButton(mouseX.toInt(), mouseY.toInt(), FOOTER_HOME_X)) {
+            playClickSound()
+            changePageTo(0)
+            return true
+        }
+        if (isInFooterButton(mouseX.toInt(), mouseY.toInt(), FOOTER_NEXT_X)) {
+            playClickSound()
+            changePage(1)
+            return true
         }
         return super.mouseClicked(mouseX, mouseY, button)
     }
 
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
+    override fun mouseScrolled(
+        mouseX: Double,
+        mouseY: Double,
+        horizontalAmount: Double,
+        verticalAmount: Double
+    ): Boolean {
         if (maxPage == 0 || verticalAmount == 0.0) {
             return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
         }
@@ -106,6 +128,16 @@ class SmartphoneScreen(
 
     private fun changePage(offset: Int): Boolean {
         val nextPage = (currentPage + offset).coerceIn(0, maxPage)
+        if (nextPage == currentPage) {
+            return false
+        }
+
+        currentPage = nextPage
+        return true
+    }
+
+    private fun changePageTo(page: Int): Boolean {
+        val nextPage = page.coerceIn(0, maxPage)
         if (nextPage == currentPage) {
             return false
         }
@@ -130,15 +162,74 @@ class SmartphoneScreen(
         return actions.drop(from).take(actionsPerPage)
     }
 
-    private fun isInPrevButton(mouseX: Int, mouseY: Int): Boolean {
-        return mouseX >= screenX + PAGE_BUTTON_X && mouseX <= screenX + PAGE_BUTTON_X + PAGE_BUTTON_WIDTH &&
-                mouseY >= screenY + PAGE_BUTTON_Y && mouseY <= screenY + PAGE_BUTTON_Y + PAGE_BUTTON_HEIGHT
+    private fun playClickSound() {
+        Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
     }
 
-    private fun isInNextButton(mouseX: Int, mouseY: Int): Boolean {
-        val x = PAGE_BUTTON_X + PAGE_BUTTON_WIDTH + 16
-        return mouseX >= screenX + x && mouseX <= screenX + x + PAGE_BUTTON_WIDTH &&
-                mouseY >= screenY + PAGE_BUTTON_Y && mouseY <= screenY + PAGE_BUTTON_Y + PAGE_BUTTON_HEIGHT
+    private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        renderFooterButton(guiGraphics, PREV_BUTTON_TEXTURE, FOOTER_PREV_X, mouseX, mouseY)
+        renderFooterButton(guiGraphics, HOME_BUTTON_TEXTURE, FOOTER_HOME_X, mouseX, mouseY)
+        renderFooterButton(guiGraphics, NEXT_BUTTON_TEXTURE, FOOTER_NEXT_X, mouseX, mouseY)
+    }
+
+    private fun renderFooterButton(
+        guiGraphics: GuiGraphics,
+        texture: ResourceLocation,
+        x: Int,
+        mouseX: Int,
+        mouseY: Int
+    ) {
+        val hovered = isInFooterButton(mouseX, mouseY, x)
+        val textureY = if (hovered) FOOTER_BUTTON_SIZE else 0
+        guiGraphics.blit(
+            texture,
+            screenX + x,
+            screenY + FOOTER_BUTTON_Y,
+            0f,
+            textureY.toFloat(),
+            FOOTER_BUTTON_SIZE,
+            FOOTER_BUTTON_SIZE,
+            FOOTER_BUTTON_SIZE,
+            FOOTER_BUTTON_TEXTURE_HEIGHT
+        )
+    }
+
+    private fun renderPageDots(guiGraphics: GuiGraphics) {
+        val totalPages = maxPage + 1
+        if (totalPages <= 1) {
+            return
+        }
+
+        val dotCount = totalPages.coerceAtMost(MAX_VISIBLE_DOTS)
+        val activeDot = when {
+            totalPages <= MAX_VISIBLE_DOTS -> currentPage
+            currentPage == 0 -> 0
+            currentPage == maxPage -> dotCount - 1
+            else -> 1
+        }
+        val startX = DOT_CENTER_X - ((dotCount * DOT_SIZE + (dotCount - 1) * DOT_SPACING) / 2)
+
+        repeat(dotCount) { index ->
+            val active = index == activeDot
+            val texture = if (active) PAGE_DOT_ON_TEXTURE else PAGE_DOT_OFF_TEXTURE
+            val yOffset = if (active) 0 else DOT_INACTIVE_Y_OFFSET
+            guiGraphics.blit(
+                texture,
+                screenX + startX + index * (DOT_SIZE + DOT_SPACING),
+                screenY + DOT_Y + yOffset,
+                0f,
+                0f,
+                DOT_SIZE,
+                DOT_SIZE,
+                DOT_SIZE,
+                DOT_SIZE
+            )
+        }
+    }
+
+    private fun isInFooterButton(mouseX: Int, mouseY: Int, x: Int): Boolean {
+        return mouseX >= screenX + x && mouseX <= screenX + x + FOOTER_BUTTON_SIZE &&
+                mouseY >= screenY + FOOTER_BUTTON_Y && mouseY <= screenY + FOOTER_BUTTON_Y + FOOTER_BUTTON_SIZE
     }
 
     companion object {
@@ -152,10 +243,43 @@ class SmartphoneScreen(
         private const val BUTTON_WIDTH = 36
         private const val BUTTON_HEIGHT = 36
 
-        // Page button layout (adjust as needed)
-        private const val PAGE_BUTTON_X = 45
-        private const val PAGE_BUTTON_Y = 175
-        private const val PAGE_BUTTON_WIDTH = 12
-        private const val PAGE_BUTTON_HEIGHT = 12
+        private const val FOOTER_PREV_X = 36
+        private const val FOOTER_HOME_X = 62
+        private const val FOOTER_NEXT_X = 88
+        private const val FOOTER_BUTTON_Y = 187
+        private const val FOOTER_BUTTON_SIZE = 7
+        private const val FOOTER_BUTTON_TEXTURE_HEIGHT = 14
+
+        private const val MAX_VISIBLE_DOTS = 3
+        private const val DOT_CENTER_X = GUI_WIDTH / 2
+        private const val DOT_Y = 169
+        private const val DOT_SIZE = 9
+        private const val DOT_SPACING = 2
+        private const val DOT_INACTIVE_Y_OFFSET = 1
+
+        private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            "cobblemon_smartphone",
+            "textures/gui/home_screen.png"
+        )
+        private val PREV_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            "cobblemon_smartphone",
+            "textures/gui/elements/prev_button.png"
+        )
+        private val HOME_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            "cobblemon_smartphone",
+            "textures/gui/elements/home_button.png"
+        )
+        private val NEXT_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            "cobblemon_smartphone",
+            "textures/gui/elements/next_button.png"
+        )
+        private val PAGE_DOT_ON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            "cobblemon_smartphone",
+            "textures/gui/elements/page_dot_on.png"
+        )
+        private val PAGE_DOT_OFF_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            "cobblemon_smartphone",
+            "textures/gui/elements/page_dot_off.png"
+        )
     }
 }
