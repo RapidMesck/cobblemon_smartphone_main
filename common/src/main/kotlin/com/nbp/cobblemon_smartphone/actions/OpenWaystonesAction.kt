@@ -34,7 +34,7 @@ object OpenWaystonesAction : SmartphoneAction {
         }
 
         val player = Minecraft.getInstance().player ?: return false
-        return SmartphoneHelper.satisfiesUpgradeRequirement(player, "upgrade_waystone")
+        return SmartphoneHelper.satisfiesUpgradeRequirement(player, "upgrade_waystone", id)
     }
 
     private fun isWaystonesLoaded(): Boolean {

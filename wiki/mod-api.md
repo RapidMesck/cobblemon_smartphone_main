@@ -89,7 +89,7 @@ Called to determine if the button should appear. Return `false` to hide it. Comm
 - Required mod loaded
 - Player has required item or upgrade
 
-For upgrade-gated actions, prefer `SmartphoneHelper.satisfiesUpgradeRequirement(player, upgradeKey)` so your action respects the mod config's `ignoreUpgrades` setting.
+For upgrade-gated actions, prefer `SmartphoneHelper.satisfiesUpgradeRequirement(player, upgradeKey, actionId)` so your action respects the mod config's `ignoreUpgrades` list.
 
 **Important**: `isEnabled()` runs on the **render thread**. Keep it fast — no network calls or file I/O.
 
@@ -182,7 +182,7 @@ The active config is available through `CobblemonSmartphone.config` after the mo
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 
 val config = CobblemonSmartphone.config
-val upgradesIgnored = config.ignoreUpgrades
+val ignoredUpgradeActionIds = config.ignoreUpgrades
 val healEnabled = config.features.enableHeal
 val healCooldownSeconds = config.cooldowns.healButton
 ```
@@ -191,7 +191,7 @@ The config is loaded from `config/cobblemon_smartphone.json`.
 
 | Field | Type | Description |
 |---|---|---|
-| `ignoreUpgrades` | Boolean | If `true`, upgrade requirements should be treated as satisfied. |
+| `ignoreUpgrades` | String array | Action IDs that should treat upgrade requirements as satisfied. |
 | `cooldowns` | `SmartphoneConfig.Cooldowns` | Built-in action cooldowns in seconds. |
 | `features` | `SmartphoneConfig.Features` | Built-in feature toggles. |
 
@@ -238,7 +238,7 @@ import net.minecraft.client.Minecraft
 
 override fun isEnabled(): Boolean {
     val player = Minecraft.getInstance().player ?: return false
-    return SmartphoneHelper.satisfiesUpgradeRequirement(player, "upgrade_my_feature")
+    return SmartphoneHelper.satisfiesUpgradeRequirement(player, "upgrade_my_feature", id)
 }
 ```
 
@@ -249,7 +249,7 @@ In your packet handler:
 ```kotlin
 override fun handle(packet: MyPacket, server: MinecraftServer, player: ServerPlayer) {
     server.execute {
-        if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_my_feature")) {
+        if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_my_feature", "mymod:my_action")) {
             player.displayClientMessage(
                 Component.translatable("message.mymod.need_upgrade").withColor(0xfd0100),
                 true
@@ -421,7 +421,7 @@ object MyUpgradedAction : SmartphoneAction {
 
     override fun isEnabled(): Boolean {
         val player = Minecraft.getInstance().player ?: return false
-        return SmartphoneHelper.satisfiesUpgradeRequirement(player, UPGRADE_KEY)
+        return SmartphoneHelper.satisfiesUpgradeRequirement(player, UPGRADE_KEY, id)
     }
 }
 
@@ -458,7 +458,7 @@ object MyActionHandler : ServerNetworkPacketHandler<MyActionPacket> {
     override fun handle(packet: MyActionPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
             // Check upgrade
-            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_my_feature")) {
+            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_my_feature", "mymod:my_action")) {
                 player.displayClientMessage(
                     Component.translatable("message.mymod.need_upgrade").withColor(0xfd0100),
                     true
@@ -503,10 +503,10 @@ object SmartphoneHelper {
     fun getSmartphone(player: Player): ItemStack?
 
     // Check an upgrade requirement while respecting config/cobblemon_smartphone.json
-    fun satisfiesUpgradeRequirement(player: Player, upgradeKey: String): Boolean
+    fun satisfiesUpgradeRequirement(player: Player, upgradeKey: String, actionId: String? = null): Boolean
 
-    // Server-side helper that checks all smartphones and respects ignoreUpgrades
-    fun hasUpgradeOnAnySmartphone(player: Player, upgradeKey: String): Boolean
+    // Server-side helper that checks all smartphones and respects ignoreUpgrades when actionId is provided
+    fun hasUpgradeOnAnySmartphone(player: Player, upgradeKey: String, actionId: String? = null): Boolean
 }
 ```
 

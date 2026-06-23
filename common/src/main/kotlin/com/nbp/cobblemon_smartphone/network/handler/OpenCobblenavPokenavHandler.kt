@@ -13,6 +13,7 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.item.ItemStack
 
 object OpenCobblenavPokenavHandler : ServerNetworkPacketHandler<OpenCobblenavPokenavPacket> {
+    private const val ACTION_ID = "cobblemon_smartphone:cobblenav_pokenav"
     private const val COBBLENAV_NAMESPACE = "cobblenav"
     private const val POKENAV_PATH_PREFIX = "pokenav_item_"
     private const val LEGACY_POKENAV_ITEM = "pokenav_item_old"
@@ -25,7 +26,7 @@ object OpenCobblenavPokenavHandler : ServerNetworkPacketHandler<OpenCobblenavPok
             }
 
             // Check if ANY smartphone in the player's possession has the PokeNav upgrade
-            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_pokenav")) {
+            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_pokenav", ACTION_ID)) {
                 player.displayClientMessage(Component.translatable("message.nbp.cobblenav.no_pokenav_upgrade").withColor(0xfd0100), true)
                 return@execute
             }

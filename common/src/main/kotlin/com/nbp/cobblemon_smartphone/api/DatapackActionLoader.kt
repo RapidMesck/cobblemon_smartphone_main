@@ -22,6 +22,9 @@ object DatapackActionLoader : PreparableReloadListener {
     fun getActionCooldown(actionId: String): Int =
         definitions.find { it.id == actionId }?.cooldownSeconds ?: 0
 
+    fun getActionRequiredUpgrade(actionId: String): String? =
+        definitions.find { it.id == actionId }?.requireUpgrade
+
     override fun reload(
         barrier: PreparableReloadListener.PreparationBarrier,
         resourceManager: ResourceManager,

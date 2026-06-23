@@ -23,8 +23,8 @@ object SmartphoneHelper {
             ?: player.inventory.items.firstOrNull { it.item is SmartphoneItem }
     }
 
-    fun satisfiesUpgradeRequirement(player: Player, upgradeKey: String): Boolean {
-        if (CobblemonSmartphone.config.ignoreUpgrades) {
+    fun satisfiesUpgradeRequirement(player: Player, upgradeKey: String, actionId: String? = null): Boolean {
+        if (actionId != null && CobblemonSmartphone.config.ignoreUpgrades.contains(actionId)) {
             return true
         }
 
@@ -37,8 +37,8 @@ object SmartphoneHelper {
      * Searches inventory, offhand, and platform compat slots (Trinkets/Curios).
      * Use this on the server side where the specific smartphone context is unknown.
      */
-    fun hasUpgradeOnAnySmartphone(player: Player, upgradeKey: String): Boolean {
-        if (CobblemonSmartphone.config.ignoreUpgrades) {
+    fun hasUpgradeOnAnySmartphone(player: Player, upgradeKey: String, actionId: String? = null): Boolean {
+        if (actionId != null && CobblemonSmartphone.config.ignoreUpgrades.contains(actionId)) {
             return true
         }
 

@@ -77,7 +77,7 @@ Both APIs support the **smartphone upgrade** mechanic. Upgrades allow actions to
 | Define upgrade/item | Via smithing recipe JSON | Register `SmartphoneUpgrade` |
 | Simulate item use | ❌ (use commands) | `SimulatedItemUse.simulate()` |
 
-If `ignoreUpgrades` is enabled in the mod config, upgrade-locked actions are shown and can be used without the matching smartphone upgrade.
+If an action ID is listed in `ignoreUpgrades` in the mod config, that action is shown and can be used without the matching smartphone upgrade.
 
 ## Mod Configuration
 
@@ -91,7 +91,11 @@ The file is created automatically on first load and rewritten with any missing d
 
 ```json
 {
-  "ignoreUpgrades": false,
+  "ignoreUpgrades": [
+    "cobblemon_smartphone:cobblenav_pokenav",
+    "cobblemon_smartphone:waystones_warp_stone",
+    "mypack:my_action"
+  ],
   "cooldowns": {
     "healButton": 60,
     "pcButton": 5,
@@ -114,9 +118,9 @@ The file is created automatically on first load and rewritten with any missing d
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `ignoreUpgrades` | Boolean | `false` | When `true`, upgrade requirements are ignored. Built-in and datapack actions locked by upgrades appear without requiring smithing upgrades. |
+| `ignoreUpgrades` | String array | `[]` | Action IDs listed here ignore their upgrade requirement. Built-in and datapack actions not listed still require the matching smithing upgrade. |
 | `cooldowns` | Object | See example | Cooldown values, in seconds, for built-in actions. |
-| `features` | Object | See example | Toggles for built-in smartphone actions. Disabled features remain hidden even when `ignoreUpgrades` is enabled. |
+| `features` | Object | See example | Toggles for built-in smartphone actions. Disabled features remain hidden even when their action ID is listed in `ignoreUpgrades`. |
 
 ## Upgrade Smithing Recipe Format
 

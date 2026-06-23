@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
 import com.nbp.cobblemon_smartphone.network.packet.ExecuteDatapackActionPacket
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
@@ -18,6 +19,17 @@ object ExecuteDatapackActionHandler : ServerNetworkPacketHandler<ExecuteDatapack
             val commands = DatapackActionLoader.getActionCommands(actionId)
             if (commands.isEmpty()) {
                 CobblemonSmartphone.LOGGER.warn("Unknown datapack action requested: {}", actionId)
+                return@execute
+            }
+
+            val requiredUpgrade = DatapackActionLoader.getActionRequiredUpgrade(actionId)
+            if (requiredUpgrade != null && !SmartphoneHelper.hasUpgradeOnAnySmartphone(player, requiredUpgrade, actionId)) {
+                CobblemonSmartphone.LOGGER.warn(
+                    "Player {} tried to execute upgrade-locked datapack action '{}' without required upgrade '{}'",
+                    player.gameProfile.name,
+                    actionId,
+                    requiredUpgrade
+                )
                 return@execute
             }
 

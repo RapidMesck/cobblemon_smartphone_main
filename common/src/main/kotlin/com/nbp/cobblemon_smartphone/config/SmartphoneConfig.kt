@@ -2,13 +2,15 @@ package com.nbp.cobblemon_smartphone.config
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonParser
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
 
 class SmartphoneConfig {
-    val ignoreUpgrades: Boolean = false
+    val ignoreUpgrades: List<String> = emptyList()
     val cooldowns = Cooldowns()
     val features = Features()
 
@@ -47,9 +49,13 @@ class SmartphoneConfig {
                 if (!configFile.exists()) {
                     configFile.createNewFile()
                 }
-                val fileReader = FileReader(configFile)
-                config = GSON.fromJson(fileReader, SmartphoneConfig::class.java) ?: SmartphoneConfig()
-                fileReader.close()
+                FileReader(configFile).use { fileReader ->
+                    val element = JsonParser.parseReader(fileReader)
+                    if (element != null && element.isJsonObject) {
+                        migrateIgnoreUpgrades(element.asJsonObject)
+                    }
+                    config = GSON.fromJson(element, SmartphoneConfig::class.java) ?: SmartphoneConfig()
+                }
             } catch (e: Exception) {
                 CobblemonSmartphone.LOGGER.error(e.message, e)
                 config = SmartphoneConfig()
@@ -57,6 +63,20 @@ class SmartphoneConfig {
 
             config.save()
             return config
+        }
+
+        private fun migrateIgnoreUpgrades(json: com.google.gson.JsonObject) {
+            val ignoreUpgrades = json.get("ignoreUpgrades") ?: return
+            if (!ignoreUpgrades.isJsonPrimitive || !ignoreUpgrades.asJsonPrimitive.isBoolean) {
+                return
+            }
+
+            val migrated = JsonArray()
+            if (ignoreUpgrades.asBoolean) {
+                migrated.add("${CobblemonSmartphone.ID}:cobblenav_pokenav")
+                migrated.add("${CobblemonSmartphone.ID}:waystones_warp_stone")
+            }
+            json.add("ignoreUpgrades", migrated)
         }
     }
 

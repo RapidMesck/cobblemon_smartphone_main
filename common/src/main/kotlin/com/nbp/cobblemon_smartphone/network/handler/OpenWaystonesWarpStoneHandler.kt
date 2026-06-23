@@ -14,6 +14,7 @@ import net.minecraft.world.item.ItemStack
 import java.util.UUID
 
 object OpenWaystonesWarpStoneHandler : ServerNetworkPacketHandler<OpenWaystonesWarpStonePacket> {
+    private const val ACTION_ID = "cobblemon_smartphone:waystones_warp_stone"
     private const val WAYSTONES_MOD_ID = "waystones"
     private const val WARP_STONE_SUFFIX = "warp_stone"
 
@@ -43,7 +44,7 @@ object OpenWaystonesWarpStoneHandler : ServerNetworkPacketHandler<OpenWaystonesW
             }
 
             // Check if ANY smartphone in the player's possession has the Waystone upgrade
-            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_waystone")) {
+            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_waystone", ACTION_ID)) {
                 player.displayClientMessage(Component.translatable("message.nbp.waystones.no_waystone_upgrade").withColor(0xfd0100), true)
                 return@execute
             }

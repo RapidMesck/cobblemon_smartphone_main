@@ -32,6 +32,6 @@ class DatapackAction(private val definition: DatapackActionDefinition) : Smartph
     override fun isEnabled(): Boolean {
         val upgradeKey = definition.requireUpgrade ?: return true
         val player = Minecraft.getInstance().player ?: return false
-        return SmartphoneHelper.satisfiesUpgradeRequirement(player, upgradeKey)
+        return SmartphoneHelper.satisfiesUpgradeRequirement(player, upgradeKey, id)
     }
 }

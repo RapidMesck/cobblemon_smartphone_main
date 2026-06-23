@@ -35,6 +35,6 @@ object OpenCobblenavAction : SmartphoneAction {
         }
 
         val player = Minecraft.getInstance().player ?: return false
-        return SmartphoneHelper.satisfiesUpgradeRequirement(player, "upgrade_pokenav")
+        return SmartphoneHelper.satisfiesUpgradeRequirement(player, "upgrade_pokenav", id)
     }
 }

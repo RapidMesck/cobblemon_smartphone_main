@@ -208,7 +208,7 @@ All mixins are declared in `common/src/main/resources/cobblemonsmartphone.mixins
 
 ```kotlin
 SmartphoneConfig
-├── ignoreUpgrades: Boolean // Shows upgrade-locked actions without requiring installed upgrades
+├── ignoreUpgrades: String[] // Action IDs that ignore required smartphone upgrades
 ├── cooldowns: Cooldowns     // Per-action cooldowns in seconds
 │   ├── healButton: Int
 │   ├── pcButton: Int
