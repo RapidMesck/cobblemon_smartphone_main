@@ -17,7 +17,14 @@ object DatapackActionLoader : PreparableReloadListener {
     fun getDefinitions(): List<DatapackActionDefinition> = definitions.toList()
 
     fun getActionCommands(actionId: String): List<String> =
-        definitions.find { it.id == actionId }?.commands ?: emptyList()
+        definitions.find { it.id == actionId }?.commands.orEmpty().filterNotNull()
+
+    fun getActionFunctions(actionId: String): List<DatapackActionFunction> =
+        definitions.find { it.id == actionId }
+            ?.functions
+            .orEmpty()
+            .filterNotNull()
+            .mapNotNull(DatapackActionFunction::fromId)
 
     fun getActionCooldown(actionId: String): Int =
         definitions.find { it.id == actionId }?.cooldownSeconds ?: 0
@@ -48,7 +55,7 @@ object DatapackActionLoader : PreparableReloadListener {
                         val definition = DatapackActionDefinition.GSON.fromJson(
                             element, DatapackActionDefinition::class.java
                         )
-                        if (definition != null && definition.id.isNotBlank() && definition.commands.isNotEmpty()) {
+                        if (definition != null && definition.id.isNotBlank()) {
                             if (definition.requireMod != null && !isModLoaded(definition.requireMod)) {
                                 CobblemonSmartphone.LOGGER.info(
                                     "Skipping datapack action '{}': required mod '{}' not loaded",
@@ -56,6 +63,27 @@ object DatapackActionLoader : PreparableReloadListener {
                                 )
                                 continue
                             }
+
+                            val commands = definition.commands.orEmpty().filterNotNull()
+                            val functions = definition.functions.orEmpty().filterNotNull()
+                            val unknownFunctions = functions.filterNot(DatapackActionFunction::isKnown)
+                            if (unknownFunctions.isNotEmpty()) {
+                                CobblemonSmartphone.LOGGER.warn(
+                                    "Datapack action '{}' contains unknown functions: {}",
+                                    definition.id,
+                                    unknownFunctions.joinToString()
+                                )
+                            }
+
+                            val hasKnownFunction = functions.any(DatapackActionFunction::isKnown)
+                            if (commands.isEmpty() && !hasKnownFunction) {
+                                CobblemonSmartphone.LOGGER.warn(
+                                    "Skipping datapack action '{}': no commands or known functions were defined",
+                                    definition.id
+                                )
+                                continue
+                            }
+
                             loaded.add(definition)
                         }
                     }

@@ -228,7 +228,7 @@ SmartphoneConfig
 
 ## Datapack Action System
 
-Datapacks can add actions via JSON files in `data/<namespace>/smartphone_actions/`. See `wiki/datapack-api.md` for the full API reference.
+Datapacks can add actions via JSON files in `data/<namespace>/smartphone_actions/`. Actions may execute commands and built-in functions such as `open_pc`, `heal_party`, `open_pokedex`, and `open_ender_chest`. See `wiki/datapack-api.md` for the full API reference.
 
 **Loading flow:**
 

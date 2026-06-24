@@ -10,7 +10,8 @@ Welcome to the Cobblemon Smartphone developer documentation. This mod provides a
 | I want to... | Use |
 |---|---|
 | Add a button that runs commands | [Datapack API](datapack-api.md) |
-| Add a button that opens a GUI / custom logic | [Mod API](mod-api.md) |
+| Open PC, Pokédex, healing, or another supported interface | [Datapack API](datapack-api.md#built-in-functions) |
+| Add an unsupported GUI or custom logic | [Mod API](mod-api.md) |
 | Require a smartphone upgrade to unlock an action | Both APIs support this |
 | Configure cooldowns, feature toggles, or upgrade checks | [Mod Configuration](#mod-configuration) |
 
@@ -31,6 +32,7 @@ Place JSON files in `data/<namespace>/smartphone_actions/` inside any datapack. 
   "id": "mypack:my_action",
   "texture": "mypack:textures/gui/buttons/my_button.png",
   "hover_texture": "mypack:textures/gui/buttons/my_button_hover.png",
+  "functions": ["open_pc"],
   "commands": ["say Hello from smartphone!"],
   "order": 100,
   "cooldown_seconds": 10,
@@ -75,7 +77,8 @@ Both APIs support the **smartphone upgrade** mechanic. Upgrades allow actions to
 |---|---|---|
 | Require upgrade for action | `"require_upgrade": "upgrade_<name>"` | Use `SmartphoneHelper.satisfiesUpgradeRequirement()` in `isEnabled()` |
 | Define upgrade/item | Via smithing recipe JSON | Register `SmartphoneUpgrade` |
-| Simulate item use | ❌ (use commands) | `SimulatedItemUse.simulate()` |
+| Use built-in PC/healing/GUI functions | `"functions": ["open_pc"]` | Send the matching packet or call custom logic |
+| Simulate arbitrary item use | ❌ | `SimulatedItemUse.simulate()` |
 
 If an action ID is listed in `ignoreUpgrades` in the mod config, that action is shown and can be used without the matching smartphone upgrade.
 
@@ -91,11 +94,7 @@ The file is created automatically on first load and rewritten with any missing d
 
 ```json
 {
-  "ignoreUpgrades": [
-    "cobblemon_smartphone:cobblenav_pokenav",
-    "cobblemon_smartphone:waystones_warp_stone",
-    "mypack:my_action"
-  ],
+  "ignoreUpgrades": [],
   "cooldowns": {
     "healButton": 60,
     "pcButton": 5,
@@ -118,7 +117,7 @@ The file is created automatically on first load and rewritten with any missing d
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `ignoreUpgrades` | String array | `[]` | Action IDs listed here ignore their upgrade requirement. Built-in and datapack actions not listed still require the matching smithing upgrade. |
+| `ignoreUpgrades` | String array | `[]` | Action IDs listed here ignore their upgrade requirement. Built-in and datapack actions not listed still require the matching smithing upgrade. Ex: `["cobblemon_smartphone:cobblenav_pokenav","cobblemon_smartphone:waystones_warp_stone"]` |
 | `cooldowns` | Object | See example | Cooldown values, in seconds, for built-in actions. |
 | `features` | Object | See example | Toggles for built-in smartphone actions. Disabled features remain hidden even when their action ID is listed in `ignoreUpgrades`. |
 

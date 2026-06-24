@@ -16,44 +16,56 @@ import java.util.UUID
 object OpenEnderChestHandler : ServerNetworkPacketHandler<OpenEnderChestPacket> {
     override fun handle(packet: OpenEnderChestPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            val isEnabled = CobblemonSmartphone.config.features.enableCloud
-            if (!isEnabled) {
-                player.displayClientMessage(Component.translatable("message.nbp.cloud.disabled").withColor(0xfd0100), true)
-                return@execute
-            }
+            execute(player, useNativeCooldown = true)
+        }
+    }
 
-            // Verifica cooldown
-            val currentTime = System.currentTimeMillis() / 1000 // tempo em segundos
+    fun execute(player: ServerPlayer, useNativeCooldown: Boolean) {
+        if (!CobblemonSmartphone.config.features.enableCloud) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.cloud.disabled").withColor(0xfd0100),
+                true
+            )
+            return
+        }
+
+        if (useNativeCooldown) {
+            val currentTime = System.currentTimeMillis() / 1000
             val lastUse = EnderChestCooldowns.lastEnderChestUse[player.uuid] ?: 0
             val cooldown = CobblemonSmartphone.config.cooldowns.cloudButton
             val timeElapsed = currentTime - lastUse
 
             if (timeElapsed < cooldown) {
                 val remainingSeconds = (cooldown - timeElapsed).toInt()
-                player.displayClientMessage(Component.translatable("message.nbp.cloud.cooldown", remainingSeconds).withColor(0xfd0100), true)
-                return@execute
+                player.displayClientMessage(
+                    Component.translatable("message.nbp.cloud.cooldown", remainingSeconds).withColor(0xfd0100),
+                    true
+                )
+                return
             }
 
-            // Atualiza o cooldown
             EnderChestCooldowns.lastEnderChestUse[player.uuid] = currentTime
-
-            // Abre o enderchest para o jogador
-            openEnderChestForPlayer(player)
         }
+
+        openEnderChestForPlayer(player)
     }
 
     private fun openEnderChestForPlayer(player: ServerPlayer) {
         val enderChestInventory = player.enderChestInventory
         player.openMenu(object : MenuProvider {
             override fun getDisplayName() = Component.translatable("container.enderchest")
-            override fun createMenu(containerId: Int, playerInventory: Inventory, playerEntity: Player): AbstractContainerMenu {
+
+            override fun createMenu(
+                containerId: Int,
+                playerInventory: Inventory,
+                playerEntity: Player
+            ): AbstractContainerMenu {
                 return ChestMenu.threeRows(containerId, playerInventory, enderChestInventory)
             }
         })
     }
 }
 
-// Objeto auxiliar para armazenar o cooldown de cada jogador no enderchest
 object EnderChestCooldowns {
     val lastEnderChestUse = mutableMapOf<UUID, Long>()
 }

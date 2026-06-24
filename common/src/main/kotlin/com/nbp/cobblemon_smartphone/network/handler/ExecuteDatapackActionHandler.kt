@@ -17,7 +17,8 @@ object ExecuteDatapackActionHandler : ServerNetworkPacketHandler<ExecuteDatapack
         server.execute {
             val actionId = packet.actionId
             val commands = DatapackActionLoader.getActionCommands(actionId)
-            if (commands.isEmpty()) {
+            val functions = DatapackActionLoader.getActionFunctions(actionId)
+            if (commands.isEmpty() && functions.isEmpty()) {
                 CobblemonSmartphone.LOGGER.warn("Unknown datapack action requested: {}", actionId)
                 return@execute
             }
@@ -50,9 +51,17 @@ object ExecuteDatapackActionHandler : ServerNetworkPacketHandler<ExecuteDatapack
                 playerActions[actionId] = currentTime
             }
 
-            val source = player.createCommandSourceStack()
-            for (command in commands) {
-                server.commands.performPrefixedCommand(source, command)
+            for (function in functions) {
+                function.execute(server, player)
+            }
+
+            if (commands.isNotEmpty()) {
+                server.execute {
+                    val source = player.createCommandSourceStack()
+                    for (command in commands) {
+                        server.commands.performPrefixedCommand(source, command)
+                    }
+                }
             }
         }
     }

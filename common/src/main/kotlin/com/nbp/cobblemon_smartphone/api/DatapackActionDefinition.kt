@@ -8,7 +8,8 @@ data class DatapackActionDefinition(
     val texture: String,
     @SerializedName("hover_texture")
     val hoverTexture: String,
-    val commands: List<String> = emptyList(),
+    val commands: List<String?>? = emptyList(),
+    val functions: List<String?>? = emptyList(),
     val order: Int = 0,
     @SerializedName("require_mod")
     val requireMod: String? = null,

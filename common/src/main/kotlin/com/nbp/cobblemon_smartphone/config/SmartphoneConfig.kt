@@ -71,12 +71,7 @@ class SmartphoneConfig {
                 return
             }
 
-            val migrated = JsonArray()
-            if (ignoreUpgrades.asBoolean) {
-                migrated.add("${CobblemonSmartphone.ID}:cobblenav_pokenav")
-                migrated.add("${CobblemonSmartphone.ID}:waystones_warp_stone")
-            }
-            json.add("ignoreUpgrades", migrated)
+            json.add("ignoreUpgrades", JsonArray())
         }
     }
 

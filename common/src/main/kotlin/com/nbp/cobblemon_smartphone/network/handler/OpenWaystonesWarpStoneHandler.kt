@@ -22,61 +22,82 @@ object OpenWaystonesWarpStoneHandler : ServerNetworkPacketHandler<OpenWaystonesW
 
     override fun handle(packet: OpenWaystonesWarpStonePacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            if (!CobblemonSmartphone.config.features.enableWaystone) {
-                player.displayClientMessage(Component.translatable("message.nbp.waystones.disabled").withColor(0xfd0100), true)
-                return@execute
-            }
+            execute(server, player, useNativeCooldown = true)
+        }
+    }
 
-            if (!isWaystonesLoaded()) {
-                player.displayClientMessage(Component.translatable("message.nbp.waystones.unavailable").withColor(0xfd0100), true)
-                return@execute
-            }
+    fun execute(server: MinecraftServer, player: ServerPlayer, useNativeCooldown: Boolean) {
+        if (!CobblemonSmartphone.config.features.enableWaystone) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.waystones.disabled").withColor(0xfd0100),
+                true
+            )
+            return
+        }
 
+        if (!isWaystonesLoaded()) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.waystones.unavailable").withColor(0xfd0100),
+                true
+            )
+            return
+        }
+
+        if (useNativeCooldown) {
             val cooldown = CobblemonSmartphone.config.cooldowns.waystoneButton
-            val playerId = player.uuid
             val now = System.currentTimeMillis()
-            val lastClick = buttonCooldowns[playerId] ?: 0L
+            val lastClick = buttonCooldowns[player.uuid] ?: 0L
 
             if (now - lastClick < cooldown * 1000L) {
                 val remaining = ((cooldown * 1000L - (now - lastClick)) / 1000L).toInt() + 1
-                player.displayClientMessage(Component.translatable("message.nbp.waystones.cooldown", remaining).withColor(0xfd0100), true)
-                return@execute
-            }
-
-            // Check if ANY smartphone in the player's possession has the Waystone upgrade
-            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_waystone", ACTION_ID)) {
-                player.displayClientMessage(Component.translatable("message.nbp.waystones.no_waystone_upgrade").withColor(0xfd0100), true)
-                return@execute
-            }
-
-            buttonCooldowns[playerId] = now
-
-            // Try to use warp stone from inventory (backward compat)
-            val warpStoneUse = findWarpStoneForUse(player)
-            if (warpStoneUse != null) {
-                try {
-                    player.startUsingItem(warpStoneUse.hand)
-                    warpStoneUse.stack.item.finishUsingItem(warpStoneUse.stack, player.level(), player)
-                } catch (_: Exception) {
-                    player.displayClientMessage(Component.translatable("message.nbp.waystones.open_failed").withColor(0xfd0100), true)
-                }
-                return@execute
-            }
-
-            // Fallback: simulate warp stone use via smartphone upgrade
-            if (SimulatedItemUse.useWaystone(player)) {
-                return@execute
-            }
-
-            // Last resort: try command fallback
-            try {
-                server.commands.performPrefixedCommand(
-                    player.createCommandSourceStack(),
-                    "waystones"
+                player.displayClientMessage(
+                    Component.translatable("message.nbp.waystones.cooldown", remaining).withColor(0xfd0100),
+                    true
                 )
-            } catch (_: Exception) {
-                player.displayClientMessage(Component.translatable("message.nbp.waystones.open_failed").withColor(0xfd0100), true)
+                return
             }
+        }
+
+        if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_waystone", ACTION_ID)) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.waystones.no_waystone_upgrade").withColor(0xfd0100),
+                true
+            )
+            return
+        }
+
+        if (useNativeCooldown) {
+            buttonCooldowns[player.uuid] = System.currentTimeMillis()
+        }
+
+        val warpStoneUse = findWarpStoneForUse(player)
+        if (warpStoneUse != null) {
+            try {
+                player.startUsingItem(warpStoneUse.hand)
+                warpStoneUse.stack.item.finishUsingItem(warpStoneUse.stack, player.level(), player)
+            } catch (_: Exception) {
+                player.displayClientMessage(
+                    Component.translatable("message.nbp.waystones.open_failed").withColor(0xfd0100),
+                    true
+                )
+            }
+            return
+        }
+
+        if (SimulatedItemUse.useWaystone(player)) {
+            return
+        }
+
+        try {
+            server.commands.performPrefixedCommand(
+                player.createCommandSourceStack(),
+                "waystones"
+            )
+        } catch (_: Exception) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.waystones.open_failed").withColor(0xfd0100),
+                true
+            )
         }
     }
 
