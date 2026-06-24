@@ -67,6 +67,8 @@ class SmartphoneScreen(
             height = GUI_HEIGHT
         )
 
+        renderWorldTime(guiGraphics)
+
         // Render actions as buttons
         pagedActions().forEachIndexed { index, action ->
             val (x, y) = getButtonPosition(index)
@@ -166,6 +168,26 @@ class SmartphoneScreen(
         Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
     }
 
+    private fun renderWorldTime(guiGraphics: GuiGraphics) {
+        val minecraft = Minecraft.getInstance()
+        val dayTime = minecraft.level?.dayTime ?: return
+        val ticksToday = Math.floorMod(dayTime, TICKS_PER_DAY)
+        val totalMinutes = ((ticksToday * MINUTES_PER_DAY / TICKS_PER_DAY) + DAWN_MINUTES) % MINUTES_PER_DAY
+        val hours = totalMinutes / MINUTES_PER_HOUR
+        val minutes = totalMinutes % MINUTES_PER_HOUR
+        val timeText = "%02d:%02d".format(hours, minutes)
+
+        guiGraphics.pose().pushPose()
+        guiGraphics.pose().translate(
+            (screenX + TIME_X).toDouble(),
+            (screenY + TIME_Y).toDouble(),
+            0.0
+        )
+        guiGraphics.pose().scale(TIME_SCALE, TIME_SCALE, 1f)
+        guiGraphics.drawString(minecraft.font, timeText, 0, 0, TIME_COLOR, false)
+        guiGraphics.pose().popPose()
+    }
+
     private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         renderFooterButton(guiGraphics, PREV_BUTTON_TEXTURE, FOOTER_PREV_X, mouseX, mouseY)
         renderFooterButton(guiGraphics, HOME_BUTTON_TEXTURE, FOOTER_HOME_X, mouseX, mouseY)
@@ -242,6 +264,15 @@ class SmartphoneScreen(
         private const val GUI_HEIGHT = 207
         private const val BUTTON_WIDTH = 36
         private const val BUTTON_HEIGHT = 36
+
+        private const val TIME_X = 20
+        private const val TIME_Y = 20
+        private const val TIME_SCALE = 0.6f
+        private const val TIME_COLOR = 0xE6FFFF
+        private const val TICKS_PER_DAY = 24_000L
+        private const val MINUTES_PER_DAY = 1_440L
+        private const val MINUTES_PER_HOUR = 60L
+        private const val DAWN_MINUTES = 360L
 
         private const val FOOTER_PREV_X = 36
         private const val FOOTER_HOME_X = 62
