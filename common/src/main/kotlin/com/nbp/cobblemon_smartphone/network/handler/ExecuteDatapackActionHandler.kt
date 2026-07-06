@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
 import com.nbp.cobblemon_smartphone.network.packet.ExecuteDatapackActionPacket
+import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -18,7 +19,8 @@ object ExecuteDatapackActionHandler : ServerNetworkPacketHandler<ExecuteDatapack
             val actionId = packet.actionId
             val commands = DatapackActionLoader.getActionCommands(actionId)
             val functions = DatapackActionLoader.getActionFunctions(actionId)
-            if (commands.isEmpty() && functions.isEmpty()) {
+            val useItems = DatapackActionLoader.getActionUseItems(actionId)
+            if (commands.isEmpty() && functions.isEmpty() && useItems.isEmpty()) {
                 CobblemonSmartphone.LOGGER.warn("Unknown datapack action requested: {}", actionId)
                 return@execute
             }
@@ -53,6 +55,10 @@ object ExecuteDatapackActionHandler : ServerNetworkPacketHandler<ExecuteDatapack
 
             for (function in functions) {
                 function.execute(server, player)
+            }
+
+            for (useItem in useItems) {
+                SimulatedItemUse.useItemById(player, useItem.id, useItem.mode)
             }
 
             if (commands.isNotEmpty()) {

@@ -42,6 +42,33 @@ object SimulatedItemUse {
     }
 
     /**
+     * Simulates using an arbitrary item, identified by its registry id, as a datapack action.
+     *
+     * @param player The server player
+     * @param itemId Registry id of the item to simulate (e.g. "cobblemon:poke_flute")
+     * @param mode "use" for right-click use ([Item.use]); "finish_using" for completion
+     *   behavior ([Item.finishUsingItem]), matching how items like the Waystones warp stone open
+     * @return true if the item was found and the simulation ran, false otherwise
+     */
+    fun useItemById(player: ServerPlayer, itemId: String, mode: String = "use"): Boolean {
+        val location = ResourceLocation.tryParse(itemId)
+        if (location == null) {
+            CobblemonSmartphone.LOGGER.warn("Invalid item id for simulated use: {}", itemId)
+            return false
+        }
+        if (!BuiltInRegistries.ITEM.containsKey(location)) {
+            CobblemonSmartphone.LOGGER.warn("Simulated item use skipped: item '{}' not found in registry", itemId)
+            return false
+        }
+        return simulate(player, { it == location }) { stack, p ->
+            when (mode.lowercase()) {
+                "finish_using" -> stack.item.finishUsingItem(stack, p.level(), p)
+                else -> stack.item.use(p.level(), p, InteractionHand.MAIN_HAND)
+            }
+        }
+    }
+
+    /**
      * Simulates using a CobbleNav PokeNav item via smartphone upgrade.
      * Matches any cobblenav:pokenav_item_* except pokenav_item_old.
      */

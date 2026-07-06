@@ -26,6 +26,13 @@ object DatapackActionLoader : PreparableReloadListener {
             .filterNotNull()
             .mapNotNull(DatapackActionFunction::fromId)
 
+    fun getActionUseItems(actionId: String): List<UseItemEntry> =
+        definitions.find { it.id == actionId }
+            ?.useItems
+            .orEmpty()
+            .filterNotNull()
+            .filter { it.id.isNotBlank() }
+
     fun getActionCooldown(actionId: String): Int =
         definitions.find { it.id == actionId }?.cooldownSeconds ?: 0
 
@@ -66,6 +73,7 @@ object DatapackActionLoader : PreparableReloadListener {
 
                             val commands = definition.commands.orEmpty().filterNotNull()
                             val functions = definition.functions.orEmpty().filterNotNull()
+                            val useItems = definition.useItems.orEmpty().filterNotNull().filter { it.id.isNotBlank() }
                             val unknownFunctions = functions.filterNot(DatapackActionFunction::isKnown)
                             if (unknownFunctions.isNotEmpty()) {
                                 CobblemonSmartphone.LOGGER.warn(
@@ -76,9 +84,9 @@ object DatapackActionLoader : PreparableReloadListener {
                             }
 
                             val hasKnownFunction = functions.any(DatapackActionFunction::isKnown)
-                            if (commands.isEmpty() && !hasKnownFunction) {
+                            if (commands.isEmpty() && !hasKnownFunction && useItems.isEmpty()) {
                                 CobblemonSmartphone.LOGGER.warn(
-                                    "Skipping datapack action '{}': no commands or known functions were defined",
+                                    "Skipping datapack action '{}': no commands, known functions, or use_items were defined",
                                     definition.id
                                 )
                                 continue

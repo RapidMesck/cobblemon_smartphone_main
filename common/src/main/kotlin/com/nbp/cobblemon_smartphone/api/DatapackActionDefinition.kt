@@ -10,6 +10,8 @@ data class DatapackActionDefinition(
     val hoverTexture: String,
     val commands: List<String?>? = emptyList(),
     val functions: List<String?>? = emptyList(),
+    @SerializedName("use_items")
+    val useItems: List<UseItemEntry?>? = emptyList(),
     val order: Int = 0,
     @SerializedName("require_mod")
     val requireMod: String? = null,
@@ -30,3 +32,15 @@ data class DatapackActionDefinition(
         }
     }
 }
+
+/**
+ * A single simulated item use for a datapack action.
+ *
+ * @property id Registry id of the item to simulate (e.g. "cobblemon:poke_flute").
+ * @property mode "use" for right-click use ([net.minecraft.world.item.Item.use]),
+ *   "finish_using" for completion behavior ([net.minecraft.world.item.Item.finishUsingItem]).
+ */
+data class UseItemEntry(
+    val id: String,
+    val mode: String = "use"
+)
