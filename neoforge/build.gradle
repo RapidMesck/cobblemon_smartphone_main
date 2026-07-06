@@ -37,6 +37,14 @@ repositories {
         name = 'Illusive Soulworks'
         url = 'https://maven.theillusivec4.top/'
     }
+    maven {
+        name = 'Wisp Forest'
+        url = 'https://maven.wispforest.io/releases'
+    }
+    maven {
+        name = 'Su5eD'
+        url = 'https://maven.su5ed.dev/releases'
+    }
 }
 
 dependencies {
@@ -53,6 +61,17 @@ dependencies {
     // Curios API (optional) - compile against API only, full jar at runtime
     compileOnly "top.theillusivec4.curios:curios-neoforge:${rootProject.curios_version}:api"
     runtimeOnly "top.theillusivec4.curios:curios-neoforge:${rootProject.curios_version}"
+
+    // Accessories (optional, cross-loader) - compile against the mod jar, full jar at runtime.
+    // End users provide Accessories via their modpack; nothing here is bundled into the shipped jar.
+    compileOnly "io.wispforest:accessories-neoforge:${rootProject.accessories_version}"
+    runtimeOnly "io.wispforest:accessories-neoforge:${rootProject.accessories_version}"
+    // endec runtime libraries required by Accessories on NeoForge for 1.21.1 (dev runtime only)
+    runtimeOnly "blue.endless:jankson:1.2.2"
+    runtimeOnly "io.wispforest:endec:0.1.5.1"
+    runtimeOnly "io.wispforest.endec:gson:0.1.3.1"
+    runtimeOnly "io.wispforest.endec:jankson:0.1.3.1"
+    runtimeOnly "io.wispforest.endec:netty:0.1.2"
 }
 
 processResources {

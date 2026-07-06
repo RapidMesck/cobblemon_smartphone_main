@@ -161,7 +161,7 @@ override fun onClick() {
 
 ## Finding the Player's Smartphone
 
-Use `SmartphoneHelper` to locate the smartphone a player currently has equipped (checks inventory, Trinkets, and Curios):
+Use `SmartphoneHelper` to locate the smartphone a player currently has equipped (checks inventory, Trinkets, Curios, and Accessories):
 
 ```kotlin
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
@@ -499,7 +499,7 @@ object SmartphoneHelper {
     // Set by platform init. Fallback to inventory search.
     var getSmartphoneImpl: ((Player) -> ItemStack?)?
 
-    // Find player's smartphone (Trinkets → Curios → Inventory)
+    // Find player's smartphone (Trinkets/Curios → Accessories → Inventory)
     fun getSmartphone(player: Player): ItemStack?
 
     // Check an upgrade requirement while respecting config/cobblemon_smartphone.json

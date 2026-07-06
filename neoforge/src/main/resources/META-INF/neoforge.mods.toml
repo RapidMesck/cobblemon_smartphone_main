@@ -32,6 +32,13 @@ ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies.cobblemon_smartphone]]
+modId = "accessories"
+type = "optional"
+versionRange = "[1.1.0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.cobblemon_smartphone]]
 modId = "cobblenav"
 type = "optional"
 versionRange = "[0,)"

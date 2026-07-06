@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "amount": 1,
+  "operation": "set",
+  "order": 100,
+  "icon": "cobblemon_smartphone:gui/slot/slot_smartphone",
+  "validators": [],
+  "drop_rule": "default"
+}

@@ -53,6 +53,7 @@
 
   "trinkets.slot.legs.smartphone": "Smartphone",
   "curios.identifier.smartphone": "Smartphone",
+  "accessories.slot.smartphone": "Smartphone",
 
   "upgrade.cobblemon_smartphone.upgrade_pokenav": "Upgrade: PokeNav",
   "upgrade.cobblemon_smartphone.upgrade_waystone": "Upgrade: Waystone"

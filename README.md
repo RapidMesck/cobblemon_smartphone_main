@@ -18,13 +18,13 @@ A Cobblemon addon that adds smartphone items with an extensible action system. B
 │       └── util/             # Utilities (SmartphoneHelper, Utils)
 ├── fabric/           # Fabric loader implementation
 │   └── src/main/kotlin/com/nbp/cobblemon_smartphone/
-│       ├── compat/           # Trinkets integration
+│       ├── compat/           # Trinkets + Accessories integration
 │       ├── client/           # Fabric client init + keybind handler
 │       ├── CobblemonSmartphoneFabric.kt          # ModInitializer + Implementation
 │       └── DatapackActionReloadListenerWrapper.kt
 ├── neoforge/         # NeoForge loader implementation
 │   └── src/main/kotlin/com/nbp/neoforge/
-│       ├── compat/           # Curios integration
+│       ├── compat/           # Curios + Accessories integration
 │       ├── CobblemonSmartphoneNeoForge.kt        # @Mod class + Implementation
 │       └── ...
 ├── wiki/             # User-facing API docs (GitBook synced)
@@ -40,7 +40,7 @@ All logic lives in `common/`. Platform modules (`fabric/`, `neoforge/`) contain 
 | Actions, upgrades, recipes, network packets | `common/` |
 | Item registration | `common/registry/` via `RegistryProvider` |
 | Platform event wiring | `fabric/` / `neoforge/` |
-| Mod compat (Trinkets, Curios) | `fabric/compat/` / `neoforge/compat/` |
+| Mod compat (Trinkets, Curios, Accessories) | `fabric/compat/` / `neoforge/compat/` |
 | Mixins | `common/src/main/java/.../mixin/` |
 
 ### Build System
@@ -268,6 +268,7 @@ If the upgrade's addition item comes from another mod, no code changes are neede
 | Kotlin for Forge | 4.11+ | Kotlin runtime on NeoForge |
 | Trinkets | 3.10+ | Optional (Fabric) — smartphone accessory slot |
 | Curios | 9.0+ | Optional (NeoForge) — smartphone accessory slot |
+| Accessories | 1.1.0-beta+ | Optional (Fabric & NeoForge) — smartphone accessory slot |
 
 ## Documentation
 
