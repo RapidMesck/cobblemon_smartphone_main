@@ -2,10 +2,11 @@ package com.nbp.cobblemon_smartphone.client.gui
 
 import com.cobblemon.mod.common.api.gui.blitk
 import com.cobblemon.mod.common.CobblemonSounds
-import com.nbp.cobblemon_smartphone.actions.PokedexAction
+import com.nbp.cobblemon_smartphone.api.SmartphoneAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionOrder
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -14,11 +15,15 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 
-class SmartphoneScreen(
+class SmartphoneSettingsScreen(
     private val color: SmartphoneColor,
     private val smartphoneStack: ItemStack? = null
-) : Screen(Component.literal("Smartphone")) {
-    private val actions get() = SmartphoneActionOrder.apply(SmartphoneActionRegistry.getEnabledActions())
+) : Screen(Component.literal("Smartphone Settings")) {
+
+    private val orderedIds = SmartphoneActionOrder.apply(SmartphoneActionRegistry.getEnabledActions())
+        .map { it.id }
+        .toMutableList()
+
     private val frameTexture = ResourceLocation.fromNamespaceAndPath(
         "cobblemon_smartphone",
         "textures/gui/smartphone_${color.modelName}.png"
@@ -26,21 +31,22 @@ class SmartphoneScreen(
     private var screenX = 0
     private var screenY = 0
     private var currentPage = 0
+    private var draggingIndex = -1
+    private var lastPageFlipTime = 0L
 
-    private val actionsPerPage get() = GRID_COLUMNS * GRID_ROWS
-    private val maxPage get() = if (actions.isEmpty()) 0 else (actions.size - 1) / actionsPerPage
+    private val maxPage get() = if (orderedIds.isEmpty()) 0 else (orderedIds.size - 1) / ACTIONS_PER_PAGE
 
     override fun isPauseScreen(): Boolean = false
 
     override fun init() {
         screenX = (width - GUI_WIDTH) / 2
         screenY = (height - GUI_HEIGHT) / 2
-        PokedexAction.requestedPokedexType = color.toPokedexType()
-        // Set context so isEnabled() checks THIS smartphone's upgrades
         SmartphoneHelper.contextSmartphone = smartphoneStack
     }
 
     override fun removed() {
+        SmartphoneActionOrder.setOrder(orderedIds)
+        SaveActionOrderPacket(orderedIds).sendToServer()
         SmartphoneHelper.contextSmartphone = null
         super.removed()
     }
@@ -48,7 +54,6 @@ class SmartphoneScreen(
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         val matrices = guiGraphics.pose()
 
-        // Smartphone frame background
         blitk(
             matrixStack = matrices,
             texture = frameTexture,
@@ -57,8 +62,6 @@ class SmartphoneScreen(
             width = GUI_WIDTH,
             height = GUI_HEIGHT
         )
-
-        // Screen content
         blitk(
             matrixStack = matrices,
             texture = HOME_SCREEN_TEXTURE,
@@ -68,21 +71,8 @@ class SmartphoneScreen(
             height = GUI_HEIGHT
         )
 
-        renderWorldTime(guiGraphics)
-        renderHeaderSettingsButton(guiGraphics, mouseX, mouseY)
-
-        // Render actions as buttons
-        pagedActions().forEachIndexed { index, action ->
-            val (x, y) = getButtonPosition(index)
-            val texture = if (isHovered(mouseX, mouseY, x, y)) action.hoverTexture else action.texture
-            blitk(
-                matrixStack = matrices,
-                texture = texture,
-                x = screenX + x,
-                y = screenY + y,
-                width = BUTTON_WIDTH,
-                height = BUTTON_HEIGHT
-            )
+        pagedIds().forEachIndexed { index, actionId ->
+            renderGridItem(guiGraphics, mouseX, mouseY, index, actionId)
         }
 
         renderPageDots(guiGraphics)
@@ -90,37 +80,91 @@ class SmartphoneScreen(
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        if (isInHeaderSettingsButton(mouseX.toInt(), mouseY.toInt())) {
-            playClickSound()
-            Minecraft.getInstance().setScreen(SmartphoneSettingsScreen(color, smartphoneStack))
-            return true
-        }
+        val mx = mouseX.toInt()
+        val my = mouseY.toInt()
 
-        // Handle button click
-        pagedActions().forEachIndexed { index, action ->
-            val (x, y) = getButtonPosition(index)
-            if (isHovered(mouseX.toInt(), mouseY.toInt(), x, y)) {
-                action.onClick()
-                return true
-            }
-        }
-        // Handle page controls
-        if (isInFooterButton(mouseX.toInt(), mouseY.toInt(), FOOTER_PREV_X)) {
+        if (isInFooterButton(mx, my, FOOTER_PREV_X)) {
             playClickSound()
             changePage(-1)
             return true
         }
-        if (isInFooterButton(mouseX.toInt(), mouseY.toInt(), FOOTER_HOME_X)) {
+        if (isInFooterButton(mx, my, FOOTER_HOME_X)) {
             playClickSound()
-            changePageTo(0)
+            Minecraft.getInstance().setScreen(SmartphoneScreen(color, smartphoneStack))
             return true
         }
-        if (isInFooterButton(mouseX.toInt(), mouseY.toInt(), FOOTER_NEXT_X)) {
+        if (isInFooterButton(mx, my, FOOTER_NEXT_X)) {
             playClickSound()
             changePage(1)
             return true
         }
+
+        pagedIds().forEachIndexed { index, _ ->
+            val (gx, gy) = gridPosition(index)
+            if (isInDragHandle(mx, my, index) || isInCell(mx, my, gx, gy)) {
+                val globalIndex = currentPage * ACTIONS_PER_PAGE + index
+                playClickSound()
+                draggingIndex = globalIndex
+                return true
+            }
+        }
+
         return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
+        if (draggingIndex == -1) return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
+
+        val mx = mouseX.toInt()
+        val my = mouseY.toInt()
+
+        if (my < screenY + GRID_START_Y && currentPage > 0) {
+            val now = System.currentTimeMillis()
+            if (now - lastPageFlipTime > 500) {
+                val boundaryIndex = currentPage * ACTIONS_PER_PAGE - 1
+                if (boundaryIndex >= 0 && draggingIndex != boundaryIndex) {
+                    moveAction(draggingIndex, boundaryIndex)
+                    draggingIndex = boundaryIndex
+                }
+                if (changePage(-1)) {
+                    lastPageFlipTime = now
+                    playClickSound()
+                }
+            }
+            return true
+        }
+
+        if (my > screenY + GRID_START_Y + (GRID_ROWS - 1) * BUTTON_SPACING + BUTTON_HEIGHT && currentPage < maxPage) {
+            val now = System.currentTimeMillis()
+            if (now - lastPageFlipTime > 500) {
+                val boundaryIndex = (currentPage + 1) * ACTIONS_PER_PAGE
+                if (boundaryIndex < orderedIds.size && draggingIndex != boundaryIndex) {
+                    moveAction(draggingIndex, boundaryIndex)
+                    draggingIndex = boundaryIndex
+                }
+                if (changePage(1)) {
+                    lastPageFlipTime = now
+                    playClickSound()
+                }
+            }
+            return true
+        }
+
+        val targetGlobal = gridCellAt(mx, my)
+        if (targetGlobal >= 0 && targetGlobal != draggingIndex && targetGlobal in orderedIds.indices) {
+            moveAction(draggingIndex, targetGlobal)
+            draggingIndex = targetGlobal
+        }
+
+        return true
+    }
+
+    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        if (draggingIndex != -1) {
+            draggingIndex = -1
+            return true
+        }
+        return super.mouseReleased(mouseX, mouseY, button)
     }
 
     override fun mouseScrolled(
@@ -129,11 +173,17 @@ class SmartphoneScreen(
         horizontalAmount: Double,
         verticalAmount: Double
     ): Boolean {
+        if (draggingIndex != -1) return true
         if (maxPage == 0 || verticalAmount == 0.0) {
             return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
         }
 
         return changePage(if (verticalAmount < 0.0) 1 else -1)
+    }
+
+    private fun moveAction(fromIndex: Int, toIndex: Int) {
+        val id = orderedIds.removeAt(fromIndex)
+        orderedIds.add(toIndex, id)
     }
 
     private fun changePage(offset: Int): Boolean {
@@ -146,75 +196,99 @@ class SmartphoneScreen(
         return true
     }
 
-    private fun changePageTo(page: Int): Boolean {
-        val nextPage = page.coerceIn(0, maxPage)
-        if (nextPage == currentPage) {
-            return false
-        }
+    private fun actionById(id: String): SmartphoneAction? =
+        SmartphoneActionRegistry.getEnabledActions().firstOrNull { it.id == id }
 
-        currentPage = nextPage
-        return true
+    private fun gridPosition(index: Int): Pair<Int, Int> {
+        val col = index % GRID_COLUMNS
+        val row = index / GRID_COLUMNS
+        return GRID_START_X + col * BUTTON_SPACING to GRID_START_Y + row * BUTTON_SPACING
     }
 
-    private fun isHovered(mouseX: Int, mouseY: Int, x: Int, y: Int): Boolean {
-        return mouseX >= screenX + x && mouseX <= screenX + x + BUTTON_WIDTH &&
-                mouseY >= screenY + y && mouseY <= screenY + y + BUTTON_HEIGHT
+    private fun dragHandlePosition(index: Int): Pair<Int, Int> {
+        val (gx, gy) = gridPosition(index)
+        return gx + BUTTON_WIDTH - DRAG_WIDTH - 4 to gy + 4
     }
 
-    private fun getButtonPosition(index: Int): Pair<Int, Int> {
-        val gridX = (index % GRID_COLUMNS) * BUTTON_SPACING + GRID_START_X
-        val gridY = (index / GRID_COLUMNS) * BUTTON_SPACING + GRID_START_Y
-        return Pair(gridX, gridY)
+    private fun gridCellAt(mouseX: Int, mouseY: Int): Int {
+        val relX = mouseX - screenX - GRID_START_X
+        val relY = mouseY - screenY - GRID_START_Y
+        val col = relX / BUTTON_SPACING
+        val row = relY / BUTTON_SPACING
+
+        if (col !in 0 until GRID_COLUMNS || row !in 0 until GRID_ROWS) return -1
+
+        val (gx, gy) = gridPosition(row * GRID_COLUMNS + col)
+        val inCell = mouseX >= screenX + gx && mouseX <= screenX + gx + BUTTON_WIDTH &&
+                mouseY >= screenY + gy && mouseY <= screenY + gy + BUTTON_HEIGHT
+
+        if (!inCell) return -1
+
+        return currentPage * ACTIONS_PER_PAGE + row * GRID_COLUMNS + col
     }
 
-    private fun pagedActions(): List<com.nbp.cobblemon_smartphone.api.SmartphoneAction> {
-        val from = currentPage * actionsPerPage
-        return actions.drop(from).take(actionsPerPage)
+    private fun renderGridItem(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, index: Int, actionId: String) {
+        val action = actionById(actionId) ?: return
+        val matrices = guiGraphics.pose()
+        val (gx, gy) = gridPosition(index)
+        val globalIndex = currentPage * ACTIONS_PER_PAGE + index
+        val isDragging = globalIndex == draggingIndex
+
+        val texture = if (isDragging) action.hoverTexture else action.texture
+
+        blitk(
+            matrixStack = matrices,
+            texture = texture,
+            x = screenX + gx,
+            y = screenY + gy,
+            width = BUTTON_WIDTH,
+            height = BUTTON_HEIGHT
+        )
+
+        renderDragHandle(guiGraphics, mouseX, mouseY, index, isDragging)
+    }
+
+    private fun renderDragHandle(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        index: Int,
+        isDragging: Boolean
+    ) {
+        val (dx, dy) = dragHandlePosition(index)
+        val hovered = isInDragHandle(mouseX, mouseY, index) || isDragging
+        val textureY = if (hovered) DRAG_HEIGHT else 0
+        guiGraphics.blit(
+            DRAG_HANDLE_TEXTURE,
+            screenX + dx,
+            screenY + dy,
+            0f,
+            textureY.toFloat(),
+            DRAG_WIDTH,
+            DRAG_HEIGHT,
+            DRAG_WIDTH,
+            DRAG_HEIGHT * 2
+        )
+    }
+
+    private fun isInDragHandle(mouseX: Int, mouseY: Int, index: Int): Boolean {
+        val (dx, dy) = dragHandlePosition(index)
+        return mouseX >= screenX + dx && mouseX <= screenX + dx + DRAG_WIDTH &&
+                mouseY >= screenY + dy && mouseY <= screenY + dy + DRAG_HEIGHT
+    }
+
+    private fun isInCell(mouseX: Int, mouseY: Int, gx: Int, gy: Int): Boolean {
+        return mouseX >= screenX + gx && mouseX <= screenX + gx + BUTTON_WIDTH &&
+                mouseY >= screenY + gy && mouseY <= screenY + gy + BUTTON_HEIGHT
+    }
+
+    private fun pagedIds(): List<String> {
+        val from = currentPage * ACTIONS_PER_PAGE
+        return orderedIds.drop(from).take(ACTIONS_PER_PAGE)
     }
 
     private fun playClickSound() {
         Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
-    }
-
-    private fun renderWorldTime(guiGraphics: GuiGraphics) {
-        val minecraft = Minecraft.getInstance()
-        val dayTime = minecraft.level?.dayTime ?: return
-        val ticksToday = Math.floorMod(dayTime, TICKS_PER_DAY)
-        val totalMinutes = ((ticksToday * MINUTES_PER_DAY / TICKS_PER_DAY) + DAWN_MINUTES) % MINUTES_PER_DAY
-        val hours = totalMinutes / MINUTES_PER_HOUR
-        val minutes = totalMinutes % MINUTES_PER_HOUR
-        val timeText = "%02d:%02d".format(hours, minutes)
-
-        guiGraphics.pose().pushPose()
-        guiGraphics.pose().translate(
-            (screenX + TIME_X).toDouble(),
-            (screenY + TIME_Y).toDouble(),
-            0.0
-        )
-        guiGraphics.pose().scale(TIME_SCALE, TIME_SCALE, 1f)
-        guiGraphics.drawString(minecraft.font, timeText, 0, 0, TIME_COLOR, false)
-        guiGraphics.pose().popPose()
-    }
-
-    private fun renderHeaderSettingsButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val hovered = isInHeaderSettingsButton(mouseX, mouseY)
-        val textureY = if (hovered) HEADER_SETTINGS_SIZE else 0
-        guiGraphics.blit(
-            SETTINGS_BUTTON_TEXTURE,
-            screenX + HEADER_SETTINGS_X,
-            screenY + HEADER_SETTINGS_Y,
-            0f,
-            textureY.toFloat(),
-            HEADER_SETTINGS_SIZE,
-            HEADER_SETTINGS_SIZE,
-            HEADER_SETTINGS_SIZE,
-            HEADER_SETTINGS_SIZE * 2
-        )
-    }
-
-    private fun isInHeaderSettingsButton(mouseX: Int, mouseY: Int): Boolean {
-        return mouseX >= screenX + HEADER_SETTINGS_X && mouseX <= screenX + HEADER_SETTINGS_X + HEADER_SETTINGS_SIZE &&
-                mouseY >= screenY + HEADER_SETTINGS_Y && mouseY <= screenY + HEADER_SETTINGS_Y + HEADER_SETTINGS_SIZE
     }
 
     private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -284,28 +358,21 @@ class SmartphoneScreen(
     }
 
     companion object {
+        private const val GUI_WIDTH = 131
+        private const val GUI_HEIGHT = 207
+
         private const val GRID_COLUMNS = 2
         private const val GRID_ROWS = 3
+        private const val ACTIONS_PER_PAGE = GRID_COLUMNS * GRID_ROWS
+
         private const val GRID_START_X = 26
         private const val GRID_START_Y = 37
         private const val BUTTON_SPACING = 43
-        private const val GUI_WIDTH = 131
-        private const val GUI_HEIGHT = 207
         private const val BUTTON_WIDTH = 36
         private const val BUTTON_HEIGHT = 36
 
-        private const val HEADER_SETTINGS_X = 80
-        private const val HEADER_SETTINGS_Y = 17
-        private const val HEADER_SETTINGS_SIZE = 9
-
-        private const val TIME_X = 20
-        private const val TIME_Y = 20
-        private const val TIME_SCALE = 0.6f
-        private const val TIME_COLOR = 0xE6FFFF
-        private const val TICKS_PER_DAY = 24_000L
-        private const val MINUTES_PER_DAY = 1_440L
-        private const val MINUTES_PER_HOUR = 60L
-        private const val DAWN_MINUTES = 360L
+        private const val DRAG_WIDTH = 8
+        private const val DRAG_HEIGHT = 8
 
         private const val FOOTER_PREV_X = 36
         private const val FOOTER_HOME_X = 62
@@ -345,9 +412,9 @@ class SmartphoneScreen(
             "cobblemon_smartphone",
             "textures/gui/elements/page_dot_off.png"
         )
-        private val SETTINGS_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+        private val DRAG_HANDLE_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone",
-            "textures/gui/elements/settings_button.png"
+            "textures/gui/elements/drag_handle.png"
         )
     }
 }

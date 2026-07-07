@@ -4,9 +4,11 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.Implementation
 import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
+import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.util.ActionOrderStorage
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.neoforge.compat.SmartphoneCompatManager
 import net.minecraft.core.registries.BuiltInRegistries
@@ -55,6 +57,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
                 SyncedActionData(def.id, def.texture, def.hoverTexture, def.requireUpgrade, def.requireMod, def.cooldownSeconds)
             }
             SyncDatapackActionsPacket(data).sendToPlayer(player)
+            SyncActionOrderPacket(ActionOrderStorage.read(player)).sendToPlayer(player)
         }
     }
     
