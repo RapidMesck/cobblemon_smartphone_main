@@ -6,6 +6,7 @@ import com.nbp.cobblemon_smartphone.actions.OpenCobblenavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobbledollarsAction
 import com.nbp.cobblemon_smartphone.actions.OpenPcAction
 import com.nbp.cobblemon_smartphone.actions.OpenWaystonesAction
+import com.nbp.cobblemon_smartphone.actions.PokeInfoAction
 import com.nbp.cobblemon_smartphone.actions.PokedexAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
 import com.nbp.cobblemon_smartphone.client.BuiltinResourcePack
@@ -44,6 +45,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(OpenCobbledollarsAction)
         SmartphoneActionRegistry.register(OpenWaystonesAction)
         SmartphoneActionRegistry.register(PokedexAction)
+        SmartphoneActionRegistry.register(PokeInfoAction)
     }
 
     fun registerDefaultUpgrades() {

@@ -56,5 +56,7 @@
   "accessories.slot.smartphone": "Smartphone",
 
   "upgrade.cobblemon_smartphone.upgrade_pokenav": "Upgrade: PokeNav",
-  "upgrade.cobblemon_smartphone.upgrade_waystone": "Upgrade: Waystone"
+  "upgrade.cobblemon_smartphone.upgrade_waystone": "Upgrade: Waystone",
+
+  "cobblemon_smartphone.pokeinfo.search": "Search Pokemon..."
 }

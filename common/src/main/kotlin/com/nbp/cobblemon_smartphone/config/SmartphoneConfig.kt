@@ -30,6 +30,7 @@ class SmartphoneConfig {
         val enableCobbleDollars: Boolean = true
         val enableWaystone: Boolean = true
         val enablePokedex: Boolean = true
+        val enablePokeInfo: Boolean = true
         val enableScanner: Boolean = true
     }
 

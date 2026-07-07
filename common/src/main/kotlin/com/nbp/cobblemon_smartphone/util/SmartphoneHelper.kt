@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.util
 
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
 import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import net.minecraft.world.entity.player.Player
@@ -9,11 +10,8 @@ import net.minecraft.world.item.ItemStack
 object SmartphoneHelper {
     var getSmartphoneImpl: ((Player) -> ItemStack?)? = null
 
-    /**
-     * When set, this smartphone is checked before any other lookup.
-     * Set by SmartphoneScreen when opened, cleared when closed.
-     */
     var contextSmartphone: ItemStack? = null
+    var contextColor: SmartphoneColor? = null
 
     fun getSmartphone(player: Player): ItemStack? {
         // If a specific smartphone context is set (e.g. from right-clicking it), use it
