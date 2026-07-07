@@ -273,18 +273,34 @@ class PokeInfoDetailScreen(
         val levelUp = detail.moves.filter { it.method == "level" }.sortedBy { it.level }
         val others = detail.moves.filter { it.method != "level" }
 
+        val lvX: Int = screenX + CONTENT_X
+        val moveX: Int = lvX + MOVE_LV_W
+        val typeX: Int = moveX + MOVE_NAME_W
+        val catX: Int = typeX + MOVE_TYPE_W
+        val pwX: Int = catX + MOVE_CAT_W
+        val acX: Int = pwX + MOVE_PW_W
+
+        draw(guiGraphics, "Lv", lvX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
+        draw(guiGraphics, "Move", moveX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
+        draw(guiGraphics, "Type", typeX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
+        draw(guiGraphics, "Ct", catX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
+        draw(guiGraphics, "Pw", pwX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
+        draw(guiGraphics, "Ac", acX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
+        cy += 9
+
         levelUp.take(20).forEach { move ->
             val pw = if (move.power == 0) "\u2014" else move.power.toString()
             val ac = if (move.accuracy == 0) "\u221E" else move.accuracy.toString()
-            val cat = when (move.category) {
-                "physical" -> "Ph"
-                "special" -> "Sp"
-                else -> "St"
-            }
+            val cat = when (move.category) { "physical" -> "Ph"; "special" -> "Sp"; else -> "St" }
             val typeAbbr = TypeDefenseChart.typeAbbreviation(move.type)
-            val line = "Lv${move.level} ${move.name.replaceFirstChar { it.uppercase() }}  $typeAbbr $cat $pw $ac"
-            val truncated = if (textWidth(line) > CONTENT_WIDTH) line.take(26) else line
-            draw(guiGraphics, truncated, screenX + CONTENT_X, screenY + cy, 0xFFFFFFFF.toInt())
+            val moveName = move.name.replaceFirstChar { it.uppercase() }
+
+            draw(guiGraphics, "${move.level}", lvX, screenY + cy, 0xFFFFFFFF.toInt())
+            draw(guiGraphics, truncate(moveName, MOVE_NAME_W - 2), moveX, screenY + cy, 0xFFFFFFFF.toInt())
+            draw(guiGraphics, typeAbbr, typeX, screenY + cy, 0xFFFFFFFF.toInt())
+            draw(guiGraphics, cat, catX, screenY + cy, 0xFFFFFFFF.toInt())
+            draw(guiGraphics, pw, pwX, screenY + cy, 0xFFFFFFFF.toInt())
+            draw(guiGraphics, ac, acX, screenY + cy, 0xFFFFFFFF.toInt())
             cy += 9
         }
 
@@ -303,15 +319,24 @@ class PokeInfoDetailScreen(
                     else -> method
                 }
                 val names = methodMoves.joinToString(", ") { it.name.replaceFirstChar { c -> c.uppercase() } }
-                val wrapped = wrapText("$label: $names", CONTENT_WIDTH - 4)
+                val wrapped = wrapText("$label: $names", CONTENT_WIDTH)
                 wrapped.forEach { line ->
-                    draw(guiGraphics, line, screenX + CONTENT_X + 4, screenY + cy, 0xA0FFFFFF.toInt())
+                    draw(guiGraphics, line, screenX + CONTENT_X + 2, screenY + cy, 0xA0FFFFFF.toInt())
                     cy += 9
                 }
             }
         }
 
         return cy
+    }
+
+    private fun truncate(text: String, maxWidth: Int): String {
+        if (textWidth(text) <= maxWidth) return text
+        var result = text
+        while (textWidth(result + "..") > maxWidth && result.length > 1) {
+            result = result.dropLast(1)
+        }
+        return result + ".."
     }
 
     private fun renderTrainingSection(guiGraphics: GuiGraphics, y: Int): Int {
@@ -472,21 +497,28 @@ class PokeInfoDetailScreen(
         private const val GUI_WIDTH = 131
         private const val GUI_HEIGHT = 207
 
-        private const val HEADER_BACK_X = 8
+        private const val HEADER_BACK_X = 19
         private const val HEADER_Y = 8
 
-        private const val CONTENT_X = 8
-        private const val CONTENT_WIDTH = 115
-        private const val CONTENT_START_Y = 24
-        private const val CONTENT_END_Y = 200
+        private const val CONTENT_X = 19
+        private const val CONTENT_WIDTH = 93
+        private const val CONTENT_START_Y = 28
+        private const val CONTENT_END_Y = 186
 
         private const val SCROLL_SPEED = 10
 
         private const val MODEL_W = 34
         private const val ROW_H = 10
         private const val STAT_LABEL_W = 24
-        private const val STAT_BAR_MAX = 55
+        private const val STAT_BAR_MAX = 48
         private const val STAT_BAR_H = 6
+
+        private const val MOVE_LV_W = 14
+        private const val MOVE_NAME_W = 38
+        private const val MOVE_TYPE_W = 16
+        private const val MOVE_CAT_W = 10
+        private const val MOVE_PW_W = 10
+        private const val MOVE_AC_W = 10
 
         private const val SECTION_TITLE_COLOR = 0xFFFFD700.toInt()
 

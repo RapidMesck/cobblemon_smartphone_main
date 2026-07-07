@@ -277,21 +277,21 @@ class PokeInfoScreen(
         private const val GUI_WIDTH = 131
         private const val GUI_HEIGHT = 207
 
-        private const val SEARCH_X = 22
-        private const val SEARCH_Y = 27
-        private const val SEARCH_WIDTH = 81
+        private const val SEARCH_X = 19
+        private const val SEARCH_Y = 28
+        private const val SEARCH_WIDTH = 93
         private const val SEARCH_HEIGHT = 12
 
         private const val RESULTS_PER_PAGE = 8
-        private const val RESULTS_START_Y = 45
+        private const val RESULTS_START_Y = 44
         private const val RESULT_HEIGHT = 14
 
-        private const val RESULT_X = 22
-        private const val RESULT_WIDTH = 81
-        private const val RESULT_TEXT_X = 26
+        private const val RESULT_X = 19
+        private const val RESULT_WIDTH = 93
+        private const val RESULT_TEXT_X = 22
         private const val RESULT_TEXT_Y_OFFSET = 1
-        private const val RESULT_BG_X = 22
-        private const val RESULT_BG_WIDTH = 81
+        private const val RESULT_BG_X = 19
+        private const val RESULT_BG_WIDTH = 93
         private const val RESULT_COLOR = 0xFFFFFFFF.toInt()
         private const val RESULT_HOVER_COLOR = 0xFFFFD700.toInt()
         private const val RESULT_BG_HOVER = 0x30FFFFFF
