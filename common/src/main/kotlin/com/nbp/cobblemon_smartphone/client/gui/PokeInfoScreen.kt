@@ -20,7 +20,7 @@ class PokeInfoScreen(
 
     private val frameTexture = ResourceLocation.fromNamespaceAndPath(
         "cobblemon_smartphone",
-        "textures/gui/smartphone_${color.modelName}.png"
+        "textures/gui/large_smartphone_red.png"
     )
     private var screenX = 0
     private var screenY = 0
@@ -188,7 +188,7 @@ class PokeInfoScreen(
                 screenY + y,
                 screenX + RESULT_BG_X + RESULT_BG_WIDTH,
                 screenY + y + RESULT_HEIGHT,
-                RESULT_BG_HOVER
+                RESULT_BG_HOVER.toInt()
             )
         }
 
@@ -274,45 +274,45 @@ class PokeInfoScreen(
     }
 
     companion object {
-        private const val GUI_WIDTH = 131
+        private const val GUI_WIDTH = 211
         private const val GUI_HEIGHT = 207
 
-        private const val SEARCH_X = 19
+        private const val SEARCH_X = 22
         private const val SEARCH_Y = 28
-        private const val SEARCH_WIDTH = 93
-        private const val SEARCH_HEIGHT = 12
+        private const val SEARCH_WIDTH = 167
+        private const val SEARCH_HEIGHT = 14
 
-        private const val RESULTS_PER_PAGE = 8
-        private const val RESULTS_START_Y = 44
-        private const val RESULT_HEIGHT = 14
+        private const val RESULTS_PER_PAGE = 12
+        private const val RESULTS_START_Y = 48
+        private const val RESULT_HEIGHT = 12
 
-        private const val RESULT_X = 19
-        private const val RESULT_WIDTH = 93
-        private const val RESULT_TEXT_X = 22
+        private const val RESULT_X = 22
+        private const val RESULT_WIDTH = 167
+        private const val RESULT_TEXT_X = 26
         private const val RESULT_TEXT_Y_OFFSET = 1
-        private const val RESULT_BG_X = 19
-        private const val RESULT_BG_WIDTH = 93
+        private const val RESULT_BG_X = 20
+        private const val RESULT_BG_WIDTH = 171
         private const val RESULT_COLOR = 0xFFFFFFFF.toInt()
         private const val RESULT_HOVER_COLOR = 0xFFFFD700.toInt()
         private const val RESULT_BG_HOVER = 0x30FFFFFF
 
-        private const val FOOTER_PREV_X = 36
-        private const val FOOTER_HOME_X = 62
-        private const val FOOTER_NEXT_X = 88
-        private const val FOOTER_BUTTON_Y = 187
+        private const val FOOTER_PREV_X = 76
+        private const val FOOTER_HOME_X = 102
+        private const val FOOTER_NEXT_X = 128
+        private const val FOOTER_BUTTON_Y = 190
         private const val FOOTER_BUTTON_SIZE = 7
         private const val FOOTER_BUTTON_TEXTURE_HEIGHT = 14
 
         private const val MAX_VISIBLE_DOTS = 3
         private const val DOT_CENTER_X = GUI_WIDTH / 2
-        private const val DOT_Y = 169
+        private const val DOT_Y = 175
         private const val DOT_SIZE = 9
         private const val DOT_SPACING = 2
         private const val DOT_INACTIVE_Y_OFFSET = 1
 
         private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone",
-            "textures/gui/home_screen.png"
+            "textures/gui/large_screen.png"
         )
         private val PREV_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone",

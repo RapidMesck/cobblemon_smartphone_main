@@ -27,7 +27,7 @@ class PokeInfoDetailScreen(
 
     private val frameTexture = ResourceLocation.fromNamespaceAndPath(
         "cobblemon_smartphone",
-        "textures/gui/smartphone_${color.modelName}.png"
+        "textures/gui/large_smartphone_red.png"
     )
     private var screenX = 0
     private var screenY = 0
@@ -55,8 +55,7 @@ class PokeInfoDetailScreen(
             modelPokemon = RenderablePokemon(species, emptySet())
         }
 
-        val contentHeight = calculateContentHeight()
-        maxScroll = maxOf(0, contentHeight - (CONTENT_END_Y - CONTENT_START_Y))
+        maxScroll = maxOf(0, calculateContentHeight() - (CONTENT_END_Y - CONTENT_START_Y))
         scrollY = 0
     }
 
@@ -90,118 +89,105 @@ class PokeInfoDetailScreen(
         renderHeader(guiGraphics, mouseX, mouseY)
 
         guiGraphics.enableScissor(
-            screenX + CONTENT_X,
-            screenY + CONTENT_START_Y,
-            screenX + CONTENT_X + CONTENT_WIDTH,
-            screenY + CONTENT_END_Y
+            screenX + CONTENT_X, screenY + CONTENT_START_Y,
+            screenX + CONTENT_X + CONTENT_WIDTH, screenY + CONTENT_END_Y
         )
 
-        var y = CONTENT_START_Y - scrollY
-        y = renderTypesSection(guiGraphics, y)
-        y = renderPokemonModel(guiGraphics, mouseX, mouseY, y)
-        y += 2
-        y = renderBaseStatsSection(guiGraphics, y)
-        y += 2
-        y = renderAbilitiesSection(guiGraphics, y)
-        if (detail.preEvolution != null || detail.evolutions.isNotEmpty()) {
-            y += 2
-            y = renderEvolutionSection(guiGraphics, y)
-        }
-        y += 2
-        y = renderMovesSection(guiGraphics, y)
-        y += 2
-        y = renderTrainingSection(guiGraphics, y)
-        y += 2
-        y = renderTypeDefensesSection(guiGraphics, y)
-        y += 2
-        y = renderBreedingSection(guiGraphics, y)
+        var cy = CONTENT_START_Y - scrollY
+
+        cy = renderTopSection(guiGraphics, cy)
+        cy = drawSep(guiGraphics, cy)
+        cy = renderBaseStatsSection(guiGraphics, cy)
+        cy = drawSep(guiGraphics, cy)
+        cy = renderAbilitiesSection(guiGraphics, cy)
+        cy = drawSep(guiGraphics, cy)
+        cy = renderEvolutionSection(guiGraphics, cy)
+        cy = drawSep(guiGraphics, cy)
+        cy = renderTypeDefensesSection(guiGraphics, cy)
+        cy = drawSep(guiGraphics, cy)
+        cy = renderLevelMovesTable(guiGraphics, cy)
+        cy = drawSep(guiGraphics, cy)
+        cy = renderLearnableMoves(guiGraphics, cy)
 
         guiGraphics.disableScissor()
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        val mx = mouseX.toInt()
-        val my = mouseY.toInt()
-
-        if (isInBackButton(mx, my)) {
+        if (isInBackButton(mouseX.toInt(), mouseY.toInt())) {
             playClickSound()
             Minecraft.getInstance().setScreen(PokeInfoScreen(color, smartphoneStack))
             return true
         }
-
         return super.mouseClicked(mouseX, mouseY, button)
     }
 
-    override fun mouseScrolled(
-        mouseX: Double,
-        mouseY: Double,
-        horizontalAmount: Double,
-        verticalAmount: Double
-    ): Boolean {
-        if (verticalAmount == 0.0) return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
-
-        scrollY = (scrollY - verticalAmount.toInt() * SCROLL_SPEED).coerceIn(0, maxScroll)
+    override fun mouseScrolled(mx: Double, my: Double, h: Double, v: Double): Boolean {
+        if (v == 0.0) return super.mouseScrolled(mx, my, h, v)
+        scrollY = (scrollY - v.toInt() * SCROLL_SPEED).coerceIn(0, maxScroll)
         return true
     }
 
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val mx = mouseX
-        val my = mouseY
-        val hovered = isInBackButton(mx, my)
+        val hovered = isInBackButton(mouseX, mouseY)
         val color = if (hovered) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
-
         draw(guiGraphics, "\u00AB Back", screenX + HEADER_BACK_X, screenY + HEADER_Y, color)
-
         val title = "#${String.format("%03d", detail.dexNumber)} ${detail.name}"
-        val titleWidth = textWidth(title)
-        draw(guiGraphics, title, screenX + (GUI_WIDTH - titleWidth) / 2, screenY + HEADER_Y, 0xFFFFFFFF.toInt())
+        draw(guiGraphics, title, screenX + (GUI_WIDTH - textWidth(title)) / 2, screenY + HEADER_Y, 0xFFFFFFFF.toInt())
     }
 
-    private fun renderTypesSection(guiGraphics: GuiGraphics, y: Int): Int {
+    private fun renderTopSection(guiGraphics: GuiGraphics, sy: Int): Int {
+        val topPad = 8
+        val leftW = 66
+        val rightX = CONTENT_X + leftW + 4 + SECTION_PAD
+        val totalH = SECTION_PAD_TOP + topPad + 56 + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
+
+        var y = sy + SECTION_PAD_TOP + topPad
+        renderModel(guiGraphics, screenX + CONTENT_X, screenY + y, leftW)
+
+        val nameColor = 0xFFFFFFFF.toInt()
+        val gray = 0x80FFFFFF.toInt()
+        val dexAndName = "#${String.format("%03d", detail.dexNumber)} ${detail.name}"
+        draw(guiGraphics, dexAndName, screenX + rightX, screenY + y, nameColor)
+
         val types = listOfNotNull(detail.primaryType, detail.secondaryType)
-        val text = types.joinToString(" / ") { it.replaceFirstChar { c -> c.uppercase() } }
-        val textWidth = textWidth(text)
-        draw(guiGraphics, text, screenX + CONTENT_X + (CONTENT_WIDTH - textWidth) / 2, screenY + y + 2, 0xFFFFFFFF.toInt())
-        return y + 14
+        val typeText = types.joinToString(" / ") { it.replaceFirstChar { c -> c.uppercase() } }
+        draw(guiGraphics, typeText, screenX + rightX, screenY + y + 10, 0xFFFFD700.toInt())
+
+        draw(
+            guiGraphics,
+            "H:${detail.height / 10f}m  W:${detail.weight / 10f}kg",
+            screenX + rightX,
+            screenY + y + 20,
+            gray
+        )
+
+        return sy + totalH
     }
 
-    private fun renderPokemonModel(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, y: Int): Int {
-        val modelH = 48
-        val modelX = screenX + CONTENT_X + (CONTENT_WIDTH - MODEL_W) / 2
-        val modelY = screenY + y
-
-        guiGraphics.fill(modelX, modelY, modelX + MODEL_W, modelY + modelH, 0x20FFFFFF.toInt())
-
+    private fun renderModel(guiGraphics: GuiGraphics, mx: Int, my: Int, w: Int) {
+        val modelH = 56
         val pokemon = modelPokemon
         if (pokemon != null) {
             val matrices = guiGraphics.pose()
             matrices.pushPose()
-            matrices.translate(modelX + MODEL_W / 2f, modelY + modelH - 4f, 0f)
-
+            matrices.translate(mx + w / 2f, my - 18f, 0f)
             drawProfilePokemon(
-                renderablePokemon = pokemon,
-                matrixStack = matrices,
-                rotation = Quaternionf().rotateY(Math.toRadians(30.0).toFloat()),
-                poseType = PoseType.PROFILE,
-                state = posableState,
-                partialTicks = 0f,
-                scale = 14f
+                pokemon, matrices, Quaternionf().rotateY(Math.toRadians(30.0).toFloat()),
+                PoseType.PROFILE, posableState, 0f, 40f
             )
-
             matrices.popPose()
         } else {
-            val placeholder = "3D Preview"
-            val pw = textWidth(placeholder)
-            draw(guiGraphics, placeholder, modelX + (MODEL_W - pw) / 2, modelY + (modelH - 8) / 2, 0x80FFFFFF.toInt())
+            draw(guiGraphics, "3D", mx + w / 2 - 8, my + 10, 0x80FFFFFF.toInt())
         }
-
-        return y + modelH + 2
     }
 
-    private fun renderBaseStatsSection(guiGraphics: GuiGraphics, y: Int): Int {
-        var cy = y
-        draw(guiGraphics, "Base Stats", screenX + CONTENT_X, screenY + cy, SECTION_TITLE_COLOR)
-        cy += 10
+    private fun renderBaseStatsSection(guiGraphics: GuiGraphics, sy: Int): Int {
+        val totalH = SECTION_PAD_TOP + 10 + 6 * 9 + 9 + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
+        var y = sy + SECTION_PAD_TOP
+        draw(guiGraphics, "Base Stats", screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
+        y += 10
 
         val stats = listOf(
             "HP" to detail.baseStats.hp,
@@ -211,214 +197,235 @@ class PokeInfoDetailScreen(
             "SpD" to detail.baseStats.specialDefence,
             "SPD" to detail.baseStats.speed
         )
-
+        val labelW = 22
+        val valW = 28
+        val barMaxW = CONTENT_WIDTH - SECTION_PAD * 2 - labelW - valW
+        val barX = screenX + CONTENT_X + SECTION_PAD + labelW
         stats.forEach { (label, value) ->
-            val barWidth = maxOf(0, minOf(value * STAT_BAR_MAX / 255, STAT_BAR_MAX))
-            val barColor = statBarColor(value)
-            val barX = screenX + CONTENT_X + STAT_LABEL_W
-            val barY = screenY + cy + 1
-
-            draw(guiGraphics, label, screenX + CONTENT_X, screenY + cy, 0xFFFFD700.toInt())
-            guiGraphics.fill(barX, barY, barX + barWidth, barY + STAT_BAR_H, barColor)
-            draw(guiGraphics, value.toString(), barX + barWidth + 2, screenY + cy, 0xFFFFFFFF.toInt())
-            cy += ROW_H
+            draw(guiGraphics, label, screenX + CONTENT_X + SECTION_PAD, screenY + y, 0xFFFFD700.toInt())
+            val bw = (value * barMaxW / 255).coerceIn(1, barMaxW)
+            guiGraphics.fill(
+                barX,
+                screenY + y + 1,
+                barX + bw,
+                screenY + y + 6,
+                statBarColor(value)
+            )
+            draw(guiGraphics, "$value", barX + bw + 2, screenY + y, 0xFFFFFFFF.toInt())
+            y += 9
         }
+        draw(
+            guiGraphics,
+            "Total: ${detail.baseStats.total}",
+            screenX + CONTENT_X + SECTION_PAD + labelW - 8,
+            screenY + y,
+            0x80FFFFFF.toInt()
+        )
 
-        draw(guiGraphics, "Total: ${detail.baseStats.total}", screenX + CONTENT_X, screenY + cy + 2, 0x80FFFFFF.toInt())
-        cy += ROW_H + 2
-
-        return cy
+        return sy + totalH
     }
 
-    private fun renderAbilitiesSection(guiGraphics: GuiGraphics, y: Int): Int {
-        var cy = y
-        draw(guiGraphics, "Abilities", screenX + CONTENT_X, screenY + cy, SECTION_TITLE_COLOR)
-        cy += 10
-
-        detail.abilities.forEach { ability ->
-            val prefix = if (ability.isHidden) "(H)" else "${detail.abilities.indexOf(ability) + 1}."
-            val color = if (ability.isHidden) 0x80FFFFFF.toInt() else 0xFFFFFFFF.toInt()
-            draw(guiGraphics, "$prefix ${ability.name.replaceFirstChar { it.uppercase() }}", screenX + CONTENT_X, screenY + cy, color)
-            cy += 10
+    private fun renderAbilitiesSection(guiGraphics: GuiGraphics, sy: Int): Int {
+        if (detail.abilities.isEmpty()) return sy
+        val totalH = SECTION_PAD_TOP + 10 + detail.abilities.size * 9 + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
+        var y = sy + SECTION_PAD_TOP
+        draw(guiGraphics, "Abilities", screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
+        y += 10
+        detail.abilities.forEach { a ->
+            val prefix = if (a.isHidden) "(H) " else ""
+            val name = prefix + a.name.replaceFirstChar { it.uppercase() }
+            draw(guiGraphics, name, screenX + CONTENT_X + SECTION_PAD, screenY + y, 0xFFFFFFFF.toInt())
+            y += 9
         }
-
-        return cy
+        return sy + totalH
     }
 
-    private fun renderEvolutionSection(guiGraphics: GuiGraphics, y: Int): Int {
-        var cy = y
-        draw(guiGraphics, "Evolution", screenX + CONTENT_X, screenY + cy, SECTION_TITLE_COLOR)
-        cy += 10
-
-        if (detail.preEvolution != null) {
-            draw(guiGraphics, "\u2191 ${detail.preEvolution!!.split(":").last().replaceFirstChar { it.uppercase() }}",
-                screenX + CONTENT_X, screenY + cy, 0x80FFFFFF.toInt())
-            cy += 10
+    private fun renderEvolutionSection(guiGraphics: GuiGraphics, sy: Int): Int {
+        val hasPre = detail.preEvolution != null
+        val totalH = SECTION_PAD_TOP + 10 + (if (hasPre) 10 else 0) + detail.evolutions.size * 10 + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
+        var y = sy + SECTION_PAD_TOP
+        draw(guiGraphics, "Evolution", screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
+        y += 10
+        if (hasPre) {
+            draw(
+                guiGraphics, "\u2191 ${detail.preEvolution!!.split(":").last().replaceFirstChar { it.uppercase() }}",
+                screenX + CONTENT_X + SECTION_PAD, screenY + y, 0x80FFFFFF.toInt()
+            )
+            y += 10
         }
-
         detail.evolutions.forEach { evo ->
             val name = evo.targetName.replaceFirstChar { it.uppercase() }
-            draw(guiGraphics, "\u2193 $name  (${evo.method})", screenX + CONTENT_X, screenY + cy, 0xFFFFFFFF.toInt())
-            cy += 10
+            draw(
+                guiGraphics,
+                "\u2193 $name  (${evo.method})",
+                screenX + CONTENT_X + SECTION_PAD,
+                screenY + y,
+                0xFFFFFFFF.toInt()
+            )
+            y += 10
         }
-
-        return cy
+        return sy + totalH
     }
 
-    private fun renderMovesSection(guiGraphics: GuiGraphics, y: Int): Int {
-        var cy = y
-        draw(guiGraphics, "Moves", screenX + CONTENT_X, screenY + cy, SECTION_TITLE_COLOR)
-        cy += 10
+    private fun renderTypeDefensesSection(guiGraphics: GuiGraphics, sy: Int): Int {
+        val types = listOfNotNull(detail.primaryType, detail.secondaryType)
+        val eff = TypeDefenseChart.getEffectiveness(types)
+        val weak = eff.filter { it.value > 1.0 }.keys
+        val resist = eff.filter { it.value in 0.01..0.99 }.keys
+        val immune = eff.filter { it.value == 0.0 }.keys
 
+        val weakText = weak.takeIf { it.isNotEmpty() }?.joinToString(" ") {
+            TypeDefenseChart.multiplierText(eff[it]!!) + TypeDefenseChart.typeAbbreviation(it)
+        } ?: "None"
+        val resistText = resist.takeIf { it.isNotEmpty() }?.joinToString(" ") {
+            TypeDefenseChart.multiplierText(eff[it]!!) + TypeDefenseChart.typeAbbreviation(it)
+        } ?: "None"
+        val immuneText =
+            immune.takeIf { it.isNotEmpty() }?.joinToString(" ") { TypeDefenseChart.typeAbbreviation(it) } ?: "None"
+
+        val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
+        val weakLines = wrapText("Weak: $weakText", wrapW).size
+        val resistLines = wrapText("Resist: $resistText", wrapW).size
+        val immuneLines = wrapText("Immune: $immuneText", wrapW).size
+        val totalH = SECTION_PAD_TOP + 10 + (weakLines + resistLines + immuneLines) * 9 + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
+
+        var y = sy + SECTION_PAD_TOP
+        val tx = screenX + CONTENT_X + SECTION_PAD
+        draw(guiGraphics, "Type Defenses", tx, screenY + y, SECTION_TITLE_COLOR)
+        y += 10
+
+        wrapText("Weak: $weakText", wrapW).forEach {
+            draw(guiGraphics, it, tx, screenY + y, 0xFFAA4444.toInt()); y += 9
+        }
+        wrapText("Resist: $resistText", wrapW).forEach {
+            draw(guiGraphics, it, tx, screenY + y, 0xFF44AA44.toInt()); y += 9
+        }
+        wrapText("Immune: $immuneText", wrapW).forEach {
+            draw(guiGraphics, it, tx, screenY + y, 0xFFAAAAFF.toInt()); y += 9
+        }
+        return sy + totalH
+    }
+
+    private fun renderLevelMovesTable(guiGraphics: GuiGraphics, sy: Int): Int {
         val levelUp = detail.moves.filter { it.method == "level" }.sortedBy { it.level }
-        val others = detail.moves.filter { it.method != "level" }
+        val moveCount = minOf(levelUp.size, 20)
+        val scale = 0.8f
+        val rowH = (9 * scale).toInt()
+        val totalH = SECTION_PAD_TOP + 10 + rowH + moveCount * rowH + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
 
-        val lvX: Int = screenX + CONTENT_X
-        val moveX: Int = lvX + MOVE_LV_W
-        val typeX: Int = moveX + MOVE_NAME_W
-        val catX: Int = typeX + MOVE_TYPE_W
-        val pwX: Int = catX + MOVE_CAT_W
-        val acX: Int = pwX + MOVE_PW_W
+        var y = sy + SECTION_PAD_TOP
+        draw(guiGraphics, "Level Moves", screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
+        y += 10
 
-        draw(guiGraphics, "Lv", lvX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
-        draw(guiGraphics, "Move", moveX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
-        draw(guiGraphics, "Type", typeX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
-        draw(guiGraphics, "Ct", catX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
-        draw(guiGraphics, "Pw", pwX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
-        draw(guiGraphics, "Ac", acX.toInt(), screenY + cy, 0x80FFFFFF.toInt())
-        cy += 9
+        val tableW = LV_W + MOVE_W + TYPE_W + CAT_W + PW_W + AC_W
+        val availW = CONTENT_WIDTH - SECTION_PAD * 2
+        val offsetX = (availW - tableW * scale) / 2f
+        val baseX = (screenX + CONTENT_X + SECTION_PAD + offsetX) / scale
+        val baseY = (screenY + y) / scale
+
+        val matrices = guiGraphics.pose()
+        matrices.pushPose()
+        matrices.translate(baseX * scale, baseY * scale, 0f)
+        matrices.scale(scale, scale, 1f)
+
+        draw(guiGraphics, "Lvl", 0, 0, 0x80FFFFFF.toInt())
+        draw(guiGraphics, "Move", LV_W, 0, 0x80FFFFFF.toInt())
+        draw(guiGraphics, "Type", LV_W + MOVE_W, 0, 0x80FFFFFF.toInt())
+        draw(guiGraphics, "Ct", LV_W + MOVE_W + TYPE_W, 0, 0x80FFFFFF.toInt())
+        draw(guiGraphics, "Pw", LV_W + MOVE_W + TYPE_W + CAT_W, 0, 0x80FFFFFF.toInt())
+        draw(guiGraphics, "Ac", LV_W + MOVE_W + TYPE_W + CAT_W + PW_W, 0, 0x80FFFFFF.toInt())
+        var ry = 9
 
         levelUp.take(20).forEach { move ->
             val pw = if (move.power == 0) "\u2014" else move.power.toString()
             val ac = if (move.accuracy == 0) "\u221E" else move.accuracy.toString()
-            val cat = when (move.category) { "physical" -> "Ph"; "special" -> "Sp"; else -> "St" }
+            val cat = when (move.category) {
+                "physical" -> "Ph"; "special" -> "Sp"; else -> "St"
+            }
             val typeAbbr = TypeDefenseChart.typeAbbreviation(move.type)
-            val moveName = move.name.replaceFirstChar { it.uppercase() }
+            val moveName = truncate(move.name.replaceFirstChar { it.uppercase() }, MOVE_W - 2)
 
-            draw(guiGraphics, "${move.level}", lvX, screenY + cy, 0xFFFFFFFF.toInt())
-            draw(guiGraphics, truncate(moveName, MOVE_NAME_W - 2), moveX, screenY + cy, 0xFFFFFFFF.toInt())
-            draw(guiGraphics, typeAbbr, typeX, screenY + cy, 0xFFFFFFFF.toInt())
-            draw(guiGraphics, cat, catX, screenY + cy, 0xFFFFFFFF.toInt())
-            draw(guiGraphics, pw, pwX, screenY + cy, 0xFFFFFFFF.toInt())
-            draw(guiGraphics, ac, acX, screenY + cy, 0xFFFFFFFF.toInt())
-            cy += 9
+            draw(guiGraphics, "${move.level}", 0, ry, 0xFFFFFFFF.toInt())
+            draw(guiGraphics, moveName, LV_W, ry, 0xFFFFFFFF.toInt())
+            draw(guiGraphics, typeAbbr, LV_W + MOVE_W, ry, 0xFFFFFFFF.toInt())
+            draw(guiGraphics, cat, LV_W + MOVE_W + TYPE_W, ry, 0xFFFFFFFF.toInt())
+            draw(guiGraphics, pw, LV_W + MOVE_W + TYPE_W + CAT_W, ry, 0xFFFFFFFF.toInt())
+            draw(guiGraphics, ac, LV_W + MOVE_W + TYPE_W + CAT_W + PW_W, ry, 0xFFFFFFFF.toInt())
+            ry += 9
         }
 
-        if (levelUp.size > 20) {
-            draw(guiGraphics, "... ${levelUp.size - 20} more", screenX + CONTENT_X, screenY + cy, 0x80FFFFFF.toInt())
-            cy += 10
-        }
+        matrices.popPose()
+        return sy + totalH
+    }
 
-        if (others.isNotEmpty()) {
-            val groups = others.groupBy { it.method }
-            groups.forEach { (method, methodMoves) ->
-                val label = when (method) {
-                    "tm" -> "TM"
-                    "egg" -> "Egg"
-                    "tutor" -> "Tutor"
-                    else -> method
-                }
-                val names = methodMoves.joinToString(", ") { it.name.replaceFirstChar { c -> c.uppercase() } }
-                val wrapped = wrapText("$label: $names", CONTENT_WIDTH)
-                wrapped.forEach { line ->
-                    draw(guiGraphics, line, screenX + CONTENT_X + 2, screenY + cy, 0xA0FFFFFF.toInt())
-                    cy += 9
-                }
+    private fun renderLearnableMoves(guiGraphics: GuiGraphics, sy: Int): Int {
+        val others = detail.moves.filter { it.method != "level" }
+        if (others.isEmpty()) return sy
+
+        val groups = others.groupBy { it.method }
+        val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
+        val tx = screenX + CONTENT_X + SECTION_PAD
+
+        var lineCount = 0
+        groups.forEach { (method, methodMoves) ->
+            val label = when (method) {
+                "tm" -> "TM"; "egg" -> "Egg"; "tutor" -> "Tutor"; else -> method
+            }
+            val names = methodMoves.joinToString(", ") { it.name.replaceFirstChar { c -> c.uppercase() } }
+            lineCount += wrapText("$label: $names", wrapW).size
+        }
+        val totalH = SECTION_PAD_TOP + 10 + lineCount * 9 + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
+
+        var y = sy + SECTION_PAD_TOP
+        draw(guiGraphics, "Learnable Moves", tx, screenY + y, SECTION_TITLE_COLOR)
+        y += 10
+
+        groups.forEach { (method, methodMoves) ->
+            val label = when (method) {
+                "tm" -> "TM"; "egg" -> "Egg"; "tutor" -> "Tutor"; else -> method
+            }
+            val names = methodMoves.joinToString(", ") { it.name.replaceFirstChar { c -> c.uppercase() } }
+            wrapText("$label: $names", wrapW).forEach { line ->
+                draw(guiGraphics, line, tx, screenY + y, 0xA0FFFFFF.toInt())
+                y += 9
             }
         }
+        return sy + totalH
+    }
 
-        return cy
+    private fun sectionBox(guiGraphics: GuiGraphics, y: Int, h: Int) {
+        val x1 = screenX + CONTENT_X
+        val y1 = screenY + y
+        val x2 = screenX + CONTENT_X + CONTENT_WIDTH
+        val y2 = screenY + y + h
+        guiGraphics.fill(x1, y1, x2, y2, SECTION_BG_COLOR)
+        guiGraphics.fill(x1, y1, x2, y1 + 1, SECTION_BORDER_COLOR)
+        guiGraphics.fill(x1, y2 - 1, x2, y2, SECTION_BORDER_COLOR)
+        guiGraphics.fill(x1, y1, x1 + 1, y2, SECTION_BORDER_COLOR)
+        guiGraphics.fill(x2 - 1, y1, x2, y2, SECTION_BORDER_COLOR)
+    }
+
+    private fun drawSep(guiGraphics: GuiGraphics, sy: Int): Int {
+        guiGraphics.fill(
+            screenX + CONTENT_X + SECTION_PAD,
+            screenY + sy,
+            screenX + CONTENT_X + CONTENT_WIDTH - SECTION_PAD,
+            screenY + sy + 1,
+            0x30FFFFFF.toInt()
+        )
+        return sy + 4
     }
 
     private fun truncate(text: String, maxWidth: Int): String {
         if (textWidth(text) <= maxWidth) return text
         var result = text
-        while (textWidth(result + "..") > maxWidth && result.length > 1) {
-            result = result.dropLast(1)
-        }
+        while (textWidth(result + "..") > maxWidth && result.length > 1) result = result.dropLast(1)
         return result + ".."
-    }
-
-    private fun renderTrainingSection(guiGraphics: GuiGraphics, y: Int): Int {
-        var cy = y
-        draw(guiGraphics, "Training", screenX + CONTENT_X, screenY + cy, SECTION_TITLE_COLOR)
-        cy += 10
-
-        val evText = buildEvYieldText()
-        draw(guiGraphics, "EV: $evText", screenX + CONTENT_X, screenY + cy, 0xFFFFFFFF.toInt())
-        cy += 10
-
-        val catchPct = detail.catchRate.toDouble() / 255.0 * 100.0
-        draw(guiGraphics, "Catch: ${detail.catchRate} (${"%.1f".format(catchPct)}%)", screenX + CONTENT_X, screenY + cy, 0xFFFFFFFF.toInt())
-        cy += 10
-
-        val growth = detail.growthRate.replace("_", " ").replaceFirstChar { it.uppercase() }
-        draw(guiGraphics, "Growth: $growth", screenX + CONTENT_X, screenY + cy, 0xFFFFFFFF.toInt())
-        cy += 10
-
-        draw(guiGraphics, "Base EXP: ${detail.baseExp}", screenX + CONTENT_X, screenY + cy, 0xFFFFFFFF.toInt())
-        cy += 10
-
-        return cy
-    }
-
-    private fun renderTypeDefensesSection(guiGraphics: GuiGraphics, y: Int): Int {
-        var cy = y
-        draw(guiGraphics, "Type Defenses", screenX + CONTENT_X, screenY + cy, SECTION_TITLE_COLOR)
-        cy += 10
-
-        val types = listOfNotNull(detail.primaryType, detail.secondaryType)
-        val effectiveness = TypeDefenseChart.getEffectiveness(types)
-
-        val weak = effectiveness.filter { it.value > 1.0 }.keys
-        val resist = effectiveness.filter { it.value in 0.01..0.99 }.keys
-        val immune = effectiveness.filter { it.value == 0.0 }.keys
-
-        val weakText = weak.takeIf { it.isNotEmpty() }?.joinToString(" ") {
-            TypeDefenseChart.multiplierText(effectiveness[it]!!) + TypeDefenseChart.typeAbbreviation(it)
-        } ?: "None"
-        val resistText = resist.takeIf { it.isNotEmpty() }?.joinToString(" ") {
-            TypeDefenseChart.multiplierText(effectiveness[it]!!) + TypeDefenseChart.typeAbbreviation(it)
-        } ?: "None"
-        val immuneText = immune.takeIf { it.isNotEmpty() }?.joinToString(" ") {
-            TypeDefenseChart.typeAbbreviation(it)
-        } ?: "None"
-
-        wrapText("Weak: $weakText", CONTENT_WIDTH).forEach {
-            draw(guiGraphics, it, screenX + CONTENT_X, screenY + cy, 0xFFAA4444.toInt())
-            cy += 9
-        }
-        wrapText("Resist: $resistText", CONTENT_WIDTH).forEach {
-            draw(guiGraphics, it, screenX + CONTENT_X, screenY + cy, 0xFF44AA44.toInt())
-            cy += 9
-        }
-        wrapText("Immune: $immuneText", CONTENT_WIDTH).forEach {
-            draw(guiGraphics, it, screenX + CONTENT_X, screenY + cy, 0xFFAAAAFF.toInt())
-            cy += 9
-        }
-
-        return cy
-    }
-
-    private fun renderBreedingSection(guiGraphics: GuiGraphics, y: Int): Int {
-        var cy = y
-        draw(guiGraphics, "Breeding", screenX + CONTENT_X, screenY + cy, SECTION_TITLE_COLOR)
-        cy += 10
-
-        val eggText = detail.eggGroups.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
-        draw(guiGraphics, "Egg: $eggText", screenX + CONTENT_X, screenY + cy, 0xFFFFFFFF.toInt())
-        cy += 10
-
-        val malePct = "%.0f".format(detail.maleRatio * 100)
-        val femalePct = "%.0f".format((1 - detail.maleRatio) * 100)
-        draw(guiGraphics, "Gender: $malePct%\u2642 $femalePct%\u2640", screenX + CONTENT_X, screenY + cy, 0xFFFFFFFF.toInt())
-        cy += 10
-
-        val steps = detail.eggCycles * 255
-        draw(guiGraphics, "Cycles: ${detail.eggCycles} ($steps steps)", screenX + CONTENT_X, screenY + cy, 0xFFFFFFFF.toInt())
-        cy += 10
-
-        return cy
     }
 
     private fun draw(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int) {
@@ -426,35 +433,6 @@ class PokeInfoDetailScreen(
     }
 
     private fun textWidth(text: String): Int = font.width(text)
-
-    private fun buildEvYieldText(): String {
-        val yields = listOf(
-            "HP" to detail.evYield.hp,
-            "ATK" to detail.evYield.attack,
-            "DEF" to detail.evYield.defence,
-            "SpA" to detail.evYield.specialAttack,
-            "SpD" to detail.evYield.specialDefence,
-            "SPD" to detail.evYield.speed
-        ).filter { it.second > 0 }
-
-        if (yields.isEmpty()) return "None"
-        return yields.joinToString(" ") { "${it.second} ${it.first}" }
-    }
-
-    private fun calculateContentHeight(): Int {
-        var h = 14 + 50 + 2
-        h += 10 + 6 * ROW_H + ROW_H + 2 + 2
-        h += 10 + detail.abilities.size * 10 + 2
-        if (detail.preEvolution != null || detail.evolutions.isNotEmpty()) {
-            h += 10 + 10 + detail.evolutions.size * 10 + 2
-            if (detail.preEvolution != null) h += 10
-        }
-        h += 10 + minOf(detail.moves.count { it.method == "level" }, 20) * 10 + 2
-        h += 10 + 4 * 10 + 2
-        h += 10 + 3 * 9 + 2
-        h += 10 + 3 * 10 + 2
-        return h
-    }
 
     private fun wrapText(text: String, maxWidth: Int): List<String> {
         if (textWidth(text) <= maxWidth) return listOf(text)
@@ -484,6 +462,22 @@ class PokeInfoDetailScreen(
         else -> 0xFFF34444.toInt()
     }
 
+    private fun calculateContentHeight(): Int {
+        val topH = SECTION_PAD_TOP + 8 + 56 + SECTION_PAD_BOTTOM
+        val statsH = SECTION_PAD_TOP + 10 + 6 * 9 + 9 + SECTION_PAD_BOTTOM
+        val abiH =
+            if (detail.abilities.isNotEmpty()) SECTION_PAD_TOP + 10 + detail.abilities.size * 9 + SECTION_PAD_BOTTOM else 0
+        val evoH =
+            SECTION_PAD_TOP + 10 + (if (detail.preEvolution != null) 10 else 0) + detail.evolutions.size * 10 + SECTION_PAD_BOTTOM
+        val defH = SECTION_PAD_TOP + 10 + 3 * 9 + SECTION_PAD_BOTTOM
+        val movesH =
+            SECTION_PAD_TOP + 10 + 7 + minOf(detail.moves.count { it.method == "level" }, 20) * 7 + SECTION_PAD_BOTTOM
+        val learnH =
+            if (detail.moves.any { it.method != "level" }) SECTION_PAD_TOP + 10 + 3 * 9 + SECTION_PAD_BOTTOM else 0
+        val separators = 7 * 4
+        return topH + statsH + abiH + evoH + defH + movesH + learnH + separators
+    }
+
     private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
         return mouseX >= screenX + HEADER_BACK_X && mouseX <= screenX + HEADER_BACK_X + 30 &&
                 mouseY >= screenY + HEADER_Y - 2 && mouseY <= screenY + HEADER_Y + 10
@@ -494,37 +488,36 @@ class PokeInfoDetailScreen(
     }
 
     companion object {
-        private const val GUI_WIDTH = 131
+        private const val GUI_WIDTH = 211
         private const val GUI_HEIGHT = 207
 
-        private const val HEADER_BACK_X = 19
+        private const val HEADER_BACK_X = 20
         private const val HEADER_Y = 8
 
-        private const val CONTENT_X = 19
-        private const val CONTENT_WIDTH = 93
+        private const val CONTENT_X = 20
+        private const val CONTENT_WIDTH = 171
         private const val CONTENT_START_Y = 28
-        private const val CONTENT_END_Y = 186
+        private const val CONTENT_END_Y = 192
+
+        private const val SECTION_PAD = 4
+        private const val SECTION_PAD_TOP = 4
+        private const val SECTION_PAD_BOTTOM = 4
+        private const val SECTION_BG_COLOR = 0x802CC5C8.toInt()
+        private const val SECTION_BORDER_COLOR = 0xFF73E0E2.toInt()
 
         private const val SCROLL_SPEED = 10
 
-        private const val MODEL_W = 34
-        private const val ROW_H = 10
-        private const val STAT_LABEL_W = 24
-        private const val STAT_BAR_MAX = 48
-        private const val STAT_BAR_H = 6
-
-        private const val MOVE_LV_W = 14
-        private const val MOVE_NAME_W = 38
-        private const val MOVE_TYPE_W = 16
-        private const val MOVE_CAT_W = 10
-        private const val MOVE_PW_W = 10
-        private const val MOVE_AC_W = 10
+        private const val LV_W = 22
+        private const val MOVE_W = 62
+        private const val TYPE_W = 34
+        private const val CAT_W = 20
+        private const val PW_W = 22
+        private const val AC_W = 22
 
         private const val SECTION_TITLE_COLOR = 0xFFFFD700.toInt()
 
         private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/home_screen.png"
+            "cobblemon_smartphone", "textures/gui/large_screen.png"
         )
     }
 }
