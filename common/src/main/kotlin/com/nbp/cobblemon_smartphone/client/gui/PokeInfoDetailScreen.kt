@@ -10,7 +10,6 @@ import com.cobblemon.mod.common.pokemon.RenderablePokemon
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
-import com.nbp.cobblemon_smartphone.util.TypeDefenseChart
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
@@ -18,6 +17,9 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 import org.joml.Quaternionf
+import kotlin.math.pow
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 class PokeInfoDetailScreen(
     private val color: SmartphoneColor,
@@ -103,6 +105,12 @@ class PokeInfoDetailScreen(
         cy = drawSep(guiGraphics, cy)
         cy = renderEvolutionSection(guiGraphics, cy)
         cy = drawSep(guiGraphics, cy)
+        cy = renderTrainingSection(guiGraphics, cy)
+        cy = drawSep(guiGraphics, cy)
+        cy = renderSpawningSection(guiGraphics, cy)
+        cy = drawSep(guiGraphics, cy)
+        cy = renderBreedingSection(guiGraphics, cy)
+        cy = drawSep(guiGraphics, cy)
         cy = renderTypeDefensesSection(guiGraphics, cy)
         cy = drawSep(guiGraphics, cy)
         cy = renderLevelMovesTable(guiGraphics, cy)
@@ -149,8 +157,16 @@ class PokeInfoDetailScreen(
         draw(guiGraphics, dexAndName, screenX + rightX, screenY + y, CONTENT_TEXT)
 
         val types = listOfNotNull(detail.primaryType, detail.secondaryType)
-        val typeText = types.joinToString(" / ") { it.replaceFirstChar { c -> c.uppercase() } }
-        draw(guiGraphics, typeText, screenX + rightX, screenY + y + 10, CONTENT_GOLD)
+        var tx = screenX + rightX
+        types.forEachIndexed { i, type ->
+            val name = type.replaceFirstChar { c -> c.uppercase() }
+            draw(guiGraphics, name, tx, screenY + y + 10, typeColor(type))
+            tx += textWidth(name)
+            if (i < types.size - 1) {
+                draw(guiGraphics, " / ", tx, screenY + y + 10, CONTENT_DIM)
+                tx += textWidth(" / ")
+            }
+        }
 
         draw(
             guiGraphics,
@@ -193,7 +209,7 @@ class PokeInfoDetailScreen(
             "DEF" to detail.baseStats.defence,
             "SpA" to detail.baseStats.specialAttack,
             "SpD" to detail.baseStats.specialDefence,
-            "SPD" to detail.baseStats.speed
+            "Spe" to detail.baseStats.speed
         )
         val labelW = 22
         val valW = 28
@@ -225,63 +241,194 @@ class PokeInfoDetailScreen(
 
     private fun renderAbilitiesSection(guiGraphics: GuiGraphics, sy: Int): Int {
         if (detail.abilities.isEmpty()) return sy
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + detail.abilities.size * 9 + SECTION_PAD_BOTTOM
+
+        val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
+        val descW = wrapW - 8 // indent for description
+
+        var lineCount = 1 // title line
+        detail.abilities.forEach { a ->
+            lineCount += 1 // ability name
+            if (a.description.isNotEmpty()) {
+                lineCount += wrapText(a.description, descW).size
+            }
+        }
+        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lineCount * 9 + SECTION_PAD_BOTTOM
         sectionBox(guiGraphics, sy, totalH)
+
         var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, "Abilities", screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
+        val tx = screenX + CONTENT_X + SECTION_PAD
+        draw(guiGraphics, "Abilities", tx, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
+
         detail.abilities.forEach { a ->
             val prefix = if (a.isHidden) "(H) " else ""
-            val name = prefix + a.name.replaceFirstChar { it.uppercase() }
-            draw(guiGraphics, name, screenX + CONTENT_X + SECTION_PAD, screenY + y, CONTENT_TEXT)
+            draw(guiGraphics, prefix + a.name.replaceFirstChar { it.uppercase() }, tx, screenY + y, CONTENT_TEXT)
             y += 9
+            if (a.description.isNotEmpty()) {
+                wrapText(a.description, descW).forEach { line ->
+                    draw(guiGraphics, line, tx + 8, screenY + y, CONTENT_DIM)
+                    y += 9
+                }
+            }
         }
         return sy + totalH
     }
 
     private fun renderEvolutionSection(guiGraphics: GuiGraphics, sy: Int): Int {
         val hasPre = detail.preEvolution != null
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + (if (hasPre) 10 else 0) + detail.evolutions.size * 10 + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
-        var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, "Evolution", screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
-        y += TITLE_GAP + CONTENT_GAP
+        val hasEvos = detail.evolutions.isNotEmpty()
+        if (!hasPre && !hasEvos) return sy
+
+        val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
+        val tx = screenX + CONTENT_X + SECTION_PAD
+
+        // Pre-calculate wrapped lines
+        var lineCount = 0
         if (hasPre) {
-            draw(
-                guiGraphics, "\u2191 ${detail.preEvolution!!.split(":").last().replaceFirstChar { it.uppercase() }}",
-                screenX + CONTENT_X + SECTION_PAD, screenY + y, CONTENT_DIM
-            )
-            y += 10
+            val preName = detail.preEvolution!!.split(":").last().replaceFirstChar { it.uppercase() }
+            lineCount += wrapText("\u2191 $preName", wrapW).size
         }
         detail.evolutions.forEach { evo ->
             val name = evo.targetName.replaceFirstChar { it.uppercase() }
-            draw(guiGraphics, "\u2193 $name  (${evo.method})", screenX + CONTENT_X + SECTION_PAD, screenY + y, CONTENT_TEXT)
-            y += 10
+            lineCount += wrapText("\u2193 $name (${evo.method})", wrapW).size
         }
+
+        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lineCount * 9 + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
+        var y = sy + SECTION_PAD_TOP
+        draw(guiGraphics, "Evolution", tx, screenY + y, SECTION_TITLE_COLOR)
+        y += TITLE_GAP + CONTENT_GAP
+
+        if (hasPre) {
+            val preName = detail.preEvolution!!.split(":").last().replaceFirstChar { it.uppercase() }
+            wrapText("\u2191 $preName", wrapW).forEach {
+                draw(guiGraphics, it, tx, screenY + y, CONTENT_DIM)
+                y += 9
+            }
+        }
+        detail.evolutions.forEach { evo ->
+            val name = evo.targetName.replaceFirstChar { it.uppercase() }
+            wrapText("\u2193 $name (${evo.method})", wrapW).forEach {
+                draw(guiGraphics, it, tx, screenY + y, CONTENT_TEXT)
+                y += 9
+            }
+        }
+        return sy + totalH
+    }
+
+    private fun renderTrainingSection(guiGraphics: GuiGraphics, sy: Int): Int {
+        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 4 * 9 + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
+
+        var y = sy + SECTION_PAD_TOP
+        val tx = screenX + CONTENT_X + SECTION_PAD
+        draw(guiGraphics, "Training", tx, screenY + y, SECTION_TITLE_COLOR)
+        y += TITLE_GAP + CONTENT_GAP
+
+        // EV Yield - only show non-zero
+        val evs = listOf(
+            "HP" to detail.evYield.hp,
+            "Atk" to detail.evYield.attack,
+            "Def" to detail.evYield.defence,
+            "SpA" to detail.evYield.specialAttack,
+            "SpD" to detail.evYield.specialDefence,
+            "Spe" to detail.evYield.speed
+        ).filter { it.second > 0 }
+        val evText = if (evs.isEmpty()) "None"
+        else evs.joinToString(", ") { "${it.first} ${it.second}" }
+        draw(guiGraphics, "EV: $evText", tx, screenY + y, CONTENT_TEXT); y += 9
+
+        // Catch rate
+        draw(guiGraphics, "Catch Rate: ${detail.catchRate} (${catchPercent(detail.catchRate)}%)", tx, screenY + y, CONTENT_TEXT); y += 9
+
+        // Base Friendship
+        draw(guiGraphics, "Friendship: ${detail.baseFriendship}", tx, screenY + y, CONTENT_TEXT); y += 9
+
+        // Base Exp
+        draw(guiGraphics, "Base Exp: ${detail.baseExp}", tx, screenY + y, CONTENT_TEXT); y += 9
+
+        return sy + totalH
+    }
+
+    private fun renderSpawningSection(guiGraphics: GuiGraphics, sy: Int): Int {
+        val biomes = detail.spawnBiomes
+        if (biomes.isEmpty()) return sy
+
+        val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
+        val tx = screenX + CONTENT_X + SECTION_PAD
+        val biomeText = biomes.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+        val lines = wrapText("Biomes: $biomeText", wrapW)
+        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines.size * 9 + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
+
+        var y = sy + SECTION_PAD_TOP
+        draw(guiGraphics, "Spawning", tx, screenY + y, SECTION_TITLE_COLOR)
+        y += TITLE_GAP + CONTENT_GAP
+
+        lines.forEach { line ->
+            draw(guiGraphics, line, tx, screenY + y, CONTENT_TEXT)
+            y += 9
+        }
+        return sy + totalH
+    }
+
+    private fun renderBreedingSection(guiGraphics: GuiGraphics, sy: Int): Int {
+        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 3 * 9 + SECTION_PAD_BOTTOM
+        sectionBox(guiGraphics, sy, totalH)
+
+        var y = sy + SECTION_PAD_TOP
+        val tx = screenX + CONTENT_X + SECTION_PAD
+        draw(guiGraphics, "Breeding", tx, screenY + y, SECTION_TITLE_COLOR)
+        y += TITLE_GAP + CONTENT_GAP
+
+        // Egg Groups
+        val groups = detail.eggGroups.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+        draw(guiGraphics, "Egg Groups: $groups", tx, screenY + y, CONTENT_TEXT); y += 9
+
+        // Gender
+        val gender = when {
+            detail.maleRatio < 0 -> "Genderless"
+            detail.maleRatio == 0f -> "100% F"
+            detail.maleRatio == 1f -> "100% M"
+            else -> "${(detail.maleRatio * 100).toInt()}% M / ${((1 - detail.maleRatio) * 100).toInt()}% F"
+        }
+        draw(guiGraphics, "Gender: $gender", tx, screenY + y, CONTENT_TEXT); y += 9
+
+        // Egg Cycles
+        draw(guiGraphics, "Egg Cycles: ${detail.eggCycles}", tx, screenY + y, CONTENT_TEXT); y += 9
+
         return sy + totalH
     }
 
     private fun renderTypeDefensesSection(guiGraphics: GuiGraphics, sy: Int): Int {
         val types = listOfNotNull(detail.primaryType, detail.secondaryType)
-        val eff = TypeDefenseChart.getEffectiveness(types)
-        val weak = eff.filter { it.value > 1.0 }.keys
-        val resist = eff.filter { it.value in 0.01..0.99 }.keys
-        val immune = eff.filter { it.value == 0.0 }.keys
+        val eff = getEffectiveness(types)
 
-        val weakText = weak.takeIf { it.isNotEmpty() }?.joinToString(" ") {
-            TypeDefenseChart.multiplierText(eff[it]!!) + TypeDefenseChart.typeAbbreviation(it)
-        } ?: "None"
-        val resistText = resist.takeIf { it.isNotEmpty() }?.joinToString(" ") {
-            TypeDefenseChart.multiplierText(eff[it]!!) + TypeDefenseChart.typeAbbreviation(it)
-        } ?: "None"
-        val immuneText =
-            immune.takeIf { it.isNotEmpty() }?.joinToString(" ") { TypeDefenseChart.typeAbbreviation(it) } ?: "None"
+        // Group by multiplier, exclude neutral (1.0)
+        val groups = eff.entries
+            .filter { it.value != 1.0 }
+            .groupBy({ it.value }, { it.key })
+            .mapKeys { (mult, _) ->
+                when {
+                    mult > 1.0 -> "Weak (x${multiplierText(mult)})"
+                    mult == 0.0 -> "Immune (x0)"
+                    else -> "Resist (x${multiplierText(mult)})"
+                }
+            }
+            .mapValues { (_, typeNames) ->
+                typeNames.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+            }
 
         val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
-        val weakLines = wrapText("Weak: $weakText", wrapW).size
-        val resistLines = wrapText("Resist: $resistText", wrapW).size
-        val immuneLines = wrapText("Immune: $immuneText", wrapW).size
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + (weakLines + resistLines + immuneLines) * 9 + SECTION_PAD_BOTTOM
+        var totalLines = 0
+        if (groups.isEmpty()) {
+            totalLines = 1 // "None"
+        } else {
+            groups.forEach { (label, text) ->
+                totalLines += wrapText("$label: $text", wrapW).size
+            }
+        }
+        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + totalLines * 9 + SECTION_PAD_BOTTOM
         sectionBox(guiGraphics, sy, totalH)
 
         var y = sy + SECTION_PAD_TOP
@@ -289,14 +436,19 @@ class PokeInfoDetailScreen(
         draw(guiGraphics, "Type Defenses", tx, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
-        wrapText("Weak: $weakText", wrapW).forEach {
-            draw(guiGraphics, it, tx, screenY + y, CONTENT_WEAK); y += 9
-        }
-        wrapText("Resist: $resistText", wrapW).forEach {
-            draw(guiGraphics, it, tx, screenY + y, CONTENT_RESIST); y += 9
-        }
-        wrapText("Immune: $immuneText", wrapW).forEach {
-            draw(guiGraphics, it, tx, screenY + y, CONTENT_IMMUNE); y += 9
+        if (groups.isEmpty()) {
+            draw(guiGraphics, "None", tx, screenY + y, CONTENT_DIM)
+        } else {
+            groups.forEach { (label, text) ->
+                val color = when {
+                    label.startsWith("Weak") -> CONTENT_WEAK
+                    label.startsWith("Immune") -> CONTENT_IMMUNE
+                    else -> CONTENT_RESIST
+                }
+                wrapText("$label: $text", wrapW).forEach {
+                    draw(guiGraphics, it, tx, screenY + y, color); y += 9
+                }
+            }
         }
         return sy + totalH
     }
@@ -338,12 +490,12 @@ class PokeInfoDetailScreen(
             val cat = when (move.category) {
                 "physical" -> "Ph"; "special" -> "Sp"; else -> "St"
             }
-            val typeAbbr = TypeDefenseChart.typeAbbreviation(move.type)
+            val typeAbbr = typeAbbreviation(move.type)
             val moveName = truncate(move.name.replaceFirstChar { it.uppercase() }, MOVE_W - 2)
 
             draw(guiGraphics, "${move.level}", 0, ry, CONTENT_TEXT)
             draw(guiGraphics, moveName, LV_W, ry, CONTENT_TEXT)
-            draw(guiGraphics, typeAbbr, LV_W + MOVE_W, ry, CONTENT_TEXT)
+            draw(guiGraphics, typeAbbr, LV_W + MOVE_W, ry, typeColor(move.type))
             draw(guiGraphics, cat, LV_W + MOVE_W + TYPE_W, ry, CONTENT_TEXT)
             draw(guiGraphics, pw, LV_W + MOVE_W + TYPE_W + CAT_W, ry, CONTENT_TEXT)
             draw(guiGraphics, ac, LV_W + MOVE_W + TYPE_W + CAT_W + PW_W, ry, CONTENT_TEXT)
@@ -370,14 +522,18 @@ class PokeInfoDetailScreen(
             val names = methodMoves.joinToString(", ") { it.name.replaceFirstChar { c -> c.uppercase() } }
             lineCount += wrapText("$label: $names", wrapW).size
         }
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lineCount * 9 + SECTION_PAD_BOTTOM
+        val groupGap = 4
+        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lineCount * 9 + (groups.size - 1) * groupGap + SECTION_PAD_BOTTOM
         sectionBox(guiGraphics, sy, totalH)
 
         var y = sy + SECTION_PAD_TOP
         draw(guiGraphics, "Learnable Moves", tx, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
+        var first = true
         groups.forEach { (method, methodMoves) ->
+            if (!first) y += groupGap
+            first = false
             val label = when (method) {
                 "tm" -> "TM"; "egg" -> "Egg"; "tutor" -> "Tutor"; else -> method
             }
@@ -457,16 +613,84 @@ private fun calculateContentHeight(): Int {
     val topH = SECTION_PAD_TOP + 8 + 56 + SECTION_PAD_BOTTOM
     val statsH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 6 * 9 + 9 + SECTION_PAD_BOTTOM
     val abiH =
-        if (detail.abilities.isNotEmpty()) SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + detail.abilities.size * 9 + SECTION_PAD_BOTTOM else 0
-    val evoH =
-        SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + (if (detail.preEvolution != null) 10 else 0) + detail.evolutions.size * 10 + SECTION_PAD_BOTTOM
-    val defH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 3 * 9 + SECTION_PAD_BOTTOM
+        if (detail.abilities.isNotEmpty()) {
+            val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
+            val descW = wrapW - 8
+            var lines = 1
+            detail.abilities.forEach { a ->
+                lines += 1
+                if (a.description.isNotEmpty()) lines += wrapText(a.description, descW).size
+            }
+            SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
+        } else 0
+    val evoH = run {
+        val hasPre = detail.preEvolution != null
+        val hasEvos = detail.evolutions.isNotEmpty()
+        if (!hasPre && !hasEvos) 0
+        else {
+            val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
+            var lines = 0
+            if (hasPre) {
+                val preName = detail.preEvolution!!.split(":").last().replaceFirstChar { it.uppercase() }
+                lines += wrapText("\u2191 $preName", wrapW).size
+            }
+            detail.evolutions.forEach { evo ->
+                val name = evo.targetName.replaceFirstChar { it.uppercase() }
+                lines += wrapText("\u2193 $name (${evo.method})", wrapW).size
+            }
+            SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
+        }
+    }
+    val trainH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 4 * 9 + SECTION_PAD_BOTTOM
+    val spawnH = if (detail.spawnBiomes.isNotEmpty()) {
+        val biomeText = detail.spawnBiomes.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+        val lines = wrapText("Biomes: $biomeText", CONTENT_WIDTH - SECTION_PAD * 2).size
+        SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
+    } else 0
+    val breedH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 3 * 9 + SECTION_PAD_BOTTOM
+    val defH = run {
+        val types = listOfNotNull(detail.primaryType, detail.secondaryType)
+        val eff = getEffectiveness(types)
+        val groups = eff.entries.filter { it.value != 1.0 }
+            .groupBy({ it.value }, { it.key })
+        val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
+        var lines = 0
+        if (groups.isEmpty()) {
+            lines = 1
+        } else {
+            groups.forEach { (mult, typeNames) ->
+                val label = when {
+                    mult > 1.0 -> "Weak (x${multiplierText(mult)})"
+                    mult == 0.0 -> "Immune (x0)"
+                    else -> "Resist (x${multiplierText(mult)})"
+                }
+                val text = typeNames.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+                lines += wrapText("$label: $text", wrapW).size
+            }
+        }
+        SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
+    }
     val movesH =
         SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 7 + minOf(detail.moves.count { it.method == "level" }, 20) * 7 + SECTION_PAD_BOTTOM
-    val learnH =
-        if (detail.moves.any { it.method != "level" }) SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 3 * 9 + SECTION_PAD_BOTTOM else 0
-    val separators = 7 * 4
-    return topH + statsH + abiH + evoH + defH + movesH + learnH + separators
+    val learnH = run {
+        val others = detail.moves.filter { it.method != "level" }
+        if (others.isEmpty()) 0
+        else {
+            val groups = others.groupBy { it.method }
+            val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
+            var lines = 0
+            groups.forEach { (method, methodMoves) ->
+                val label = when (method) {
+                    "tm" -> "TM"; "egg" -> "Egg"; "tutor" -> "Tutor"; else -> method
+                }
+                val names = methodMoves.joinToString(", ") { it.name.replaceFirstChar { c -> c.uppercase() } }
+                lines += wrapText("$label: $names", wrapW).size
+            }
+            SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + (groups.size - 1) * 4 + SECTION_PAD_BOTTOM
+        }
+    }
+    val separators = 10 * 4
+    return topH + statsH + abiH + evoH + trainH + spawnH + breedH + defH + movesH + learnH + separators
 }
 
 private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
@@ -518,5 +742,147 @@ companion object {
     private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
         "cobblemon_smartphone", "textures/gui/large_screen.png"
     )
+
+    // --- Type chart & helpers ---
+
+    private val typeChart: Map<String, Map<String, Double>> = mapOf(
+        "normal" to mapOf(
+            "fighting" to 2.0, "ghost" to 0.0
+        ),
+        "fire" to mapOf(
+            "fire" to 0.5, "water" to 2.0, "grass" to 0.5, "ice" to 0.5,
+            "ground" to 2.0, "bug" to 0.5, "rock" to 2.0, "steel" to 0.5, "fairy" to 0.5
+        ),
+        "water" to mapOf(
+            "fire" to 0.5, "water" to 0.5, "grass" to 2.0, "electric" to 2.0,
+            "ice" to 0.5, "steel" to 0.5
+        ),
+        "electric" to mapOf(
+            "electric" to 0.5, "ground" to 2.0, "flying" to 0.5, "steel" to 0.5
+        ),
+        "grass" to mapOf(
+            "fire" to 2.0, "water" to 0.5, "electric" to 0.5, "grass" to 0.5, "ice" to 2.0,
+            "poison" to 2.0, "ground" to 0.5, "flying" to 2.0, "bug" to 2.0
+        ),
+        "ice" to mapOf(
+            "fire" to 2.0, "ice" to 0.5, "fighting" to 2.0, "rock" to 2.0, "steel" to 2.0
+        ),
+        "fighting" to mapOf(
+            "flying" to 2.0, "psychic" to 2.0, "bug" to 0.5, "rock" to 0.5,
+            "dark" to 0.5, "fairy" to 2.0
+        ),
+        "poison" to mapOf(
+            "grass" to 0.5, "fighting" to 0.5, "poison" to 0.5,
+            "ground" to 2.0, "psychic" to 2.0, "bug" to 0.5, "fairy" to 0.5
+        ),
+        "ground" to mapOf(
+            "water" to 2.0, "grass" to 2.0, "electric" to 0.0, "ice" to 2.0,
+            "poison" to 0.5, "rock" to 0.5
+        ),
+        "flying" to mapOf(
+            "electric" to 2.0, "grass" to 0.5, "ice" to 2.0, "fighting" to 0.5,
+            "ground" to 0.0, "bug" to 0.5, "rock" to 2.0
+        ),
+        "psychic" to mapOf(
+            "fighting" to 0.5, "psychic" to 0.5, "bug" to 2.0, "ghost" to 2.0, "dark" to 2.0
+        ),
+        "bug" to mapOf(
+            "fire" to 2.0, "grass" to 0.5, "fighting" to 0.5, "ground" to 0.5,
+            "flying" to 2.0, "rock" to 2.0
+        ),
+        "rock" to mapOf(
+            "normal" to 0.5, "fire" to 0.5, "water" to 2.0, "grass" to 2.0,
+            "fighting" to 2.0, "poison" to 0.5, "ground" to 2.0, "flying" to 0.5,
+            "steel" to 2.0
+        ),
+        "ghost" to mapOf(
+            "normal" to 0.0, "fighting" to 0.0, "poison" to 0.5, "bug" to 0.5,
+            "ghost" to 2.0, "dark" to 2.0
+        ),
+        "dragon" to mapOf(
+            "fire" to 0.5, "water" to 0.5, "grass" to 0.5, "electric" to 0.5,
+            "ice" to 2.0, "dragon" to 2.0, "fairy" to 2.0
+        ),
+        "dark" to mapOf(
+            "fighting" to 2.0, "psychic" to 0.0, "bug" to 2.0, "ghost" to 0.5,
+            "dark" to 0.5, "fairy" to 2.0
+        ),
+        "steel" to mapOf(
+            "normal" to 0.5, "fire" to 2.0, "grass" to 0.5, "ice" to 0.5,
+            "fighting" to 2.0, "poison" to 0.0, "ground" to 2.0, "flying" to 0.5,
+            "psychic" to 0.5, "bug" to 0.5, "rock" to 0.5, "dragon" to 0.5,
+            "steel" to 0.5, "fairy" to 0.5
+        ),
+        "fairy" to mapOf(
+            "fighting" to 0.5, "poison" to 2.0, "bug" to 0.5, "dragon" to 0.0,
+            "dark" to 0.5, "steel" to 2.0
+        )
+    )
+
+    private val allTypes = listOf(
+        "normal", "fire", "water", "electric", "grass", "ice",
+        "fighting", "poison", "ground", "flying", "psychic", "bug",
+        "rock", "ghost", "dragon", "dark", "steel", "fairy"
+    )
+
+    private val typeAbbr = mapOf(
+        "normal" to "Nor", "fire" to "Fir", "water" to "Wat", "electric" to "Ele",
+        "grass" to "Gra", "ice" to "Ice", "fighting" to "Fig", "poison" to "Poi",
+        "ground" to "Gro", "flying" to "Fly", "psychic" to "Psy", "bug" to "Bug",
+        "rock" to "Roc", "ghost" to "Gho", "dragon" to "Dra", "dark" to "Dar",
+        "steel" to "Ste", "fairy" to "Fai"
+    )
+
+    fun getEffectiveness(types: List<String>): Map<String, Double> {
+        val result = mutableMapOf<String, Double>()
+        allTypes.forEach { result[it] = 1.0 }
+        for (type in types) {
+            typeChart[type.lowercase()]?.forEach { (attackType, multiplier) ->
+                result[attackType] = (result[attackType] ?: 1.0) * multiplier
+            }
+        }
+        return result
+    }
+
+    fun multiplierText(value: Double): String = when (value) {
+        0.0 -> "0"
+        0.25 -> "\u00BC"
+        0.5 -> "\u00BD"
+        1.0 -> "-"
+        2.0 -> "2"
+        4.0 -> "4"
+        else -> value.toString()
+    }
+
+    fun typeAbbreviation(type: String): String = typeAbbr[type.lowercase()] ?: type.take(3)
+
+    fun typeColor(type: String): Int = when (type.lowercase()) {
+        "normal" -> 0xFFA8A77A.toInt()
+        "fire" -> 0xFFEE8130.toInt()
+        "water" -> 0xFF6390F0.toInt()
+        "electric" -> 0xFFF7D02C.toInt()
+        "grass" -> 0xFF7AC74C.toInt()
+        "ice" -> 0xFF96D9D6.toInt()
+        "fighting" -> 0xFFC22E28.toInt()
+        "poison" -> 0xFFA33EA1.toInt()
+        "ground" -> 0xFFE2BF65.toInt()
+        "flying" -> 0xFFA98FF3.toInt()
+        "psychic" -> 0xFFF95587.toInt()
+        "bug" -> 0xFFA6B91A.toInt()
+        "rock" -> 0xFFB6A136.toInt()
+        "ghost" -> 0xFF735797.toInt()
+        "dragon" -> 0xFF6F35FC.toInt()
+        "dark" -> 0xFF705746.toInt()
+        "steel" -> 0xFFB7B7CE.toInt()
+        "fairy" -> 0xFFD685AD.toInt()
+        else -> CONTENT_TEXT
+    }
+
+    fun catchPercent(catchRate: Int): Int {
+        val a = (catchRate / 3.0).roundToInt().coerceAtLeast(1)
+        if (a >= 255) return 100
+        val b = 65536.0 / sqrt(sqrt(255.0 / a))
+        return (b / 65536.0).pow(4).times(100).roundToInt()
+    }
 }
 }

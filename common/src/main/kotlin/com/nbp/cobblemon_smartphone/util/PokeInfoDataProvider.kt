@@ -11,6 +11,9 @@ import com.cobblemon.mod.common.pokemon.evolution.variants.LevelUpEvolution
 import com.cobblemon.mod.common.pokemon.evolution.variants.TradeEvolution
 import com.cobblemon.mod.common.pokemon.requirements.FriendshipRequirement
 import com.cobblemon.mod.common.pokemon.requirements.LevelRequirement
+import com.cobblemon.mod.common.api.spawning.CobblemonSpawnPools
+import com.cobblemon.mod.common.api.spawning.detail.PokemonSpawnDetail
+import net.minecraft.network.chat.Component
 import com.cobblemon.mod.common.pokemon.requirements.TimeRangeRequirement
 import com.cobblemon.mod.common.util.asIdentifierDefaultingNamespace
 
@@ -30,7 +33,7 @@ object PokeInfoDataProvider {
         val total get() = hp + attack + defence + specialAttack + specialDefence + speed
     }
 
-    data class AbilityInfo(val name: String, val isHidden: Boolean)
+    data class AbilityInfo(val name: String, val isHidden: Boolean, val description: String)
 
     data class EvoInfo(val targetName: String, val method: String)
 
@@ -55,7 +58,8 @@ object PokeInfoDataProvider {
         val baseFriendship: Int,
         val eggGroups: List<String>,
         val eggCycles: Int,
-        val maleRatio: Float
+        val maleRatio: Float,
+        val spawnBiomes: List<String>
     )
 
     private var speciesCache: List<SpeciesInfo>? = null
@@ -97,7 +101,8 @@ object PokeInfoDataProvider {
         val abilities = species.abilities.toList().map { ability ->
             AbilityInfo(
                 name = ability.template.name,
-                isHidden = ability is HiddenAbility
+                isHidden = ability is HiddenAbility,
+                description = Component.translatable(ability.template.description).string
             )
         }
 
@@ -170,7 +175,19 @@ object PokeInfoDataProvider {
             baseFriendship = species.baseFriendship,
             eggGroups = species.eggGroups.map { it.showdownID },
             eggCycles = species.eggCycles,
-            maleRatio = species.maleRatio
+            maleRatio = species.maleRatio,
+            spawnBiomes = run {
+                try {
+                    CobblemonSpawnPools.WORLD_SPAWN_POOL.details
+                        .filterIsInstance<PokemonSpawnDetail>()
+                        .filter { it.pokemon.species.equals(species.name, ignoreCase = true) }
+                        .flatMap { it.validBiomes }
+                        .map { it.path }
+                        .distinct()
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            }
         )
     }
 
