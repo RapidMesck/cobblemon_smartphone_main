@@ -35,6 +35,9 @@ class PokeInfoDetailScreen(
     private var screenY = 0
     private var scrollY = 0
     private var maxScroll = 0
+    private var draggingScrollbar = false
+    private var dragStartMouseY = 0
+    private var dragStartScrollY = 0
     private var modelPokemon: RenderablePokemon? = null
     private var posableState = FloatingState()
     private lateinit var detail: PokeInfoDataProvider.SpeciesDetail
@@ -126,6 +129,7 @@ class PokeInfoDetailScreen(
         cy = renderLearnableMoves(guiGraphics, cy)
 
         guiGraphics.disableScissor()
+        renderScrollbar(guiGraphics, mouseY)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -153,7 +157,28 @@ class PokeInfoDetailScreen(
                 return true
             }
         }
+        // Scrollbar drag
+        if (maxScroll > 0) {
+            val trackH = CONTENT_END_Y - CONTENT_START_Y
+            val totalH = calculateContentHeight()
+            val handleH = maxOf(12, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
+            val handleY = screenY + CONTENT_START_Y + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
+            val trackX = screenX + CONTENT_X + CONTENT_WIDTH + 1
+            val mx = mouseX.toInt()
+            val my = mouseY.toInt()
+            if (mx >= trackX && mx <= trackX + 4 && my >= handleY && my <= handleY + handleH) {
+                draggingScrollbar = true
+                dragStartMouseY = my
+                dragStartScrollY = scrollY
+                return true
+            }
+        }
         return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        draggingScrollbar = false
+        return super.mouseReleased(mouseX, mouseY, button)
     }
 
     override fun mouseScrolled(mx: Double, my: Double, h: Double, v: Double): Boolean {
@@ -607,6 +632,28 @@ class PokeInfoDetailScreen(
         guiGraphics.fill(x1, y1 + titleH, x2, y1 + h, SECTION_CONTENT_BG)
     }
 
+    private fun renderScrollbar(guiGraphics: GuiGraphics, mouseY: Int) {
+        if (maxScroll <= 0) return
+        val trackX = screenX + CONTENT_X + CONTENT_WIDTH + 1
+        val trackY = screenY + CONTENT_START_Y
+        val trackH = CONTENT_END_Y - CONTENT_START_Y
+        val totalH = calculateContentHeight()
+        val handleH = maxOf(12, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
+        val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
+
+        if (draggingScrollbar) {
+            val dy = mouseY - dragStartMouseY
+            val scrollRange = trackH - handleH
+            if (scrollRange > 0) {
+                scrollY = (dragStartScrollY + (dy.toFloat() / scrollRange * maxScroll).toInt()).coerceIn(0, maxScroll)
+            }
+        }
+
+        guiGraphics.fill(trackX, trackY, trackX + 4, trackY + trackH, 0x25FFFFFF.toInt())
+        val color = if (draggingScrollbar) 0x80FFFFFF.toInt() else 0x50FFFFFF.toInt()
+        guiGraphics.fill(trackX, handleY, trackX + 4, handleY + handleH, color)
+    }
+
     private fun sectionBgLight(guiGraphics: GuiGraphics, y: Int, h: Int) {
         guiGraphics.fill(
             screenX + CONTENT_X, screenY + y,
@@ -770,7 +817,7 @@ companion object {
     private const val HEADER_Y = 8
 
     private const val CONTENT_X = 20
-    private const val CONTENT_WIDTH = 171
+    private const val CONTENT_WIDTH = 166
     private const val CONTENT_START_Y = 28
     private const val CONTENT_END_Y = 192
 
