@@ -39,6 +39,8 @@ object PokeInfoDataProvider {
 
     data class MoveInfo(val level: Int, val name: String, val method: String, val type: String, val category: String, val power: Int, val accuracy: Int)
 
+    data class FormInfo(val name: String, val displayName: String)
+
     data class SpeciesDetail(
         val name: String,
         val dexNumber: Int,
@@ -59,7 +61,9 @@ object PokeInfoDataProvider {
         val eggGroups: List<String>,
         val eggCycles: Int,
         val maleRatio: Float,
-        val spawnBiomes: List<String>
+        val spawnBiomes: List<String>,
+        val availableForms: List<FormInfo>,
+        val selectedForm: String
     )
 
     private var speciesCache: List<SpeciesInfo>? = null
@@ -88,17 +92,20 @@ object PokeInfoDataProvider {
         }
     }
 
-    fun getDetail(dexNumber: Int): SpeciesDetail? {
+    fun getDetail(dexNumber: Int, formName: String? = null): SpeciesDetail? {
         val species = PokemonSpecies.getByPokedexNumber(dexNumber) ?: return null
-        return buildDetail(species)
+        return buildDetail(species, formName)
     }
 
     fun clearCache() {
         speciesCache = null
     }
 
-    private fun buildDetail(species: Species): SpeciesDetail {
-        val abilities = species.abilities.toList().map { ability ->
+    private fun buildDetail(species: Species, formName: String? = null): SpeciesDetail {
+        val form = if (formName != null) species.forms.firstOrNull { it.name == formName } else null
+        val f = form ?: species.standardForm
+
+        val abilities = f.abilities.toList().map { ability ->
             AbilityInfo(
                 name = ability.template.name,
                 isHidden = ability is HiddenAbility,
@@ -109,7 +116,8 @@ object PokeInfoDataProvider {
         val evolutions = collectEvolutionChain(species)
 
         val moves = mutableListOf<MoveInfo>()
-        for ((level, moveList) in species.moves.levelUpMoves) {
+        val learnset = f.moves
+        for ((level, moveList) in learnset.levelUpMoves) {
             for (template in moveList) {
                 moves.add(MoveInfo(
                     level = level, name = template.name, method = "level",
@@ -118,21 +126,21 @@ object PokeInfoDataProvider {
                 ))
             }
         }
-        for (template in species.moves.tmMoves) {
+        for (template in learnset.tmMoves) {
             moves.add(MoveInfo(
                 level = 0, name = template.name, method = "tm",
                 type = template.elementalType.name, category = template.damageCategory.name,
                 power = template.power.toInt(), accuracy = template.accuracy.toInt()
             ))
         }
-        for (template in species.moves.eggMoves) {
+        for (template in learnset.eggMoves) {
             moves.add(MoveInfo(
                 level = 0, name = template.name, method = "egg",
                 type = template.elementalType.name, category = template.damageCategory.name,
                 power = template.power.toInt(), accuracy = template.accuracy.toInt()
             ))
         }
-        for (template in species.moves.tutorMoves) {
+        for (template in learnset.tutorMoves) {
             moves.add(MoveInfo(
                 level = 0, name = template.name, method = "tutor",
                 type = template.elementalType.name, category = template.damageCategory.name,
@@ -140,42 +148,46 @@ object PokeInfoDataProvider {
             ))
         }
 
-        val preEvo = species.preEvolution?.species?.name
+        val preEvo = f.preEvolution?.species?.name
+
+        val allForms = species.forms.map {
+            FormInfo(name = it.name, displayName = it.formOnlyShowdownId().replaceFirstChar { c -> c.uppercase() })
+        }
 
         return SpeciesDetail(
             name = species.name,
             dexNumber = species.nationalPokedexNumber,
-            primaryType = species.primaryType.name,
-            secondaryType = species.secondaryType?.name,
-            height = species.height,
-            weight = species.weight,
+            primaryType = f.primaryType.name,
+            secondaryType = f.secondaryType?.name,
+            height = f.height,
+            weight = f.weight,
             baseStats = StatsInfo(
-                hp = species.baseStats[Stats.HP] ?: 0,
-                attack = species.baseStats[Stats.ATTACK] ?: 0,
-                defence = species.baseStats[Stats.DEFENCE] ?: 0,
-                specialAttack = species.baseStats[Stats.SPECIAL_ATTACK] ?: 0,
-                specialDefence = species.baseStats[Stats.SPECIAL_DEFENCE] ?: 0,
-                speed = species.baseStats[Stats.SPEED] ?: 0
+                hp = f.baseStats[Stats.HP] ?: 0,
+                attack = f.baseStats[Stats.ATTACK] ?: 0,
+                defence = f.baseStats[Stats.DEFENCE] ?: 0,
+                specialAttack = f.baseStats[Stats.SPECIAL_ATTACK] ?: 0,
+                specialDefence = f.baseStats[Stats.SPECIAL_DEFENCE] ?: 0,
+                speed = f.baseStats[Stats.SPEED] ?: 0
             ),
             evYield = StatsInfo(
-                hp = species.evYield[Stats.HP] ?: 0,
-                attack = species.evYield[Stats.ATTACK] ?: 0,
-                defence = species.evYield[Stats.DEFENCE] ?: 0,
-                specialAttack = species.evYield[Stats.SPECIAL_ATTACK] ?: 0,
-                specialDefence = species.evYield[Stats.SPECIAL_DEFENCE] ?: 0,
-                speed = species.evYield[Stats.SPEED] ?: 0
+                hp = f.evYield[Stats.HP] ?: 0,
+                attack = f.evYield[Stats.ATTACK] ?: 0,
+                defence = f.evYield[Stats.DEFENCE] ?: 0,
+                specialAttack = f.evYield[Stats.SPECIAL_ATTACK] ?: 0,
+                specialDefence = f.evYield[Stats.SPECIAL_DEFENCE] ?: 0,
+                speed = f.evYield[Stats.SPEED] ?: 0
             ),
             abilities = abilities,
             preEvolution = preEvo,
             evolutions = evolutions,
             moves = moves,
-            catchRate = species.catchRate,
-            baseExp = species.baseExperienceYield,
-            growthRate = species.experienceGroup.name,
-            baseFriendship = species.baseFriendship,
-            eggGroups = species.eggGroups.map { it.showdownID },
+            catchRate = f.catchRate,
+            baseExp = f.baseExperienceYield,
+            growthRate = f.experienceGroup.name,
+            baseFriendship = f.baseFriendship,
+            eggGroups = f.eggGroups.map { it.showdownID },
             eggCycles = species.eggCycles,
-            maleRatio = species.maleRatio,
+            maleRatio = f.maleRatio,
             spawnBiomes = run {
                 try {
                     CobblemonSpawnPools.WORLD_SPAWN_POOL.details
@@ -187,7 +199,9 @@ object PokeInfoDataProvider {
                 } catch (_: Exception) {
                     emptyList()
                 }
-            }
+            },
+            availableForms = allForms,
+            selectedForm = f.name
         )
     }
 

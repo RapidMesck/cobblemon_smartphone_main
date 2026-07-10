@@ -1,7 +1,12 @@
 package com.nbp.cobblemon_smartphone.client.gui
 
 import com.cobblemon.mod.common.api.gui.blitk
+import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.CobblemonSounds
+import com.cobblemon.mod.common.client.gui.drawProfilePokemon
+import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState
+import com.cobblemon.mod.common.entity.PoseType
+import com.cobblemon.mod.common.pokemon.RenderablePokemon
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
@@ -12,6 +17,7 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
+import org.joml.Quaternionf
 
 class PokeInfoScreen(
     private val color: SmartphoneColor,
@@ -24,11 +30,14 @@ class PokeInfoScreen(
     )
     private var screenX = 0
     private var screenY = 0
-    private var currentPage = 0
+    private var scrollY = 0
+    private var maxScroll = 0
+    private var draggingScrollbar = false
+    private var dragStartMouseY = 0
+    private var dragStartScrollY = 0
     private lateinit var searchBox: EditBox
     private var results: List<PokeInfoDataProvider.SpeciesInfo> = emptyList()
-
-    private val maxPage get() = if (results.isEmpty()) 0 else (results.size - 1) / RESULTS_PER_PAGE
+    private val modelCache = mutableMapOf<Int, RenderablePokemon?>()
 
     override fun isPauseScreen(): Boolean = false
 
@@ -40,21 +49,25 @@ class PokeInfoScreen(
 
         searchBox = EditBox(
             font,
-            screenX + SEARCH_X,
-            screenY + SEARCH_Y,
-            SEARCH_WIDTH,
+            screenX + SEARCH_X + 2,
+            screenY + SEARCH_Y + 3,
+            SEARCH_WIDTH - 4,
             SEARCH_HEIGHT,
             Component.translatable("cobblemon_smartphone.pokeinfo.search")
         )
         searchBox.setMaxLength(30)
+        searchBox.setBordered(false)
+        searchBox.setTextColor(0xFF888888.toInt())
         searchBox.setResponder { query -> onSearchChanged(query) }
         addRenderableWidget(searchBox)
 
         results = PokeInfoDataProvider.all()
-        currentPage = 0
+        updateMaxScroll()
+        scrollY = 0
     }
 
     override fun removed() {
+        modelCache.clear()
         SmartphoneHelper.contextSmartphone = null
         SmartphoneHelper.contextColor = null
         super.removed()
@@ -63,62 +76,86 @@ class PokeInfoScreen(
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         val matrices = guiGraphics.pose()
 
-        blitk(
-            matrixStack = matrices,
-            texture = frameTexture,
-            x = screenX,
-            y = screenY,
-            width = GUI_WIDTH,
-            height = GUI_HEIGHT
-        )
-        blitk(
-            matrixStack = matrices,
-            texture = HOME_SCREEN_TEXTURE,
-            x = screenX,
-            y = screenY,
-            width = GUI_WIDTH,
-            height = GUI_HEIGHT
-        )
+        blitk(matrixStack = matrices, texture = frameTexture, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
+        blitk(matrixStack = matrices, texture = HOME_SCREEN_TEXTURE, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
+
+        // Back button
+        val backHover = isInBackButton(mouseX, mouseY)
+        val backColor = if (backHover) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
+        guiGraphics.drawString(font, "\u00AB Back", screenX + BACK_X, screenY + BACK_Y, backColor, false)
+
+        // Search box background
+        val sx = screenX + SEARCH_X
+        val sy = screenY + SEARCH_Y
+        guiGraphics.fill(sx, sy, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, SECTION_CONTENT_BG)
+        guiGraphics.fill(sx, sy, sx + SEARCH_WIDTH, sy + 1, SECTION_TITLE_BG)
+        guiGraphics.fill(sx, sy + SEARCH_HEIGHT - 1, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
+        guiGraphics.fill(sx, sy, sx + 1, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
+        guiGraphics.fill(sx + SEARCH_WIDTH - 1, sy, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
 
         searchBox.renderWidget(guiGraphics, mouseX, mouseY, delta)
 
-        pagedResults().forEachIndexed { index, species ->
-            renderResult(guiGraphics, mouseX, mouseY, index, species)
+        guiGraphics.enableScissor(
+            screenX + CONTENT_X, screenY + LIST_START_Y,
+            screenX + CONTENT_X + LIST_WIDTH, screenY + LIST_END_Y
+        )
+
+        val startIndex = (scrollY / (CARD_HEIGHT + CARD_GAP)).coerceAtLeast(0)
+        val endIndex = ((scrollY + LIST_END_Y - LIST_START_Y) / (CARD_HEIGHT + CARD_GAP) + 1).coerceAtMost(results.size)
+        for (i in startIndex until endIndex) {
+            val cy = LIST_START_Y + i * (CARD_HEIGHT + CARD_GAP) - scrollY
+            renderCard(guiGraphics, mouseX, mouseY, i, cy, results[i])
         }
 
-        renderPageDots(guiGraphics)
-        renderFooterButtons(guiGraphics, mouseX, mouseY)
+        guiGraphics.disableScissor()
+        renderScrollbar(guiGraphics, mouseY)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         val mx = mouseX.toInt()
         val my = mouseY.toInt()
 
-        if (isInFooterButton(mx, my, FOOTER_PREV_X)) {
-            playClickSound()
-            changePage(-1)
-            return true
-        }
-        if (isInFooterButton(mx, my, FOOTER_HOME_X)) {
+        // Back button
+        if (isInBackButton(mx, my)) {
             playClickSound()
             Minecraft.getInstance().setScreen(SmartphoneScreen(color, smartphoneStack))
             return true
         }
-        if (isInFooterButton(mx, my, FOOTER_NEXT_X)) {
-            playClickSound()
-            changePage(1)
-            return true
+
+        val startIndex = (scrollY / (CARD_HEIGHT + CARD_GAP)).coerceAtLeast(0)
+        val endIndex = ((scrollY + LIST_END_Y - LIST_START_Y) / (CARD_HEIGHT + CARD_GAP) + 1).coerceAtMost(results.size)
+        for (i in startIndex until endIndex) {
+            val cy = screenY + LIST_START_Y + i * (CARD_HEIGHT + CARD_GAP) - scrollY
+            if (mx >= screenX + CONTENT_X && mx <= screenX + CONTENT_X + LIST_WIDTH &&
+                my >= cy && my <= cy + CARD_HEIGHT
+            ) {
+                playClickSound()
+                Minecraft.getInstance().setScreen(PokeInfoDetailScreen(color, smartphoneStack, results[i].dexNumber))
+                return true
+            }
         }
 
-        pagedResults().forEachIndexed { index, species ->
-            if (isInResult(mx, my, index)) {
-                playClickSound()
-                Minecraft.getInstance().setScreen(PokeInfoDetailScreen(color, smartphoneStack, species.dexNumber))
+        // Scrollbar drag
+        if (maxScroll > 0) {
+            val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
+            val trackY = screenY + LIST_START_Y
+            val trackH = LIST_END_Y - LIST_START_Y
+            val handleH = maxOf(12, (trackH.toFloat() * trackH / (results.size * (CARD_HEIGHT + CARD_GAP)).toFloat()).toInt())
+            val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
+            if (mx >= trackX && mx <= trackX + SCROLLBAR_WIDTH && my >= handleY && my <= handleY + handleH) {
+                draggingScrollbar = true
+                dragStartMouseY = my
+                dragStartScrollY = scrollY
                 return true
             }
         }
 
         return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        draggingScrollbar = false
+        return super.mouseReleased(mouseX, mouseY, button)
     }
 
     override fun charTyped(codePoint: Char, modifiers: Int): Boolean {
@@ -130,209 +167,139 @@ class PokeInfoScreen(
         return super.keyPressed(keyCode, scanCode, modifiers)
     }
 
-    override fun mouseScrolled(
-        mouseX: Double,
-        mouseY: Double,
-        horizontalAmount: Double,
-        verticalAmount: Double
-    ): Boolean {
-        if (maxPage == 0 || verticalAmount == 0.0) {
-            return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
-        }
-
-        return changePage(if (verticalAmount < 0.0) 1 else -1)
+    override fun mouseScrolled(mx: Double, my: Double, h: Double, v: Double): Boolean {
+        if (v == 0.0 || maxScroll == 0) return super.mouseScrolled(mx, my, h, v)
+        scrollY = (scrollY - v.toInt() * SCROLL_SPEED).coerceIn(0, maxScroll)
+        return true
     }
 
     private fun onSearchChanged(query: String) {
         results = PokeInfoDataProvider.search(query)
-        currentPage = 0
+        updateMaxScroll()
+        scrollY = 0
     }
 
-    private fun changePage(offset: Int): Boolean {
-        val nextPage = (currentPage + offset).coerceIn(0, maxPage)
-        if (nextPage == currentPage) {
-            return false
+    private fun renderScrollbar(guiGraphics: GuiGraphics, mouseY: Int) {
+        if (maxScroll <= 0) return
+        val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
+        val trackY = screenY + LIST_START_Y
+        val trackH = LIST_END_Y - LIST_START_Y
+        val handleH = maxOf(12, (trackH.toFloat() * trackH / (results.size * (CARD_HEIGHT + CARD_GAP)).toFloat()).toInt())
+        val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
+
+        // Handle drag
+        if (draggingScrollbar) {
+            val dy = mouseY - dragStartMouseY
+            val scrollRange = trackH - handleH
+            if (scrollRange > 0) {
+                scrollY = (dragStartScrollY + (dy.toFloat() / scrollRange * maxScroll).toInt()).coerceIn(0, maxScroll)
+            }
         }
 
-        currentPage = nextPage
-        return true
+        // Track
+        guiGraphics.fill(trackX, trackY, trackX + SCROLLBAR_WIDTH, trackY + trackH, 0x20FFFFFF.toInt())
+        // Handle
+        val color = if (draggingScrollbar) 0x90FFFFFF.toInt() else 0x60FFFFFF.toInt()
+        guiGraphics.fill(trackX, handleY, trackX + SCROLLBAR_WIDTH, handleY + handleH, color)
     }
 
-    private fun pagedResults(): List<PokeInfoDataProvider.SpeciesInfo> {
-        val from = currentPage * RESULTS_PER_PAGE
-        return results.drop(from).take(RESULTS_PER_PAGE)
+    private fun updateMaxScroll() {
+        maxScroll = maxOf(0, results.size * (CARD_HEIGHT + CARD_GAP) - (LIST_END_Y - LIST_START_Y))
     }
 
-    private fun resultY(index: Int): Int = RESULTS_START_Y + index * RESULT_HEIGHT
-
-    private fun isInResult(mouseX: Int, mouseY: Int, index: Int): Boolean {
-        val y = resultY(index)
-        return mouseX >= screenX + RESULT_X && mouseX <= screenX + RESULT_X + RESULT_WIDTH &&
-                mouseY >= screenY + y && mouseY <= screenY + y + RESULT_HEIGHT
+    private fun getModel(dexNumber: Int): RenderablePokemon? {
+        modelCache[dexNumber]?.let { return it }
+        if (modelCache.containsKey(dexNumber)) return null
+        val species = PokemonSpecies.getByPokedexNumber(dexNumber)
+        val model = if (species != null) RenderablePokemon(species, emptySet()) else null
+        modelCache[dexNumber] = model
+        return model
     }
 
-    private fun renderResult(
+    private fun renderCard(
         guiGraphics: GuiGraphics,
         mouseX: Int,
         mouseY: Int,
         index: Int,
+        cy: Int,
         species: PokeInfoDataProvider.SpeciesInfo
     ) {
-        val y = resultY(index)
-        val hovered = isInResult(mouseX, mouseY, index)
-        val color = if (hovered) RESULT_HOVER_COLOR else RESULT_COLOR
+        val x1 = screenX + CONTENT_X
+        val y1 = screenY + cy
+        val x2 = screenX + CONTENT_X + LIST_WIDTH
+        val y2 = y1 + CARD_HEIGHT
+        val hovered = mouseX >= x1 && mouseX <= x2 && mouseY >= y1 && mouseY <= y2
 
-        if (hovered) {
-            guiGraphics.fill(
-                screenX + RESULT_BG_X,
-                screenY + y,
-                screenX + RESULT_BG_X + RESULT_BG_WIDTH,
-                screenY + y + RESULT_HEIGHT,
-                RESULT_BG_HOVER.toInt()
+        // Card background
+        val bgColor = if (hovered) 0x703A96B6.toInt() else 0x40FFFFFF.toInt()
+        guiGraphics.fill(x1, y1, x2, y2, bgColor)
+
+        // Divider line between cards
+        if (index > 0) {
+            guiGraphics.fill(x1 + 4, y1, x2 - 4, y1 + 1, 0x15FFFFFF.toInt())
+        }
+
+        // Left: dex number + name + type
+        val dexAndName = "#${String.format("%03d", species.dexNumber)} ${species.name}"
+        val textColor = if (hovered) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
+        guiGraphics.drawString(font, dexAndName, x1 + 8, y1 + 3, textColor, false)
+
+        // Type line
+        val types = listOfNotNull(species.primaryType, species.secondaryType)
+        val typeText = types.joinToString(" / ") { it.replaceFirstChar { c -> c.uppercase() } }
+        guiGraphics.drawString(font, typeText, x1 + 8, y1 + 15, 0xA0FFFFFF.toInt(), false)
+
+        // Right: mini 3D model
+        val model = getModel(species.dexNumber)
+        if (model != null) {
+            val matrices = guiGraphics.pose()
+            matrices.pushPose()
+            matrices.translate((x2 - 18).toFloat(), (y1 + CARD_HEIGHT / 2 - 5).toFloat(), 0f)
+            drawProfilePokemon(
+                model, matrices, Quaternionf().rotateY(Math.toRadians(25.0).toFloat()),
+                PoseType.PROFILE, FloatingState(), 0f, 9f
             )
+            matrices.popPose()
         }
-
-        val text = String.format("#%03d %s", species.dexNumber, species.name)
-        guiGraphics.drawString(
-            font,
-            text,
-            screenX + RESULT_TEXT_X,
-            screenY + y + RESULT_TEXT_Y_OFFSET,
-            color,
-            false
-        )
-    }
-
-    private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        renderFooterButton(guiGraphics, PREV_BUTTON_TEXTURE, FOOTER_PREV_X, mouseX, mouseY)
-        renderFooterButton(guiGraphics, HOME_BUTTON_TEXTURE, FOOTER_HOME_X, mouseX, mouseY)
-        renderFooterButton(guiGraphics, NEXT_BUTTON_TEXTURE, FOOTER_NEXT_X, mouseX, mouseY)
-    }
-
-    private fun renderFooterButton(
-        guiGraphics: GuiGraphics,
-        texture: ResourceLocation,
-        x: Int,
-        mouseX: Int,
-        mouseY: Int
-    ) {
-        val hovered = isInFooterButton(mouseX, mouseY, x)
-        val textureY = if (hovered) FOOTER_BUTTON_SIZE else 0
-        guiGraphics.blit(
-            texture,
-            screenX + x,
-            screenY + FOOTER_BUTTON_Y,
-            0f,
-            textureY.toFloat(),
-            FOOTER_BUTTON_SIZE,
-            FOOTER_BUTTON_SIZE,
-            FOOTER_BUTTON_SIZE,
-            FOOTER_BUTTON_TEXTURE_HEIGHT
-        )
-    }
-
-    private fun renderPageDots(guiGraphics: GuiGraphics) {
-        val totalPages = maxPage + 1
-        if (totalPages <= 1) {
-            return
-        }
-
-        val dotCount = totalPages.coerceAtMost(MAX_VISIBLE_DOTS)
-        val activeDot = when {
-            totalPages <= MAX_VISIBLE_DOTS -> currentPage
-            currentPage == 0 -> 0
-            currentPage == maxPage -> dotCount - 1
-            else -> 1
-        }
-        val startX = DOT_CENTER_X - ((dotCount * DOT_SIZE + (dotCount - 1) * DOT_SPACING) / 2)
-
-        repeat(dotCount) { index ->
-            val active = index == activeDot
-            val texture = if (active) PAGE_DOT_ON_TEXTURE else PAGE_DOT_OFF_TEXTURE
-            val yOffset = if (active) 0 else DOT_INACTIVE_Y_OFFSET
-            guiGraphics.blit(
-                texture,
-                screenX + startX + index * (DOT_SIZE + DOT_SPACING),
-                screenY + DOT_Y + yOffset,
-                0f,
-                0f,
-                DOT_SIZE,
-                DOT_SIZE,
-                DOT_SIZE,
-                DOT_SIZE
-            )
-        }
-    }
-
-    private fun isInFooterButton(mouseX: Int, mouseY: Int, x: Int): Boolean {
-        return mouseX >= screenX + x && mouseX <= screenX + x + FOOTER_BUTTON_SIZE &&
-                mouseY >= screenY + FOOTER_BUTTON_Y && mouseY <= screenY + FOOTER_BUTTON_Y + FOOTER_BUTTON_SIZE
     }
 
     private fun playClickSound() {
         Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
     }
 
+    private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
+        return mouseX >= screenX + BACK_X && mouseX <= screenX + BACK_X + 30 &&
+                mouseY >= screenY + BACK_Y - 2 && mouseY <= screenY + BACK_Y + 10
+    }
+
     companion object {
         private const val GUI_WIDTH = 211
         private const val GUI_HEIGHT = 207
+
+        private const val BACK_X = 20
+        private const val BACK_Y = 14
+
+        private const val SECTION_TITLE_BG = 0xFF3A96B6.toInt()
+        private const val SECTION_CONTENT_BG = 0xFFEFFDFF.toInt()
 
         private const val SEARCH_X = 22
         private const val SEARCH_Y = 28
         private const val SEARCH_WIDTH = 167
         private const val SEARCH_HEIGHT = 14
 
-        private const val RESULTS_PER_PAGE = 12
-        private const val RESULTS_START_Y = 48
-        private const val RESULT_HEIGHT = 12
+        private const val CONTENT_X = 20
+        private const val CONTENT_WIDTH = 171
+        private const val SCROLLBAR_WIDTH = 5
+        private const val LIST_WIDTH = CONTENT_WIDTH - SCROLLBAR_WIDTH
+        private const val LIST_START_Y = 48
+        private const val LIST_END_Y = 195
 
-        private const val RESULT_X = 22
-        private const val RESULT_WIDTH = 167
-        private const val RESULT_TEXT_X = 26
-        private const val RESULT_TEXT_Y_OFFSET = 1
-        private const val RESULT_BG_X = 20
-        private const val RESULT_BG_WIDTH = 171
-        private const val RESULT_COLOR = 0xFFFFFFFF.toInt()
-        private const val RESULT_HOVER_COLOR = 0xFFFFD700.toInt()
-        private const val RESULT_BG_HOVER = 0x30FFFFFF
-
-        private const val FOOTER_PREV_X = 76
-        private const val FOOTER_HOME_X = 102
-        private const val FOOTER_NEXT_X = 128
-        private const val FOOTER_BUTTON_Y = 190
-        private const val FOOTER_BUTTON_SIZE = 7
-        private const val FOOTER_BUTTON_TEXTURE_HEIGHT = 14
-
-        private const val MAX_VISIBLE_DOTS = 3
-        private const val DOT_CENTER_X = GUI_WIDTH / 2
-        private const val DOT_Y = 175
-        private const val DOT_SIZE = 9
-        private const val DOT_SPACING = 2
-        private const val DOT_INACTIVE_Y_OFFSET = 1
+        private const val CARD_HEIGHT = 28
+        private const val CARD_GAP = 2
+        private const val SCROLL_SPEED = 15
 
         private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/large_screen.png"
-        )
-        private val PREV_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/prev_button.png"
-        )
-        private val HOME_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/home_button.png"
-        )
-        private val NEXT_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/next_button.png"
-        )
-        private val PAGE_DOT_ON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/page_dot_on.png"
-        )
-        private val PAGE_DOT_OFF_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/page_dot_off.png"
+            "cobblemon_smartphone", "textures/gui/large_screen.png"
         )
     }
 }

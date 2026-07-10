@@ -38,6 +38,19 @@ class PokeInfoDetailScreen(
     private var modelPokemon: RenderablePokemon? = null
     private var posableState = FloatingState()
     private lateinit var detail: PokeInfoDataProvider.SpeciesDetail
+    private var currentFormIndex = 0
+
+    private fun reloadDetail() {
+        val formName = if (currentFormIndex == 0) null else detail.availableForms.getOrNull(currentFormIndex)?.name
+        detail = PokeInfoDataProvider.getDetail(dexNumber, formName) ?: return
+        val species = PokemonSpecies.getByPokedexNumber(dexNumber)
+        if (species != null) {
+            val form = if (formName != null) species.forms.firstOrNull { it.name == formName } else species.standardForm
+            modelPokemon = RenderablePokemon(species, (form?.aspects ?: emptyList()).toSet())
+        }
+        maxScroll = maxOf(0, calculateContentHeight() - (CONTENT_END_Y - CONTENT_START_Y))
+        scrollY = 0
+    }
 
     override fun isPauseScreen(): Boolean = false
 
@@ -47,18 +60,11 @@ class PokeInfoDetailScreen(
         SmartphoneHelper.contextSmartphone = smartphoneStack
         SmartphoneHelper.contextColor = color
 
-        detail = PokeInfoDataProvider.getDetail(dexNumber) ?: run {
+        reloadDetail()
+        if (!::detail.isInitialized) {
             Minecraft.getInstance().setScreen(SmartphoneScreen(color, smartphoneStack))
             return
         }
-
-        val species = PokemonSpecies.getByPokedexNumber(dexNumber)
-        if (species != null) {
-            modelPokemon = RenderablePokemon(species, emptySet())
-        }
-
-        maxScroll = maxOf(0, calculateContentHeight() - (CONTENT_END_Y - CONTENT_START_Y))
-        scrollY = 0
     }
 
     override fun removed() {
@@ -97,6 +103,8 @@ class PokeInfoDetailScreen(
 
         var cy = CONTENT_START_Y - scrollY
 
+        cy = renderFormSection(guiGraphics, cy, mouseX, mouseY)
+        cy = drawSep(guiGraphics, cy)
         cy = renderTopSection(guiGraphics, cy)
         cy = drawSep(guiGraphics, cy)
         cy = renderBaseStatsSection(guiGraphics, cy)
@@ -126,6 +134,25 @@ class PokeInfoDetailScreen(
             Minecraft.getInstance().setScreen(PokeInfoScreen(color, smartphoneStack))
             return true
         }
+        // Form navigation (inside scissor, scroll-relative)
+        val forms = detail.availableForms
+        if (forms.size > 1) {
+            val navSy = CONTENT_START_Y - scrollY
+            val navY = screenY + navSy + SECTION_PAD_TOP
+            val navCenter = screenX + CONTENT_X + CONTENT_WIDTH / 2
+            val mx = mouseX.toInt()
+            val my = mouseY.toInt()
+            if (currentFormIndex > 0 && mx >= navCenter - 64 && mx <= navCenter - 50 && my >= navY - 2 && my <= navY + 10) {
+                currentFormIndex--
+                reloadDetail()
+                return true
+            }
+            if (currentFormIndex < forms.size - 1 && mx >= navCenter + 50 && mx <= navCenter + 60 && my >= navY - 2 && my <= navY + 10) {
+                currentFormIndex++
+                reloadDetail()
+                return true
+            }
+        }
         return super.mouseClicked(mouseX, mouseY, button)
     }
 
@@ -137,18 +164,43 @@ class PokeInfoDetailScreen(
 
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val hovered = isInBackButton(mouseX, mouseY)
+        val backY = screenY + HEADER_Y + 6
         val color = if (hovered) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
-        draw(guiGraphics, "\u00AB Back", screenX + HEADER_BACK_X, screenY + HEADER_Y, color)
-        val title = "#${String.format("%03d", detail.dexNumber)} ${detail.name}"
-        draw(guiGraphics, title, screenX + (GUI_WIDTH - textWidth(title)) / 2, screenY + HEADER_Y, 0xFFFFFFFF.toInt())
+        draw(guiGraphics, "\u00AB Back", screenX + HEADER_BACK_X, backY, color)
+    }
+
+    private fun renderFormSection(guiGraphics: GuiGraphics, sy: Int, mouseX: Int, mouseY: Int): Int {
+        val forms = detail.availableForms
+        if (forms.size <= 1) return sy
+
+        val totalH = SECTION_PAD_TOP + TITLE_GAP
+        sectionBox(guiGraphics, sy, totalH)
+
+        val y = sy + SECTION_PAD_TOP
+        val navCenter = screenX + CONTENT_X + CONTENT_WIDTH / 2
+        val formName = forms[currentFormIndex].displayName
+
+        if (currentFormIndex > 0) {
+            val lx = navCenter - 60
+            val leftHover = mouseX >= lx - 4 && mouseX <= lx + 10 && mouseY >= screenY + y - 2 && mouseY <= screenY + y + 10
+            draw(guiGraphics, "\u003C", lx, screenY + y, if (leftHover) 0xFFFFD700.toInt() else SECTION_TITLE_COLOR)
+        }
+        draw(guiGraphics, formName, navCenter - textWidth(formName) / 2, screenY + y, 0xFFFFFFFF.toInt())
+        if (currentFormIndex < forms.size - 1) {
+            val rx = navCenter + 50
+            val rightHover = mouseX >= rx - 4 && mouseX <= rx + 10 && mouseY >= screenY + y - 2 && mouseY <= screenY + y + 10
+            draw(guiGraphics, "\u003E", rx, screenY + y, if (rightHover) 0xFFFFD700.toInt() else SECTION_TITLE_COLOR)
+        }
+
+        return sy + totalH
     }
 
     private fun renderTopSection(guiGraphics: GuiGraphics, sy: Int): Int {
-        val topPad = 8
+        val topPad = 20
         val leftW = 66
         val rightX = CONTENT_X + leftW + 4 + SECTION_PAD
         val totalH = SECTION_PAD_TOP + topPad + 56 + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
+        sectionBgLight(guiGraphics, sy, totalH)
 
         var y = sy + SECTION_PAD_TOP + topPad
         renderModel(guiGraphics, screenX + CONTENT_X, screenY + y, leftW)
@@ -185,14 +237,14 @@ class PokeInfoDetailScreen(
         if (pokemon != null) {
             val matrices = guiGraphics.pose()
             matrices.pushPose()
-            matrices.translate(mx + w / 2f, my - 18f, 0f)
+            matrices.translate(mx + w / 2f, my - 22f, 0f)
             drawProfilePokemon(
                 pokemon, matrices, Quaternionf().rotateY(Math.toRadians(30.0).toFloat()),
-                PoseType.PROFILE, posableState, 0f, 40f
+                PoseType.PROFILE, posableState, 0f, 35f
             )
             matrices.popPose()
         } else {
-            draw(guiGraphics, "3D", mx + w / 2 - 8, my + 10, 0x80FFFFFF.toInt())
+            draw(guiGraphics, "3D", mx + w / 2 - 8, my + modelH / 2 - 4, 0x80FFFFFF.toInt())
         }
     }
 
@@ -551,10 +603,16 @@ class PokeInfoDetailScreen(
         val y1 = screenY + y
         val x2 = screenX + CONTENT_X + CONTENT_WIDTH
         val titleH = SECTION_PAD_TOP + TITLE_GAP
-        // Title bar bg
         guiGraphics.fill(x1, y1, x2, y1 + titleH, SECTION_TITLE_BG)
-        // Content area bg
         guiGraphics.fill(x1, y1 + titleH, x2, y1 + h, SECTION_CONTENT_BG)
+    }
+
+    private fun sectionBgLight(guiGraphics: GuiGraphics, y: Int, h: Int) {
+        guiGraphics.fill(
+            screenX + CONTENT_X, screenY + y,
+            screenX + CONTENT_X + CONTENT_WIDTH, screenY + y + h,
+            SECTION_CONTENT_BG
+        )
     }
 
     private fun drawSep(guiGraphics: GuiGraphics, sy: Int): Int {
@@ -610,7 +668,8 @@ private fun statBarColor(value: Int): Int = when {
 }
 
 private fun calculateContentHeight(): Int {
-    val topH = SECTION_PAD_TOP + 8 + 56 + SECTION_PAD_BOTTOM
+    val topH = SECTION_PAD_TOP + 20 + 56 + SECTION_PAD_BOTTOM
+    val formNavH = if (detail.availableForms.size > 1) SECTION_PAD_TOP + TITLE_GAP else 0
     val statsH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 6 * 9 + 9 + SECTION_PAD_BOTTOM
     val abiH =
         if (detail.abilities.isNotEmpty()) {
@@ -690,12 +749,13 @@ private fun calculateContentHeight(): Int {
         }
     }
     val separators = 10 * 4
-    return topH + statsH + abiH + evoH + trainH + spawnH + breedH + defH + movesH + learnH + separators
+    return topH + formNavH + statsH + abiH + evoH + trainH + spawnH + breedH + defH + movesH + learnH + separators
 }
 
 private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
+    val backY = screenY + HEADER_Y + 6
     return mouseX >= screenX + HEADER_BACK_X && mouseX <= screenX + HEADER_BACK_X + 30 &&
-            mouseY >= screenY + HEADER_Y - 2 && mouseY <= screenY + HEADER_Y + 10
+            mouseY >= backY - 2 && mouseY <= backY + 10
 }
 
 private fun playClickSound() {
