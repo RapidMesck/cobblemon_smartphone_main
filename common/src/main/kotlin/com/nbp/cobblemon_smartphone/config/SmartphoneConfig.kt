@@ -13,6 +13,7 @@ class SmartphoneConfig {
     val ignoreUpgrades: List<String> = emptyList()
     val cooldowns = Cooldowns()
     val features = Features()
+    val pokeInfo = PokeInfo()
 
     class Cooldowns {
         val healButton: Int = 60  // 1 minuto em segundos
@@ -32,6 +33,18 @@ class SmartphoneConfig {
         val enablePokedex: Boolean = true
         val enablePokeInfo: Boolean = true
         val enableScanner: Boolean = true
+    }
+
+    class PokeInfo {
+        val showBaseStats: Boolean = true
+        val showAbilities: Boolean = true
+        val showEvolution: Boolean = true
+        val showTraining: Boolean = true
+        val showSpawning: Boolean = true
+        val showBreeding: Boolean = true
+        val showTypeDefenses: Boolean = true
+        val showLevelMoves: Boolean = true
+        val showLearnableMoves: Boolean = true
     }
 
     companion object {

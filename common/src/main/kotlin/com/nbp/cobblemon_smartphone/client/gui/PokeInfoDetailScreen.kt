@@ -10,6 +10,7 @@ import com.cobblemon.mod.common.pokemon.RenderablePokemon
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
@@ -27,10 +28,7 @@ class PokeInfoDetailScreen(
     private val dexNumber: Int
 ) : Screen(Component.literal("PokeInfo Detail")) {
 
-    private val frameTexture = ResourceLocation.fromNamespaceAndPath(
-        "cobblemon_smartphone",
-        "textures/gui/large_smartphone_red.png"
-    )
+    private val frameTexture get() = color.getLargeScreenTexture()
     private var screenX = 0
     private var screenY = 0
     private var scrollY = 0
@@ -56,6 +54,9 @@ class PokeInfoDetailScreen(
     }
 
     override fun isPauseScreen(): Boolean = false
+
+    private fun lang(key: String, vararg args: Any): String =
+        Component.translatable("cobblemon_smartphone.pokeinfo.$key", *args.map { it.toString() }.toTypedArray()).string
 
     override fun init() {
         screenX = (width - GUI_WIDTH) / 2
@@ -105,28 +106,21 @@ class PokeInfoDetailScreen(
         )
 
         var cy = CONTENT_START_Y - scrollY
+        val cfg = CobblemonSmartphone.config.pokeInfo
 
         cy = renderFormSection(guiGraphics, cy, mouseX, mouseY)
         cy = drawSep(guiGraphics, cy)
         cy = renderTopSection(guiGraphics, cy)
         cy = drawSep(guiGraphics, cy)
-        cy = renderBaseStatsSection(guiGraphics, cy)
-        cy = drawSep(guiGraphics, cy)
-        cy = renderAbilitiesSection(guiGraphics, cy)
-        cy = drawSep(guiGraphics, cy)
-        cy = renderEvolutionSection(guiGraphics, cy)
-        cy = drawSep(guiGraphics, cy)
-        cy = renderTrainingSection(guiGraphics, cy)
-        cy = drawSep(guiGraphics, cy)
-        cy = renderSpawningSection(guiGraphics, cy)
-        cy = drawSep(guiGraphics, cy)
-        cy = renderBreedingSection(guiGraphics, cy)
-        cy = drawSep(guiGraphics, cy)
-        cy = renderTypeDefensesSection(guiGraphics, cy)
-        cy = drawSep(guiGraphics, cy)
-        cy = renderLevelMovesTable(guiGraphics, cy)
-        cy = drawSep(guiGraphics, cy)
-        cy = renderLearnableMoves(guiGraphics, cy)
+        if (cfg.showBaseStats) { cy = renderBaseStatsSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy) }
+        if (cfg.showAbilities) { cy = renderAbilitiesSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy) }
+        if (cfg.showEvolution) { cy = renderEvolutionSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy) }
+        if (cfg.showTraining) { cy = renderTrainingSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy) }
+        if (cfg.showSpawning) { cy = renderSpawningSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy) }
+        if (cfg.showBreeding) { cy = renderBreedingSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy) }
+        if (cfg.showTypeDefenses) { cy = renderTypeDefensesSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy) }
+        if (cfg.showLevelMoves) { cy = renderLevelMovesTable(guiGraphics, cy); cy = drawSep(guiGraphics, cy) }
+        if (cfg.showLearnableMoves) { cy = renderLearnableMoves(guiGraphics, cy); cy = drawSep(guiGraphics, cy) }
 
         guiGraphics.disableScissor()
         renderScrollbar(guiGraphics, mouseY)
@@ -191,7 +185,7 @@ class PokeInfoDetailScreen(
         val hovered = isInBackButton(mouseX, mouseY)
         val backY = screenY + HEADER_Y + 6
         val color = if (hovered) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
-        draw(guiGraphics, "\u00AB Back", screenX + HEADER_BACK_X, backY, color)
+        draw(guiGraphics, lang("back"), screenX + HEADER_BACK_X, backY, color)
     }
 
     private fun renderFormSection(guiGraphics: GuiGraphics, sy: Int, mouseX: Int, mouseY: Int): Int {
@@ -277,7 +271,7 @@ class PokeInfoDetailScreen(
         val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 6 * 9 + 9 + SECTION_PAD_BOTTOM
         sectionBox(guiGraphics, sy, totalH)
         var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, "Base Stats", screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
+        draw(guiGraphics, lang("base_stats"), screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
         val stats = listOf(
@@ -334,7 +328,7 @@ class PokeInfoDetailScreen(
 
         var y = sy + SECTION_PAD_TOP
         val tx = screenX + CONTENT_X + SECTION_PAD
-        draw(guiGraphics, "Abilities", tx, screenY + y, SECTION_TITLE_COLOR)
+        draw(guiGraphics, lang("abilities"), tx, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
         detail.abilities.forEach { a ->
@@ -373,7 +367,7 @@ class PokeInfoDetailScreen(
         val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lineCount * 9 + SECTION_PAD_BOTTOM
         sectionBox(guiGraphics, sy, totalH)
         var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, "Evolution", tx, screenY + y, SECTION_TITLE_COLOR)
+        draw(guiGraphics, lang("evolution"), tx, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
         if (hasPre) {
@@ -399,7 +393,7 @@ class PokeInfoDetailScreen(
 
         var y = sy + SECTION_PAD_TOP
         val tx = screenX + CONTENT_X + SECTION_PAD
-        draw(guiGraphics, "Training", tx, screenY + y, SECTION_TITLE_COLOR)
+        draw(guiGraphics, lang("training"), tx, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
         // EV Yield - only show non-zero
@@ -439,7 +433,7 @@ class PokeInfoDetailScreen(
         sectionBox(guiGraphics, sy, totalH)
 
         var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, "Spawning", tx, screenY + y, SECTION_TITLE_COLOR)
+        draw(guiGraphics, lang("spawning"), tx, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
         lines.forEach { line ->
@@ -455,7 +449,7 @@ class PokeInfoDetailScreen(
 
         var y = sy + SECTION_PAD_TOP
         val tx = screenX + CONTENT_X + SECTION_PAD
-        draw(guiGraphics, "Breeding", tx, screenY + y, SECTION_TITLE_COLOR)
+        draw(guiGraphics, lang("breeding"), tx, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
         // Egg Groups
@@ -510,7 +504,7 @@ class PokeInfoDetailScreen(
 
         var y = sy + SECTION_PAD_TOP
         val tx = screenX + CONTENT_X + SECTION_PAD
-        draw(guiGraphics, "Type Defenses", tx, screenY + y, SECTION_TITLE_COLOR)
+        draw(guiGraphics, lang("type_defenses"), tx, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
         if (groups.isEmpty()) {
@@ -539,7 +533,7 @@ class PokeInfoDetailScreen(
         sectionBox(guiGraphics, sy, totalH)
 
         var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, "Level Moves", screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
+        draw(guiGraphics, lang("level_moves"), screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
         val tableW = LV_W + MOVE_W + TYPE_W + CAT_W + PW_W + AC_W
@@ -604,7 +598,7 @@ class PokeInfoDetailScreen(
         sectionBox(guiGraphics, sy, totalH)
 
         var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, "Learnable Moves", tx, screenY + y, SECTION_TITLE_COLOR)
+        draw(guiGraphics, lang("learnable_moves"), tx, screenY + y, SECTION_TITLE_COLOR)
         y += TITLE_GAP + CONTENT_GAP
 
         var first = true

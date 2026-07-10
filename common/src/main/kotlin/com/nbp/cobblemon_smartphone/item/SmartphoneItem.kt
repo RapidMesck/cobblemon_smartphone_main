@@ -60,7 +60,7 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         list: MutableList<Component>,
         tooltipFlag: TooltipFlag
     ) {
-        list.add(Component.translatable(BASE_TOOLTIP_TRANSLATION_KEY + model.modelName + BASE_REGISTRY_KEY).withStyle(ChatFormatting.GRAY))
+        list.add(Component.translatable("item.cobblemon_smartphone.smartphone.desc").withStyle(ChatFormatting.GRAY))
 
         // Show installed upgrades
         val upgrades = SmartphoneUpgradeRegistry.getInstalledUpgrades(itemStack)

@@ -34,7 +34,7 @@ side = "BOTH"
 [[dependencies.cobblemon_smartphone]]
 modId = "accessories"
 type = "optional"
-versionRange = "[1.1.0,)"
+versionRange = "[0,)"
 ordering = "AFTER"
 side = "BOTH"
 

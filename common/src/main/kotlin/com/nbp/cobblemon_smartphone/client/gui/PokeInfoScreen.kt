@@ -24,10 +24,7 @@ class PokeInfoScreen(
     private val smartphoneStack: ItemStack? = null
 ) : Screen(Component.literal("PokeInfo")) {
 
-    private val frameTexture = ResourceLocation.fromNamespaceAndPath(
-        "cobblemon_smartphone",
-        "textures/gui/large_smartphone_red.png"
-    )
+    private val frameTexture get() = color.getLargeScreenTexture()
     private var screenX = 0
     private var screenY = 0
     private var scrollY = 0
@@ -40,6 +37,9 @@ class PokeInfoScreen(
     private val modelCache = mutableMapOf<Int, RenderablePokemon?>()
 
     override fun isPauseScreen(): Boolean = false
+
+    private fun lang(key: String): String =
+        Component.translatable("cobblemon_smartphone.pokeinfo.$key").string
 
     override fun init() {
         screenX = (width - GUI_WIDTH) / 2
@@ -82,7 +82,7 @@ class PokeInfoScreen(
         // Back button
         val backHover = isInBackButton(mouseX, mouseY)
         val backColor = if (backHover) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
-        guiGraphics.drawString(font, "\u00AB Back", screenX + BACK_X, screenY + BACK_Y, backColor, false)
+        guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, backColor, false)
 
         // Search box background
         val sx = screenX + SEARCH_X
@@ -231,7 +231,7 @@ class PokeInfoScreen(
         val hovered = mouseX >= x1 && mouseX <= x2 && mouseY >= y1 && mouseY <= y2
 
         // Card background
-        val bgColor = if (hovered) 0x703A96B6.toInt() else 0x40FFFFFF.toInt()
+        val bgColor = if (hovered) 0x4DFFFFFF.toInt() else 0xBF3A96B6.toInt()
         guiGraphics.fill(x1, y1, x2, y2, bgColor)
 
         // Divider line between cards

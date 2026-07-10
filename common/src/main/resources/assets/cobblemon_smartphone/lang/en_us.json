@@ -58,5 +58,31 @@
   "upgrade.cobblemon_smartphone.upgrade_pokenav": "Upgrade: PokeNav",
   "upgrade.cobblemon_smartphone.upgrade_waystone": "Upgrade: Waystone",
 
-  "cobblemon_smartphone.pokeinfo.search": "Search Pokemon..."
+  "item.cobblemon_smartphone.smartphone.desc": "A versatile smart device with Pokédex, PC, and healing features.",
+
+  "cobblemon_smartphone.pokeinfo.search": "Search Pokemon...",
+  "cobblemon_smartphone.pokeinfo.back": "« Back",
+  "cobblemon_smartphone.pokeinfo.base_stats": "Base Stats",
+  "cobblemon_smartphone.pokeinfo.abilities": "Abilities",
+  "cobblemon_smartphone.pokeinfo.evolution": "Evolution",
+  "cobblemon_smartphone.pokeinfo.training": "Training",
+  "cobblemon_smartphone.pokeinfo.spawning": "Spawning",
+  "cobblemon_smartphone.pokeinfo.breeding": "Breeding",
+  "cobblemon_smartphone.pokeinfo.type_defenses": "Type Defenses",
+  "cobblemon_smartphone.pokeinfo.level_moves": "Level Moves",
+  "cobblemon_smartphone.pokeinfo.learnable_moves": "Learnable Moves",
+  "cobblemon_smartphone.pokeinfo.total": "Total: %s",
+  "cobblemon_smartphone.pokeinfo.ev": "EV",
+  "cobblemon_smartphone.pokeinfo.catch_rate": "Catch Rate: %s",
+  "cobblemon_smartphone.pokeinfo.friendship": "Friendship: %s",
+  "cobblemon_smartphone.pokeinfo.base_exp": "Base Exp: %s",
+  "cobblemon_smartphone.pokeinfo.egg_groups": "Egg Groups: %s",
+  "cobblemon_smartphone.pokeinfo.gender": "Gender: %s",
+  "cobblemon_smartphone.pokeinfo.egg_cycles": "Egg Cycles: %s",
+  "cobblemon_smartphone.pokeinfo.biomes": "Biomes: %s",
+  "cobblemon_smartphone.pokeinfo.weak": "Weak",
+  "cobblemon_smartphone.pokeinfo.resist": "Resist",
+  "cobblemon_smartphone.pokeinfo.immune": "Immune",
+  "cobblemon_smartphone.pokeinfo.none": "None",
+  "cobblemon_smartphone.pokeinfo.genderless": "Genderless"
 }
