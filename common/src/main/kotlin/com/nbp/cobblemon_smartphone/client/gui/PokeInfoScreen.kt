@@ -76,8 +76,22 @@ class PokeInfoScreen(
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         val matrices = guiGraphics.pose()
 
-        blitk(matrixStack = matrices, texture = frameTexture, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
-        blitk(matrixStack = matrices, texture = HOME_SCREEN_TEXTURE, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
+        blitk(
+            matrixStack = matrices,
+            texture = frameTexture,
+            x = screenX,
+            y = screenY,
+            width = GUI_WIDTH,
+            height = GUI_HEIGHT
+        )
+        blitk(
+            matrixStack = matrices,
+            texture = HOME_SCREEN_TEXTURE,
+            x = screenX,
+            y = screenY,
+            width = GUI_WIDTH,
+            height = GUI_HEIGHT
+        )
 
         // Back button
         val backHover = isInBackButton(mouseX, mouseY)
@@ -140,7 +154,8 @@ class PokeInfoScreen(
             val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
             val trackY = screenY + LIST_START_Y
             val trackH = LIST_END_Y - LIST_START_Y
-            val handleH = maxOf(12, (trackH.toFloat() * trackH / (results.size * (CARD_HEIGHT + CARD_GAP)).toFloat()).toInt())
+            val handleH =
+                maxOf(12, (trackH.toFloat() * trackH / (results.size * (CARD_HEIGHT + CARD_GAP)).toFloat()).toInt())
             val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
             if (mx >= trackX && mx <= trackX + SCROLLBAR_WIDTH && my >= handleY && my <= handleY + handleH) {
                 draggingScrollbar = true
@@ -184,7 +199,8 @@ class PokeInfoScreen(
         val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
         val trackY = screenY + LIST_START_Y
         val trackH = LIST_END_Y - LIST_START_Y
-        val handleH = maxOf(12, (trackH.toFloat() * trackH / (results.size * (CARD_HEIGHT + CARD_GAP)).toFloat()).toInt())
+        val handleH =
+            maxOf(12, (trackH.toFloat() * trackH / (results.size * (CARD_HEIGHT + CARD_GAP)).toFloat()).toInt())
         val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
 
         // Handle drag

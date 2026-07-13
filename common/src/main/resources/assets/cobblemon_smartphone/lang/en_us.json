@@ -67,6 +67,7 @@
   "cobblemon_smartphone.pokeinfo.evolution": "Evolution",
   "cobblemon_smartphone.pokeinfo.training": "Training",
   "cobblemon_smartphone.pokeinfo.spawning": "Spawning",
+  "cobblemon_smartphone.pokeinfo.loading_spawn_data": "Loading spawn data...",
   "cobblemon_smartphone.pokeinfo.breeding": "Breeding",
   "cobblemon_smartphone.pokeinfo.type_defenses": "Type Defenses",
   "cobblemon_smartphone.pokeinfo.level_moves": "Level Moves",

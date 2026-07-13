@@ -12,9 +12,13 @@ import com.cobblemon.mod.common.pokemon.evolution.variants.TradeEvolution
 import com.cobblemon.mod.common.pokemon.requirements.FriendshipRequirement
 import com.cobblemon.mod.common.pokemon.requirements.LevelRequirement
 import com.cobblemon.mod.common.api.spawning.CobblemonSpawnPools
+import com.cobblemon.mod.common.api.spawning.SpawnBucket
+import com.cobblemon.mod.common.api.spawning.TimeRange
+import com.cobblemon.mod.common.api.spawning.condition.SpawningCondition
 import com.cobblemon.mod.common.api.spawning.detail.PokemonSpawnDetail
 import net.minecraft.network.chat.Component
 import com.cobblemon.mod.common.pokemon.requirements.TimeRangeRequirement
+import net.minecraft.resources.ResourceLocation
 import com.cobblemon.mod.common.util.asIdentifierDefaultingNamespace
 
 object PokeInfoDataProvider {
@@ -37,9 +41,29 @@ object PokeInfoDataProvider {
 
     data class EvoInfo(val targetName: String, val method: String)
 
-    data class MoveInfo(val level: Int, val name: String, val method: String, val type: String, val category: String, val power: Int, val accuracy: Int)
+    data class MoveInfo(
+        val level: Int,
+        val name: String,
+        val method: String,
+        val type: String,
+        val category: String,
+        val power: Int,
+        val accuracy: Int
+    )
 
     data class FormInfo(val name: String, val displayName: String)
+
+    data class SpawnEntryData(
+        val bucket: String,
+        val weight: Float,
+        val biomes: List<String>,
+        val minLevel: Int,
+        val maxLevel: Int,
+        val context: String,
+        val time: String?,
+        val conditions: List<String>,
+        val antiConditions: List<String>
+    )
 
     data class SpeciesDetail(
         val name: String,
@@ -61,12 +85,17 @@ object PokeInfoDataProvider {
         val eggGroups: List<String>,
         val eggCycles: Int,
         val maleRatio: Float,
+        val spawnEntries: List<SpawnEntryData>,
         val spawnBiomes: List<String>,
         val availableForms: List<FormInfo>,
         val selectedForm: String
     )
 
     private var speciesCache: List<SpeciesInfo>? = null
+
+    /** Pending detail from server, consumed by PokeInfoDetailScreen. */
+    @Volatile
+    var pendingDetail: SpeciesDetail? = null
 
     fun all(): List<SpeciesInfo> {
         if (speciesCache != null) return speciesCache!!
@@ -88,7 +117,7 @@ object PokeInfoDataProvider {
         val q = query.lowercase()
         return all().filter {
             it.name.lowercase().contains(q) ||
-            it.dexNumber.toString().startsWith(q)
+                    it.dexNumber.toString().startsWith(q)
         }
     }
 
@@ -119,33 +148,41 @@ object PokeInfoDataProvider {
         val learnset = f.moves
         for ((level, moveList) in learnset.levelUpMoves) {
             for (template in moveList) {
-                moves.add(MoveInfo(
-                    level = level, name = template.name, method = "level",
-                    type = template.elementalType.name, category = template.damageCategory.name,
-                    power = template.power.toInt(), accuracy = template.accuracy.toInt()
-                ))
+                moves.add(
+                    MoveInfo(
+                        level = level, name = template.name, method = "level",
+                        type = template.elementalType.name, category = template.damageCategory.name,
+                        power = template.power.toInt(), accuracy = template.accuracy.toInt()
+                    )
+                )
             }
         }
         for (template in learnset.tmMoves) {
-            moves.add(MoveInfo(
-                level = 0, name = template.name, method = "tm",
-                type = template.elementalType.name, category = template.damageCategory.name,
-                power = template.power.toInt(), accuracy = template.accuracy.toInt()
-            ))
+            moves.add(
+                MoveInfo(
+                    level = 0, name = template.name, method = "tm",
+                    type = template.elementalType.name, category = template.damageCategory.name,
+                    power = template.power.toInt(), accuracy = template.accuracy.toInt()
+                )
+            )
         }
         for (template in learnset.eggMoves) {
-            moves.add(MoveInfo(
-                level = 0, name = template.name, method = "egg",
-                type = template.elementalType.name, category = template.damageCategory.name,
-                power = template.power.toInt(), accuracy = template.accuracy.toInt()
-            ))
+            moves.add(
+                MoveInfo(
+                    level = 0, name = template.name, method = "egg",
+                    type = template.elementalType.name, category = template.damageCategory.name,
+                    power = template.power.toInt(), accuracy = template.accuracy.toInt()
+                )
+            )
         }
         for (template in learnset.tutorMoves) {
-            moves.add(MoveInfo(
-                level = 0, name = template.name, method = "tutor",
-                type = template.elementalType.name, category = template.damageCategory.name,
-                power = template.power.toInt(), accuracy = template.accuracy.toInt()
-            ))
+            moves.add(
+                MoveInfo(
+                    level = 0, name = template.name, method = "tutor",
+                    type = template.elementalType.name, category = template.damageCategory.name,
+                    power = template.power.toInt(), accuracy = template.accuracy.toInt()
+                )
+            )
         }
 
         val preEvo = f.preEvolution?.species?.name
@@ -188,6 +225,16 @@ object PokeInfoDataProvider {
             eggGroups = f.eggGroups.map { it.showdownID },
             eggCycles = species.eggCycles,
             maleRatio = f.maleRatio,
+            spawnEntries = run {
+                try {
+                    CobblemonSpawnPools.WORLD_SPAWN_POOL.details
+                        .filterIsInstance<PokemonSpawnDetail>()
+                        .filter { it.pokemon.species.equals(species.name, ignoreCase = true) }
+                        .map { it.toSpawnEntryData() }
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            },
             spawnBiomes = run {
                 try {
                     CobblemonSpawnPools.WORLD_SPAWN_POOL.details
@@ -211,6 +258,7 @@ object PokeInfoDataProvider {
                 val level = evo.requirements.filterIsInstance<LevelRequirement>().firstOrNull()?.minLevel
                 if (level != null && level > 1) "Lv $level" else "Level Up"
             }
+
             is TradeEvolution -> "Trade"
             is ItemInteractionEvolution -> extractItemName(evo)
             else -> "Special"
@@ -228,6 +276,7 @@ object PokeInfoDataProvider {
                 is FriendshipRequirement -> {
                     conditions.add("Friendship")
                 }
+
                 is TimeRangeRequirement -> {
                     val firstRange = req.range.ranges.firstOrNull()
                     if (firstRange != null) {
@@ -257,6 +306,7 @@ object PokeInfoDataProvider {
             val itemsOpt = itemsField.get(predicate) as java.util.Optional<*>
             val holderSet = itemsOpt.orElse(null) ?: return "Item"
             val streamMethod = holderSet::class.java.getMethod("stream")
+
             @Suppress("UNCHECKED_CAST")
             val stream = streamMethod.invoke(holderSet) as java.util.stream.Stream<*>
             val holder = stream.findFirst().orElse(null) ?: return "Item"
@@ -287,7 +337,9 @@ object PokeInfoDataProvider {
 
             val targetDex = try {
                 PokemonSpecies.getByIdentifier(evo.result.species!!.asIdentifierDefaultingNamespace())?.nationalPokedexNumber
-            } catch (_: Exception) { null }
+            } catch (_: Exception) {
+                null
+            }
             if (targetDex != null) {
                 val targetSpecies = PokemonSpecies.getByPokedexNumber(targetDex)
                 if (targetSpecies != null) {
@@ -296,5 +348,119 @@ object PokeInfoDataProvider {
             }
         }
         return result
+    }
+
+// ─── Spawn entry helpers ───────────────────────────────────────────────
+
+    internal fun PokemonSpawnDetail.toSpawnEntryData(): SpawnEntryData {
+        val levelRange = pokemon.deriveLevelRange(levelRange)
+        val time = conditions.flatMap { conditionTimeStrings(it) }.firstOrNull()
+
+        return SpawnEntryData(
+            bucket = bucket.name,
+            weight = weight,
+            biomes = validBiomes.map { it.path },
+            minLevel = levelRange.first,
+            maxLevel = levelRange.last,
+            context = spawnablePositionType.name,
+            time = time,
+            conditions = conditions.flatMap { conditionStrings(it, isAnti = false) },
+            antiConditions = anticonditions.flatMap { conditionStrings(it, isAnti = true) }
+        )
+    }
+
+    private fun conditionStrings(cond: SpawningCondition<*>, isAnti: Boolean): List<String> {
+        val list = mutableListOf<String>()
+
+        if (cond.canSeeSky == true) list.add(if (isAnti) "No Sky" else "Clear Sky")
+        if (cond.isRaining == true) list.add(if (isAnti) "No Rain" else "Rain")
+        if (cond.isThundering == true) list.add(if (isAnti) "No Thunder" else "Thunder")
+        if (cond.isSlimeChunk == true) list.add("Slime Chunk")
+
+        cond.moonPhase?.let { list.add("Moon: $it") }
+
+        if (cond.minLight != null || cond.maxLight != null) {
+            val min = cond.minLight?.toString() ?: "0"
+            val max = cond.maxLight?.toString() ?: "15"
+            list.add("Light $min-$max")
+        }
+
+        cond.dimensions?.forEach { dim -> list.add(dim.path) }
+
+        cond.structures?.forEach { struct ->
+            try {
+                struct.left().ifPresent { res -> list.add(res.path) }
+            } catch (_: Exception) {
+                try {
+                    struct.right().ifPresent { tag -> list.add("#${tag.location()}") }
+                } catch (_: Exception) {
+                }
+            }
+        }
+
+        // Subclass-specific fields (use if-chains so parent + child fields are both extracted)
+        if (cond is com.cobblemon.mod.common.api.spawning.condition.AreaTypeSpawningCondition<*>) {
+            cond.neededNearbyBlocks?.forEach { block ->
+                list.add(registryLikeToString(block))
+            }
+            if (cond.minHeight != null || cond.maxHeight != null) {
+                val minH = cond.minHeight?.toString() ?: "-"
+                val maxH = cond.maxHeight?.toString() ?: "-"
+                list.add("Height $minH-$maxH")
+            }
+        }
+        if (cond is com.cobblemon.mod.common.api.spawning.condition.GroundedTypeSpawningCondition<*>) {
+            cond.neededBaseBlocks?.forEach { block ->
+                list.add("Base: ${registryLikeToString(block)}")
+            }
+        }
+        if (cond is com.cobblemon.mod.common.api.spawning.condition.SubmergedTypeSpawningCondition<*>) {
+            cond.fluid?.let { list.add("Fluid: ${registryLikeToString(it)}") }
+            cond.fluidIsSource?.let { if (it) list.add("Source Fluid") }
+            if (cond.minDepth != null || cond.maxDepth != null) {
+                val minD = cond.minDepth?.toString() ?: "-"
+                val maxD = cond.maxDepth?.toString() ?: "-"
+                list.add("Depth $minD-$maxD")
+            }
+        }
+        if (cond is com.cobblemon.mod.common.api.spawning.condition.SurfaceTypeSpawningCondition<*>) {
+            cond.fluid?.let { list.add("Fluid: ${registryLikeToString(it)}") }
+        }
+        if (cond is com.cobblemon.mod.common.api.spawning.condition.FishingSpawningCondition) {
+            cond.rod?.let { list.add("Rod: ${registryLikeToString(it)}") }
+            cond.neededNearbyBlocks?.forEach { block ->
+                list.add(registryLikeToString(block))
+            }
+            cond.bait?.let { list.add("Bait: ${it.path}") }
+            cond.rodType?.let { list.add("Rod Type: ${it.path}") }
+            if (cond.minLureLevel != null || cond.maxLureLevel != null) {
+                val minL = cond.minLureLevel?.toString() ?: "-"
+                val maxL = cond.maxLureLevel?.toString() ?: "-"
+                list.add("Lure $minL-$maxL")
+            }
+        }
+
+        return list
+    }
+
+    private fun <T> registryLikeToString(cond: com.cobblemon.mod.common.api.conditional.RegistryLikeCondition<T>): String {
+        return when (cond) {
+            is com.cobblemon.mod.common.api.conditional.RegistryLikeIdentifierCondition<*> -> cond.identifier.path
+            is com.cobblemon.mod.common.api.conditional.RegistryLikeTagCondition<*> -> "#${cond.tag.location()}"
+            else -> cond.toString()
+        }
+    }
+
+    private fun conditionTimeStrings(cond: SpawningCondition<*>): List<String> {
+        val timeRange = cond.timeRange ?: return emptyList()
+        return listOf(timeRangeToName(timeRange))
+    }
+
+    private fun timeRangeToName(timeRange: TimeRange): String {
+        for ((name, tr) in TimeRange.timeRanges) {
+            if (name == "any") continue
+            if (tr.ranges == timeRange.ranges) return name.replaceFirstChar { it.uppercase() }
+        }
+        return timeRange.ranges.joinToString(", ") { "${it.first}-${it.last}" }
     }
 }
