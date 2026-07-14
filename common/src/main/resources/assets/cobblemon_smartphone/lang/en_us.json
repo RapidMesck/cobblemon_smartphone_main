@@ -24,6 +24,7 @@
   "message.nbp.pokedex.cooldown": "You need to wait %d seconds before opening the Pokedex again",
   "message.nbp.scanner.disabled": "The Pokedex scanner feature is disabled on this server",
   "message.nbp.datapack_action.cooldown": "You need to wait %d seconds before using this action again",
+  "message.nbp.crafting.disabled": "The crafting feature is disabled on this server",
 
   "item.cobblemon_smartphone.white_smartphone": "White Smartphone",
   "item.cobblemon_smartphone.orange_smartphone": "Orange Smartphone",
@@ -55,6 +56,7 @@
   "curios.identifier.smartphone": "Smartphone",
   "accessories.slot.smartphone": "Smartphone",
 
+  "upgrade.cobblemon_smartphone.upgrade_crafting": "Upgrade: Crafting Table",
   "upgrade.cobblemon_smartphone.upgrade_pokenav": "Upgrade: PokeNav",
   "upgrade.cobblemon_smartphone.upgrade_waystone": "Upgrade: Waystone",
 

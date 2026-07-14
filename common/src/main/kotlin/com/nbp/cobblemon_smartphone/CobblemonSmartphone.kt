@@ -1,5 +1,6 @@
 package com.nbp.cobblemon_smartphone
 
+import com.nbp.cobblemon_smartphone.actions.CraftingAction
 import com.nbp.cobblemon_smartphone.actions.EnderAction
 import com.nbp.cobblemon_smartphone.actions.HealAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavAction
@@ -38,6 +39,7 @@ object CobblemonSmartphone {
     lateinit var implementation: Implementation
 
     fun registerDefaultActions() {
+        SmartphoneActionRegistry.register(CraftingAction)
         SmartphoneActionRegistry.register(HealAction)
         SmartphoneActionRegistry.register(OpenPcAction)
         SmartphoneActionRegistry.register(EnderAction)
@@ -49,6 +51,12 @@ object CobblemonSmartphone {
     }
 
     fun registerDefaultUpgrades() {
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = "upgrade_crafting",
+                nbtKey = "upgrade_crafting"
+            )
+        )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = "upgrade_pokenav",

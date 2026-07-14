@@ -33,6 +33,7 @@ class SmartphoneConfig {
         val enablePokedex: Boolean = true
         val enablePokeInfo: Boolean = true
         val enableScanner: Boolean = true
+        val enableCrafting: Boolean = true
     }
 
     class PokeInfo {

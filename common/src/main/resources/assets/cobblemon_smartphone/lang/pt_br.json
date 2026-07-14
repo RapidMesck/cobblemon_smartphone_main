@@ -1,5 +1,9 @@
 {
+  "message.nbp.crafting.disabled": "O crafting está desabilitado neste servidor",
+
   "item.cobblemon_smartphone.smartphone.desc": "Um dispositivo inteligente com Pokédex, PC e cura de Pokémon.",
+
+  "upgrade.cobblemon_smartphone.upgrade_crafting": "Upgrade: Crafting Table",
 
   "cobblemon_smartphone.pokeinfo.search": "Buscar Pokemon...",
   "cobblemon_smartphone.pokeinfo.back": "« Voltar",

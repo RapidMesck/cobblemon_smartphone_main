@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:smithing_transform",
+  "template": {
+    "item": "cobblemon:upgrade"
+  },
+  "base": {
+    "tag": "cobblemon_smartphone:smartphones"
+  },
+  "addition": {
+    "item": "minecraft:crafting_table"
+  },
+  "result": {
+    "id": "cobblemon_smartphone:red_smartphone",
+    "count": 1,
+    "components": {
+      "minecraft:custom_data": {
+        "cobblemon_smartphone:upgrades": {
+          "upgrade_crafting": true
+        }
+      }
+    }
+  }
+}
