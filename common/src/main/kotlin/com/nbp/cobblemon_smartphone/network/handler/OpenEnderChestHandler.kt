@@ -16,12 +16,14 @@ import java.util.UUID
 object OpenEnderChestHandler : ServerNetworkPacketHandler<OpenEnderChestPacket> {
     override fun handle(packet: OpenEnderChestPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            execute(player, useNativeCooldown = true)
+            execute(player, isNativeAction = true)
         }
     }
 
-    fun execute(player: ServerPlayer, useNativeCooldown: Boolean) {
-        if (!CobblemonSmartphone.config.features.enableCloud) {
+    fun execute(player: ServerPlayer, isNativeAction: Boolean) {
+        // Feature toggle and cooldown only apply to the native smartphone action;
+        // datapack actions are independent and manage their own cooldown/requirements.
+        if (isNativeAction && !CobblemonSmartphone.config.features.enableCloud) {
             player.displayClientMessage(
                 Component.translatable("message.nbp.cloud.disabled").withColor(0xfd0100),
                 true
@@ -29,7 +31,7 @@ object OpenEnderChestHandler : ServerNetworkPacketHandler<OpenEnderChestPacket> 
             return
         }
 
-        if (useNativeCooldown) {
+        if (isNativeAction) {
             val currentTime = System.currentTimeMillis() / 1000
             val lastUse = EnderChestCooldowns.lastEnderChestUse[player.uuid] ?: 0
             val cooldown = CobblemonSmartphone.config.cooldowns.cloudButton

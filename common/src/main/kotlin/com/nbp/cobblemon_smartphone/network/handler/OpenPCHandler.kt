@@ -14,12 +14,14 @@ import java.util.UUID
 object OpenPCHandler : ServerNetworkPacketHandler<OpenPCPacket> {
     override fun handle(packet: OpenPCPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            execute(player, useNativeCooldown = true)
+            execute(player, isNativeAction = true)
         }
     }
 
-    fun execute(player: ServerPlayer, useNativeCooldown: Boolean) {
-        if (!CobblemonSmartphone.config.features.enablePC) {
+    fun execute(player: ServerPlayer, isNativeAction: Boolean) {
+        // Feature toggle and cooldown only apply to the native smartphone action;
+        // datapack actions are independent and manage their own cooldown/requirements.
+        if (isNativeAction && !CobblemonSmartphone.config.features.enablePC) {
             player.displayClientMessage(
                 Component.translatable("message.nbp.pc.disabled").withColor(0xfd0100),
                 true
@@ -27,7 +29,7 @@ object OpenPCHandler : ServerNetworkPacketHandler<OpenPCPacket> {
             return
         }
 
-        if (useNativeCooldown) {
+        if (isNativeAction) {
             val currentTime = System.currentTimeMillis() / 1000
             val lastUse = PCCooldowns.lastPcUse[player.uuid] ?: 0
             val cooldown = CobblemonSmartphone.config.cooldowns.pcButton
@@ -51,7 +53,7 @@ object OpenPCHandler : ServerNetworkPacketHandler<OpenPCPacket> {
             return
         }
 
-        if (useNativeCooldown) {
+        if (isNativeAction) {
             PCCooldowns.lastPcUse[player.uuid] = System.currentTimeMillis() / 1000
         }
 

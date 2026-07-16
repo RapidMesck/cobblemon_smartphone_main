@@ -22,12 +22,14 @@ object OpenWaystonesWarpStoneHandler : ServerNetworkPacketHandler<OpenWaystonesW
 
     override fun handle(packet: OpenWaystonesWarpStonePacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            execute(server, player, useNativeCooldown = true)
+            execute(server, player, isNativeAction = true)
         }
     }
 
-    fun execute(server: MinecraftServer, player: ServerPlayer, useNativeCooldown: Boolean) {
-        if (!CobblemonSmartphone.config.features.enableWaystone) {
+    fun execute(server: MinecraftServer, player: ServerPlayer, isNativeAction: Boolean) {
+        // Feature toggle and cooldown only apply to the native smartphone action;
+        // datapack actions are independent and manage their own cooldown/requirements.
+        if (isNativeAction && !CobblemonSmartphone.config.features.enableWaystone) {
             player.displayClientMessage(
                 Component.translatable("message.nbp.waystones.disabled").withColor(0xfd0100),
                 true
@@ -43,7 +45,7 @@ object OpenWaystonesWarpStoneHandler : ServerNetworkPacketHandler<OpenWaystonesW
             return
         }
 
-        if (useNativeCooldown) {
+        if (isNativeAction) {
             val cooldown = CobblemonSmartphone.config.cooldowns.waystoneButton
             val now = System.currentTimeMillis()
             val lastClick = buttonCooldowns[player.uuid] ?: 0L
@@ -66,7 +68,7 @@ object OpenWaystonesWarpStoneHandler : ServerNetworkPacketHandler<OpenWaystonesW
             return
         }
 
-        if (useNativeCooldown) {
+        if (isNativeAction) {
             buttonCooldowns[player.uuid] = System.currentTimeMillis()
         }
 

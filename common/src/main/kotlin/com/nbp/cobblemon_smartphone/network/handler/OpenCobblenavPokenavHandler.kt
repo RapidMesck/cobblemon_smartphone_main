@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.network.handler
 
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.isModLoaded
 import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavPokenavPacket
 import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
@@ -20,38 +21,60 @@ object OpenCobblenavPokenavHandler : ServerNetworkPacketHandler<OpenCobblenavPok
 
     override fun handle(packet: OpenCobblenavPokenavPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            if (!isModLoaded(COBBLENAV_NAMESPACE)) {
-                player.displayClientMessage(Component.translatable("message.nbp.cobblenav.unavailable").withColor(0xfd0100), true)
-                return@execute
-            }
+            execute(server, player, isNativeAction = true)
+        }
+    }
 
-            // Check if ANY smartphone in the player's possession has the PokeNav upgrade
-            if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_pokenav", ACTION_ID)) {
-                player.displayClientMessage(Component.translatable("message.nbp.cobblenav.no_pokenav_upgrade").withColor(0xfd0100), true)
-                return@execute
-            }
+    fun execute(server: MinecraftServer, player: ServerPlayer, isNativeAction: Boolean) {
+        // Feature toggle only applies to the native smartphone action;
+        // datapack actions are independent and manage their own requirements.
+        if (isNativeAction && !CobblemonSmartphone.config.features.enablePokenav) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.cobblenav.disabled").withColor(0xfd0100),
+                true
+            )
+            return
+        }
 
-            // Try to use pokenav from inventory (backward compat)
-            val pokenavStack = findPokenavStack(player)
-            if (pokenavStack != null) {
-                pokenavStack.item.use(player.level(), player, InteractionHand.MAIN_HAND)
-                return@execute
-            }
+        if (!isModLoaded(COBBLENAV_NAMESPACE)) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.cobblenav.unavailable").withColor(0xfd0100),
+                true
+            )
+            return
+        }
 
-            // Fallback: simulate pokenav use via smartphone upgrade
-            if (SimulatedItemUse.usePokenav(player)) {
-                return@execute
-            }
+        // Check if ANY smartphone in the player's possession has the PokeNav upgrade
+        if (!SmartphoneHelper.hasUpgradeOnAnySmartphone(player, "upgrade_pokenav", ACTION_ID)) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.cobblenav.no_pokenav_upgrade").withColor(0xfd0100), true
+            )
+            return
+        }
 
-            // Last resort: try command fallback
-            try {
-                server.commands.performPrefixedCommand(
-                    player.createCommandSourceStack(),
-                    "cobblenav"
-                )
-            } catch (_: Exception) {
-                player.displayClientMessage(Component.translatable("message.nbp.cobblenav.open_failed").withColor(0xfd0100), true)
-            }
+        // Try to use pokenav from inventory (backward compat)
+        val pokenavStack = findPokenavStack(player)
+        if (pokenavStack != null) {
+            pokenavStack.item.use(player.level(), player, InteractionHand.MAIN_HAND)
+            return
+        }
+
+        // Fallback: simulate pokenav use via smartphone upgrade
+        if (SimulatedItemUse.usePokenav(player)) {
+            return
+        }
+
+        // Last resort: try command fallback
+        try {
+            server.commands.performPrefixedCommand(
+                player.createCommandSourceStack(),
+                "cobblenav"
+            )
+        } catch (_: Exception) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.cobblenav.open_failed").withColor(0xfd0100),
+                true
+            )
         }
     }
 
@@ -71,7 +94,7 @@ object OpenCobblenavPokenavHandler : ServerNetworkPacketHandler<OpenCobblenavPok
 
         val itemId = BuiltInRegistries.ITEM.getKey(stack.item)
         return itemId.namespace == COBBLENAV_NAMESPACE
-            && itemId.path.startsWith(POKENAV_PATH_PREFIX)
-            && itemId.path != LEGACY_POKENAV_ITEM
+                && itemId.path.startsWith(POKENAV_PATH_PREFIX)
+                && itemId.path != LEGACY_POKENAV_ITEM
     }
 }

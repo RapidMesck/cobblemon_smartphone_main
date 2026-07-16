@@ -13,12 +13,14 @@ import java.util.UUID
 object HealPokemonHandler : ServerNetworkPacketHandler<HealPokemonPacket> {
     override fun handle(packet: HealPokemonPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            execute(player, useNativeCooldown = true)
+            execute(player, isNativeAction = true)
         }
     }
 
-    fun execute(player: ServerPlayer, useNativeCooldown: Boolean) {
-        if (!CobblemonSmartphone.config.features.enableHeal) {
+    fun execute(player: ServerPlayer, isNativeAction: Boolean) {
+        // Feature toggle and cooldown only apply to the native smartphone action;
+        // datapack actions are independent and manage their own cooldown/requirements.
+        if (isNativeAction && !CobblemonSmartphone.config.features.enableHeal) {
             player.displayClientMessage(
                 Component.translatable("message.nbp.heal.disabled").withColor(0xfd0100),
                 true
@@ -26,7 +28,7 @@ object HealPokemonHandler : ServerNetworkPacketHandler<HealPokemonPacket> {
             return
         }
 
-        if (useNativeCooldown) {
+        if (isNativeAction) {
             val currentTime = System.currentTimeMillis() / 1000
             val lastUse = HealPokemonCooldowns.lastHealUse[player.uuid] ?: 0
             val cooldown = CobblemonSmartphone.config.cooldowns.healButton
@@ -50,7 +52,7 @@ object HealPokemonHandler : ServerNetworkPacketHandler<HealPokemonPacket> {
             return
         }
 
-        if (useNativeCooldown) {
+        if (isNativeAction) {
             HealPokemonCooldowns.lastHealUse[player.uuid] = System.currentTimeMillis() / 1000
         }
 

@@ -61,6 +61,8 @@ The `functions` field exposes features that cannot normally be implemented with 
 | `open_waystone` | Opens the Waystones destination interface when available. |
 | `open_cobbledollars_shop` | Opens the CobbleDollars shop when available. |
 
+Built-in functions invoked from datapack actions are independent of the mod's feature toggles (`features.enablePC`, `features.enableHeal`, etc.) and native button cooldowns. Those settings only affect the built-in smartphone actions; datapack actions rely on their own `cooldown_seconds` and `require_upgrade` fields. Note: `open_waystone` and `open_pokenav` still require the corresponding smartphone upgrade, since they depend on it to simulate the item use.
+
 Example — custom PC button without commands:
 
 ```json

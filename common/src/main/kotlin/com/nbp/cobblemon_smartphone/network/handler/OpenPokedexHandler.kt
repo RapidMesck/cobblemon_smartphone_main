@@ -15,12 +15,14 @@ object OpenPokedexHandler : ServerNetworkPacketHandler<OpenPokedexPacket> {
 
     override fun handle(packet: OpenPokedexPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            execute(player, packet.type, useNativeCooldown = true)
+            execute(player, packet.type, isNativeAction = true)
         }
     }
 
-    fun execute(player: ServerPlayer, type: PokedexType, useNativeCooldown: Boolean) {
-        if (!CobblemonSmartphone.config.features.enablePokedex) {
+    fun execute(player: ServerPlayer, type: PokedexType, isNativeAction: Boolean) {
+        // Feature toggle and cooldown only apply to the native smartphone action;
+        // datapack actions are independent and manage their own cooldown/requirements.
+        if (isNativeAction && !CobblemonSmartphone.config.features.enablePokedex) {
             player.displayClientMessage(
                 Component.translatable("message.nbp.pokedex.disabled").withColor(0xfd0100),
                 true
@@ -28,7 +30,7 @@ object OpenPokedexHandler : ServerNetworkPacketHandler<OpenPokedexPacket> {
             return
         }
 
-        if (useNativeCooldown) {
+        if (isNativeAction) {
             val cooldown = CobblemonSmartphone.config.cooldowns.pokedexButton
             val now = System.currentTimeMillis()
             val lastClick = buttonCooldowns[player.uuid] ?: 0L

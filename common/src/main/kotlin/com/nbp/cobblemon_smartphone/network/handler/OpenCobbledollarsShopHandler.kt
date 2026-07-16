@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.network.handler
 
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.isModLoaded
 import com.nbp.cobblemon_smartphone.network.packet.OpenCobbledollarsShopPacket
 import net.minecraft.network.chat.Component
@@ -15,26 +16,43 @@ object OpenCobbledollarsShopHandler : ServerNetworkPacketHandler<OpenCobbledolla
 
     override fun handle(packet: OpenCobbledollarsShopPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            if (!isModLoaded(COBBLEDOLLARS_MOD_ID)) {
-                player.displayClientMessage(Component.translatable("message.nbp.cobbledollars.unavailable").withColor(0xfd0100), true)
-                return@execute
-            }
+            execute(player, isNativeAction = true)
+        }
+    }
 
-            try {
-                val extensionsClass = Class.forName(PLAYER_EXTENSIONS_CLASS)
-                val openShopMethod = resolveOpenShopMethod(extensionsClass, player)
-                openShopMethod.invoke(null, player)
-            } catch (e: Exception) {
-                player.displayClientMessage(Component.translatable("message.nbp.cobbledollars.open_failed").withColor(0xfd0100), true)
-            }
+    fun execute(player: ServerPlayer, isNativeAction: Boolean) {
+        // Feature toggle only applies to the native smartphone action;
+        // datapack actions are independent and manage their own requirements.
+        if (isNativeAction && !CobblemonSmartphone.config.features.enableCobbleDollars) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.cobbledollars.disabled").withColor(0xfd0100), true
+            )
+            return
+        }
+
+        if (!isModLoaded(COBBLEDOLLARS_MOD_ID)) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.cobbledollars.unavailable").withColor(0xfd0100), true
+            )
+            return
+        }
+
+        try {
+            val extensionsClass = Class.forName(PLAYER_EXTENSIONS_CLASS)
+            val openShopMethod = resolveOpenShopMethod(extensionsClass, player)
+            openShopMethod.invoke(null, player)
+        } catch (e: Exception) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.cobbledollars.open_failed").withColor(0xfd0100), true
+            )
         }
     }
 
     private fun resolveOpenShopMethod(extensionsClass: Class<*>, player: ServerPlayer): Method {
         return extensionsClass.methods.firstOrNull { method ->
             method.name == OPEN_SHOP_METHOD
-                && method.parameterCount == 1
-                && method.parameters[0].type.isAssignableFrom(player.javaClass)
+                    && method.parameterCount == 1
+                    && method.parameters[0].type.isAssignableFrom(player.javaClass)
         } ?: throw NoSuchMethodException("Could not resolve openShop(Player) method")
     }
 }
