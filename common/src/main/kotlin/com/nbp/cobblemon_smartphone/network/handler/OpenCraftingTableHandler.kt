@@ -7,6 +7,8 @@ import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.SimpleMenuProvider
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.inventory.ContainerLevelAccess
 import net.minecraft.world.inventory.CraftingMenu
 
 object OpenCraftingTableHandler : ServerNetworkPacketHandler<OpenCraftingTablePacket> {
@@ -23,7 +25,13 @@ object OpenCraftingTableHandler : ServerNetworkPacketHandler<OpenCraftingTablePa
             player.openMenu(
                 SimpleMenuProvider(
                     { containerId, inventory, _ ->
-                        CraftingMenu(containerId, inventory)
+                        object : CraftingMenu(
+                            containerId,
+                            inventory,
+                            ContainerLevelAccess.create(player.level(), player.blockPosition())
+                        ) {
+                            override fun stillValid(p: Player) = true
+                        }
                     },
                     Component.translatable("container.crafting")
                 )
