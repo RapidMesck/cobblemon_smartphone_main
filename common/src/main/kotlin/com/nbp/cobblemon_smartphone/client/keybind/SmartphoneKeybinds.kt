@@ -22,6 +22,16 @@ object SmartphoneKeybinds {
         CATEGORY
     )
 
+    const val QUICK_ACTION_SLOT_COUNT = 6
+
+    val QUICK_ACTION_SLOTS: List<KeyMapping> = (0 until QUICK_ACTION_SLOT_COUNT).map { index ->
+        KeyMapping(
+            "key.cobblemon_smartphone.quick_action_${index + 1}",
+            GLFW.GLFW_KEY_UNKNOWN,
+            CATEGORY
+        )
+    }
+
     fun handleKeybinds() {
             val player = Minecraft.getInstance().player ?: return
 

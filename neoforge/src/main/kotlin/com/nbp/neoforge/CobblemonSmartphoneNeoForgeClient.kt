@@ -17,5 +17,6 @@ object CobblemonSmartphoneNeoForgeClient {
     fun registerKeyMappings(event: RegisterKeyMappingsEvent) {
         event.register(OPEN_SMARTPHONE)
         event.register(SCANNER)
+        SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEach { event.register(it) }
     }
 }

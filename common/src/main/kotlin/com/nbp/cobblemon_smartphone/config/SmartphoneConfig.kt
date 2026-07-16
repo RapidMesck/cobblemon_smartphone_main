@@ -34,6 +34,7 @@ class SmartphoneConfig {
         val enablePokeInfo: Boolean = true
         val enableScanner: Boolean = true
         val enableCrafting: Boolean = true
+        val enableQuickActions: Boolean = true
     }
 
     class PokeInfo {

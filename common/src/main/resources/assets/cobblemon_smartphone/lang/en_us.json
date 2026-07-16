@@ -25,6 +25,9 @@
   "message.nbp.scanner.disabled": "The Pokedex scanner feature is disabled on this server",
   "message.nbp.datapack_action.cooldown": "You need to wait %d seconds before using this action again",
   "message.nbp.crafting.disabled": "The crafting feature is disabled on this server",
+  "message.nbp.quick_action.no_phone": "You don't have a smartphone",
+  "message.nbp.quick_action.unassigned": "This quick action slot isn't assigned to an app",
+  "message.nbp.quick_action.unavailable": "This quick action's app is currently unavailable",
 
   "item.cobblemon_smartphone.white_smartphone": "White Smartphone",
   "item.cobblemon_smartphone.orange_smartphone": "Orange Smartphone",
@@ -51,6 +54,12 @@
   "key.categories.cobblemon_smartphone": "Cobblemon Smartphone",
   "key.cobblemon_smartphone.open": "Open Smartphone",
   "key.cobblemon_smartphone.scanner": "Pokédex Scanner",
+  "key.cobblemon_smartphone.quick_action_1": "Quick Action 1",
+  "key.cobblemon_smartphone.quick_action_2": "Quick Action 2",
+  "key.cobblemon_smartphone.quick_action_3": "Quick Action 3",
+  "key.cobblemon_smartphone.quick_action_4": "Quick Action 4",
+  "key.cobblemon_smartphone.quick_action_5": "Quick Action 5",
+  "key.cobblemon_smartphone.quick_action_6": "Quick Action 6",
 
   "trinkets.slot.legs.smartphone": "Smartphone",
   "curios.identifier.smartphone": "Smartphone",
@@ -100,5 +109,8 @@
   "cobblemon_smartphone.pokeinfo.ct": "Ct",
   "cobblemon_smartphone.pokeinfo.pw": "Pw",
   "cobblemon_smartphone.pokeinfo.ac": "Ac",
-  "cobblemon_smartphone.pokeinfo.met": "Met"
+  "cobblemon_smartphone.pokeinfo.met": "Met",
+
+  "cobblemon_smartphone.quick_actions.hint": "Right-click an app to bind a hotkey",
+  "cobblemon_smartphone.quick_actions.none": "None"
 }

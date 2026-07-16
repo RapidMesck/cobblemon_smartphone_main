@@ -1,9 +1,19 @@
 {
   "message.nbp.crafting.disabled": "O crafting está desabilitado neste servidor",
+  "message.nbp.quick_action.no_phone": "Você não possui um smartphone",
+  "message.nbp.quick_action.unassigned": "Este atalho rápido não está vinculado a nenhum app",
+  "message.nbp.quick_action.unavailable": "O app deste atalho rápido está indisponível no momento",
 
   "item.cobblemon_smartphone.smartphone.desc": "Um dispositivo inteligente com Pokédex, PC e cura de Pokémon.",
 
   "upgrade.cobblemon_smartphone.upgrade_crafting": "Upgrade: Crafting Table",
+
+  "key.cobblemon_smartphone.quick_action_1": "Atalho Rápido 1",
+  "key.cobblemon_smartphone.quick_action_2": "Atalho Rápido 2",
+  "key.cobblemon_smartphone.quick_action_3": "Atalho Rápido 3",
+  "key.cobblemon_smartphone.quick_action_4": "Atalho Rápido 4",
+  "key.cobblemon_smartphone.quick_action_5": "Atalho Rápido 5",
+  "key.cobblemon_smartphone.quick_action_6": "Atalho Rápido 6",
 
   "cobblemon_smartphone.pokeinfo.search": "Buscar Pokemon...",
   "cobblemon_smartphone.pokeinfo.back": "« Voltar",
@@ -43,5 +53,8 @@
   "cobblemon_smartphone.pokeinfo.ct": "Ct",
   "cobblemon_smartphone.pokeinfo.pw": "Pw",
   "cobblemon_smartphone.pokeinfo.ac": "Ac",
-  "cobblemon_smartphone.pokeinfo.met": "Met"
+  "cobblemon_smartphone.pokeinfo.met": "Met",
+
+  "cobblemon_smartphone.quick_actions.hint": "Botão direito num app p/ vincular atalho",
+  "cobblemon_smartphone.quick_actions.none": "Nenhum"
 }

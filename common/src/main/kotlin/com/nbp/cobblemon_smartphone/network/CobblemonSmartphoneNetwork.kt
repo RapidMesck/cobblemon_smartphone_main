@@ -11,9 +11,11 @@ import com.nbp.cobblemon_smartphone.network.handler.OpenPokedexHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesDetailHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveActionOrderHandler
+import com.nbp.cobblemon_smartphone.network.handler.SaveQuickActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.SpeciesDetailResponseHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncActionOrderHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncDatapackActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncQuickActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.server.OpenEnderChestHandler
 import com.nbp.cobblemon_smartphone.network.packet.ExecuteDatapackActionPacket
 import com.nbp.cobblemon_smartphone.network.packet.HealPokemonPacket
@@ -26,9 +28,11 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenPokedexPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesDetailPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SpeciesDetailResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 
 object CobblemonSmartphoneNetwork {
     val s2cPayloads = generateS2CPacketInfoList()
@@ -50,6 +54,13 @@ object CobblemonSmartphoneNetwork {
                 SpeciesDetailResponsePacket.ID,
                 SpeciesDetailResponsePacket::decode,
                 SpeciesDetailResponseHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                SyncQuickActionsPacket.ID,
+                SyncQuickActionsPacket::decode,
+                SyncQuickActionsHandler
             )
         )
 
@@ -104,6 +115,13 @@ object CobblemonSmartphoneNetwork {
                 RequestSpeciesDetailPacket.ID,
                 RequestSpeciesDetailPacket::decode,
                 RequestSpeciesDetailHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                SaveQuickActionsPacket.ID,
+                SaveQuickActionsPacket::decode,
+                SaveQuickActionsHandler
             )
         )
 

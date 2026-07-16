@@ -1,5 +1,6 @@
 package com.nbp.neoforge
 
+import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.neoforge.keybind.NeoForgeSmartphoneKeybindHandler
 import net.neoforged.api.distmarker.Dist
@@ -19,6 +20,11 @@ object CobblemonSmartphoneNeoForgeTickHandler {
         }
         while (SmartphoneKeybinds.SCANNER.consumeClick()) {
             NeoForgeSmartphoneKeybindHandler.handleScannerKeybind()
+        }
+        SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEachIndexed { index, keyMapping ->
+            while (keyMapping.consumeClick()) {
+                QuickActionDispatcher.trigger(index)
+            }
         }
         NeoForgeSmartphoneKeybindHandler.onClientTick(net.minecraft.client.Minecraft.getInstance())
     }

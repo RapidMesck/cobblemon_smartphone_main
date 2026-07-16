@@ -7,6 +7,7 @@ public interface PreferencesSaver {
     String BUCKET_INDEX_KEY = "bucket_index";
     String SORTING_KEY = "sorting_key";
     String ACTION_ORDER_KEY = "action_order";
+    String QUICK_ACTIONS_KEY = "quick_actions";
 
     CompoundTag cobblemonsmartphone$getSavedPreferences();
 }

@@ -6,8 +6,10 @@ import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.util.ActionOrderStorage
+import com.nbp.cobblemon_smartphone.util.QuickActionBindingsStorage
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup
@@ -58,6 +60,7 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
             }
             SyncDatapackActionsPacket(data).sendToPlayer(handler.player)
             SyncActionOrderPacket(ActionOrderStorage.read(handler.player)).sendToPlayer(handler.player)
+            SyncQuickActionsPacket(QuickActionBindingsStorage.read(handler.player)).sendToPlayer(handler.player)
         }
     }
 

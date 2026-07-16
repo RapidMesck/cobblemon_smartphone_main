@@ -2,11 +2,14 @@ package com.nbp.cobblemon_smartphone.client.gui
 
 import com.cobblemon.mod.common.api.gui.blitk
 import com.cobblemon.mod.common.CobblemonSounds
+import com.nbp.cobblemon_smartphone.api.QuickActionBindings
 import com.nbp.cobblemon_smartphone.api.SmartphoneAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionOrder
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
+import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveQuickActionsPacket
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -24,6 +27,8 @@ class SmartphoneSettingsScreen(
         .map { it.id }
         .toMutableList()
 
+    private val slotBindings = QuickActionBindings.currentBindings().toMutableMap()
+
     private val frameTexture = ResourceLocation.fromNamespaceAndPath(
         "cobblemon_smartphone",
         "textures/gui/smartphone_${color.modelName}.png"
@@ -33,6 +38,11 @@ class SmartphoneSettingsScreen(
     private var currentPage = 0
     private var draggingIndex = -1
     private var lastPageFlipTime = 0L
+
+    // Quick action slot selector popup (opened by right-clicking an app)
+    private var selectorActionId: String? = null
+    private var selectorX = 0
+    private var selectorY = 0
 
     private val maxPage get() = if (orderedIds.isEmpty()) 0 else (orderedIds.size - 1) / ACTIONS_PER_PAGE
 
@@ -47,6 +57,8 @@ class SmartphoneSettingsScreen(
     override fun removed() {
         SmartphoneActionOrder.setOrder(orderedIds)
         SaveActionOrderPacket(orderedIds).sendToServer()
+        QuickActionBindings.setBindings(slotBindings)
+        SaveQuickActionsPacket(slotBindings).sendToServer()
         SmartphoneHelper.contextSmartphone = null
         super.removed()
     }
@@ -71,17 +83,25 @@ class SmartphoneSettingsScreen(
             height = GUI_HEIGHT
         )
 
+        renderHint(guiGraphics)
+
         pagedIds().forEachIndexed { index, actionId ->
             renderGridItem(guiGraphics, mouseX, mouseY, index, actionId)
         }
 
         renderPageDots(guiGraphics)
         renderFooterButtons(guiGraphics, mouseX, mouseY)
+        renderSelector(guiGraphics, mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         val mx = mouseX.toInt()
         val my = mouseY.toInt()
+
+        if (selectorActionId != null) {
+            handleSelectorClick(mx, my)
+            return true
+        }
 
         if (isInFooterButton(mx, my, FOOTER_PREV_X)) {
             playClickSound()
@@ -99,12 +119,15 @@ class SmartphoneSettingsScreen(
             return true
         }
 
-        pagedIds().forEachIndexed { index, _ ->
+        pagedIds().forEachIndexed { index, actionId ->
             val (gx, gy) = gridPosition(index)
             if (isInDragHandle(mx, my, index) || isInCell(mx, my, gx, gy)) {
-                val globalIndex = currentPage * ACTIONS_PER_PAGE + index
                 playClickSound()
-                draggingIndex = globalIndex
+                if (button == RIGHT_BUTTON) {
+                    openSelector(actionId, index)
+                } else {
+                    draggingIndex = currentPage * ACTIONS_PER_PAGE + index
+                }
                 return true
             }
         }
@@ -187,6 +210,7 @@ class SmartphoneSettingsScreen(
     }
 
     private fun changePage(offset: Int): Boolean {
+        selectorActionId = null
         val nextPage = (currentPage + offset).coerceIn(0, maxPage)
         if (nextPage == currentPage) {
             return false
@@ -198,6 +222,17 @@ class SmartphoneSettingsScreen(
 
     private fun actionById(id: String): SmartphoneAction? =
         SmartphoneActionRegistry.getEnabledActions().firstOrNull { it.id == id }
+
+    private fun slotForAction(actionId: String): Int? =
+        slotBindings.entries.firstOrNull { it.value == actionId }?.key
+
+    private fun assignSlot(actionId: String, slot: Int?) {
+        // Each app maps to at most one slot, and each slot to at most one app.
+        slotBindings.values.removeIf { it == actionId }
+        if (slot != null) {
+            slotBindings[slot] = actionId
+        }
+    }
 
     private fun gridPosition(index: Int): Pair<Int, Int> {
         val col = index % GRID_COLUMNS
@@ -245,7 +280,27 @@ class SmartphoneSettingsScreen(
             height = BUTTON_HEIGHT
         )
 
+        renderSlotBadge(guiGraphics, action.id, gx, gy)
         renderDragHandle(guiGraphics, mouseX, mouseY, index, isDragging)
+    }
+
+    private fun renderSlotBadge(guiGraphics: GuiGraphics, actionId: String, gx: Int, gy: Int) {
+        val slot = slotForAction(actionId) ?: return
+        val label = (slot + 1).toString()
+        val badgeWidth = (font.width(label) * SLOT_BADGE_SCALE).toInt() + SLOT_BADGE_PADDING * 2
+        val badgeHeight = (font.lineHeight * SLOT_BADGE_SCALE).toInt() + SLOT_BADGE_PADDING
+        val badgeX = screenX + gx
+        val badgeY = screenY + gy
+
+        guiGraphics.fill(badgeX, badgeY, badgeX + badgeWidth, badgeY + badgeHeight, SLOT_BADGE_BG)
+        drawScaled(
+            guiGraphics,
+            label,
+            badgeX + SLOT_BADGE_PADDING,
+            badgeY + SLOT_BADGE_PADDING / 2,
+            SLOT_BADGE_TEXT,
+            SLOT_BADGE_SCALE
+        )
     }
 
     private fun renderDragHandle(
@@ -289,6 +344,86 @@ class SmartphoneSettingsScreen(
 
     private fun playClickSound() {
         Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
+    }
+
+    private fun renderHint(guiGraphics: GuiGraphics) {
+        val hint = Component.translatable("cobblemon_smartphone.quick_actions.hint").string
+        val width = (font.width(hint) * HINT_SCALE).toInt()
+        drawScaled(guiGraphics, hint, screenX + (GUI_WIDTH - width) / 2, screenY + HINT_Y, HINT_COLOR, HINT_SCALE)
+    }
+
+    private fun openSelector(actionId: String, index: Int) {
+        selectorActionId = actionId
+        val (gx, gy) = gridPosition(index)
+        val minX = SCREEN_CONTENT_LEFT + SELECTOR_MARGIN
+        val maxX = SCREEN_CONTENT_RIGHT - SELECTOR_WIDTH - SELECTOR_MARGIN
+        val minY = SCREEN_CONTENT_TOP + SELECTOR_MARGIN
+        val maxY = SCREEN_CONTENT_BOTTOM - selectorHeight() - SELECTOR_MARGIN
+        selectorX = (gx + BUTTON_WIDTH / 2 - SELECTOR_WIDTH / 2).coerceIn(minX, maxX)
+        selectorY = gy.coerceIn(minY, maxY)
+    }
+
+    private fun handleSelectorClick(mouseX: Int, mouseY: Int) {
+        val actionId = selectorActionId ?: return
+        val px = screenX + selectorX
+        val py = screenY + selectorY
+        if (mouseX in px..(px + SELECTOR_WIDTH) && mouseY in py..(py + selectorHeight())) {
+            val row = (mouseY - py) / SELECTOR_ROW_HEIGHT
+            if (row in 0 until selectorRowCount()) {
+                playClickSound()
+                val slot = row - 1
+                assignSlot(actionId, if (slot < 0) null else slot)
+            }
+        }
+        selectorActionId = null
+    }
+
+    private fun renderSelector(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val actionId = selectorActionId ?: return
+        val px = screenX + selectorX
+        val py = screenY + selectorY
+        val w = SELECTOR_WIDTH
+        val h = selectorHeight()
+
+        guiGraphics.fill(px - 1, py - 1, px + w + 1, py + h + 1, SELECTOR_BORDER)
+        guiGraphics.fill(px, py, px + w, py + h, SELECTOR_BG)
+
+        val currentSlot = slotForAction(actionId)
+        for (row in 0 until selectorRowCount()) {
+            val slot = row - 1
+            val ry = py + row * SELECTOR_ROW_HEIGHT
+            val hovered = mouseX >= px && mouseX <= px + w && mouseY >= ry && mouseY <= ry + SELECTOR_ROW_HEIGHT
+            val isCurrent = if (slot < 0) currentSlot == null else currentSlot == slot
+
+            when {
+                isCurrent -> guiGraphics.fill(px, ry, px + w, ry + SELECTOR_ROW_HEIGHT, SELECTOR_ROW_CURRENT)
+                hovered -> guiGraphics.fill(px, ry, px + w, ry + SELECTOR_ROW_HEIGHT, SELECTOR_ROW_HOVER)
+            }
+
+            val label = selectorRowLabel(slot)
+            val textColor = if (isCurrent) SELECTOR_TEXT_CURRENT else SELECTOR_TEXT_COLOR
+            drawScaled(guiGraphics, label, px + SELECTOR_TEXT_X, ry + SELECTOR_TEXT_Y, textColor, SELECTOR_TEXT_SCALE)
+        }
+    }
+
+    private fun selectorRowLabel(slot: Int): String {
+        if (slot < 0) return Component.translatable("cobblemon_smartphone.quick_actions.none").string
+        val keyMapping = SmartphoneKeybinds.QUICK_ACTION_SLOTS[slot]
+        val number = (slot + 1).toString()
+        return if (keyMapping.isUnbound) number else "$number  ${keyMapping.translatedKeyMessage.string}"
+    }
+
+    private fun selectorRowCount(): Int = SmartphoneKeybinds.QUICK_ACTION_SLOT_COUNT + 1
+
+    private fun selectorHeight(): Int = selectorRowCount() * SELECTOR_ROW_HEIGHT
+
+    private fun drawScaled(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int, scale: Float) {
+        val matrices = guiGraphics.pose()
+        matrices.pushPose()
+        matrices.translate(x.toDouble(), y.toDouble(), 0.0)
+        matrices.scale(scale, scale, 1f)
+        guiGraphics.drawString(font, text, 0, 0, color, false)
+        matrices.popPose()
     }
 
     private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -358,6 +493,8 @@ class SmartphoneSettingsScreen(
     }
 
     companion object {
+        private const val RIGHT_BUTTON = 1
+
         private const val GUI_WIDTH = 131
         private const val GUI_HEIGHT = 207
 
@@ -373,6 +510,42 @@ class SmartphoneSettingsScreen(
 
         private const val DRAG_WIDTH = 8
         private const val DRAG_HEIGHT = 8
+
+        private const val HINT_Y = 30
+        private const val HINT_SCALE = 0.5f
+        private const val HINT_COLOR = 0xE6FFFF
+
+        private const val SLOT_BADGE_SCALE = 0.5f
+        private const val SLOT_BADGE_PADDING = 2
+        private const val SLOT_BADGE_BG = 0xC03A96B6.toInt()
+        private const val SLOT_BADGE_TEXT = 0xFFFFFFFF.toInt()
+
+        // Bounds the popup is clamped inside, matching where the app grid renders (which is
+        // known to sit within the phone's lit screen). Derived from the grid/footer layout:
+        //   LEFT   = GRID_START_X (26)
+        //   RIGHT  = GRID_START_X + BUTTON_SPACING + BUTTON_WIDTH (26 + 43 + 36 = 105)
+        //   TOP    = GRID_START_Y (37)
+        //   BOTTOM = FOOTER_BUTTON_Y + FOOTER_BUTTON_SIZE (187 + 7 = 194)
+        // Nudge these if the popup still touches the frame on any side.
+        private const val SCREEN_CONTENT_LEFT = 26
+        private const val SCREEN_CONTENT_RIGHT = 105
+        private const val SCREEN_CONTENT_TOP = 37
+        private const val SCREEN_CONTENT_BOTTOM = 194
+
+        // Extra gap (px) kept between the popup and the content edge. Includes room for the 1px border.
+        private const val SELECTOR_MARGIN = 1
+
+        private const val SELECTOR_WIDTH = 58
+        private const val SELECTOR_ROW_HEIGHT = 11
+        private const val SELECTOR_TEXT_SCALE = 0.6f
+        private const val SELECTOR_TEXT_X = 4
+        private const val SELECTOR_TEXT_Y = 3
+        private const val SELECTOR_BG = 0xF0EFFDFF.toInt()
+        private const val SELECTOR_BORDER = 0xFF3A96B6.toInt()
+        private const val SELECTOR_ROW_CURRENT = 0xFF3A96B6.toInt()
+        private const val SELECTOR_ROW_HOVER = 0x553A96B6.toInt()
+        private const val SELECTOR_TEXT_COLOR = 0xFF303030.toInt()
+        private const val SELECTOR_TEXT_CURRENT = 0xFFFFFFFF.toInt()
 
         private const val FOOTER_PREV_X = 36
         private const val FOOTER_HOME_X = 62
