@@ -21,7 +21,7 @@ import net.minecraft.world.item.ItemStack
 class SmartphoneSettingsScreen(
     private val color: SmartphoneColor,
     private val smartphoneStack: ItemStack? = null
-) : Screen(Component.literal("Smartphone Settings")) {
+) : Screen(Component.translatable("cobblemon_smartphone.screen.settings")) {
 
     private val orderedIds = SmartphoneActionOrder.apply(SmartphoneActionRegistry.getEnabledActions())
         .map { it.id }
@@ -92,6 +92,7 @@ class SmartphoneSettingsScreen(
         renderPageDots(guiGraphics)
         renderFooterButtons(guiGraphics, mouseX, mouseY)
         renderSelector(guiGraphics, mouseX, mouseY)
+        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -430,6 +431,41 @@ class SmartphoneSettingsScreen(
         renderFooterButton(guiGraphics, PREV_BUTTON_TEXTURE, FOOTER_PREV_X, mouseX, mouseY)
         renderFooterButton(guiGraphics, HOME_BUTTON_TEXTURE, FOOTER_HOME_X, mouseX, mouseY)
         renderFooterButton(guiGraphics, NEXT_BUTTON_TEXTURE, FOOTER_NEXT_X, mouseX, mouseY)
+    }
+
+    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (selectorActionId != null || draggingIndex != -1) return
+
+        pagedIds().forEachIndexed { index, actionId ->
+            val action = actionById(actionId) ?: return@forEachIndexed
+            val (gx, gy) = gridPosition(index)
+            if (isInDragHandle(mouseX, mouseY, index)) {
+                guiGraphics.renderTooltip(
+                    font,
+                    Component.translatable("cobblemon_smartphone.tooltip.reorder_app"),
+                    mouseX,
+                    mouseY
+                )
+                return
+            }
+            if (isInCell(mouseX, mouseY, gx, gy)) {
+                guiGraphics.renderTooltip(font, action.displayName, mouseX, mouseY)
+                return
+            }
+        }
+
+        val key = when {
+            isInFooterButton(mouseX, mouseY, FOOTER_PREV_X) -> "previous_page"
+            isInFooterButton(mouseX, mouseY, FOOTER_HOME_X) -> "back_to_phone"
+            isInFooterButton(mouseX, mouseY, FOOTER_NEXT_X) -> "next_page"
+            else -> null
+        } ?: return
+        guiGraphics.renderTooltip(
+            font,
+            Component.translatable("cobblemon_smartphone.tooltip.$key"),
+            mouseX,
+            mouseY
+        )
     }
 
     private fun renderFooterButton(

@@ -37,9 +37,11 @@ object PokeInfoDataProvider {
         val total get() = hp + attack + defence + specialAttack + specialDefence + speed
     }
 
-    data class AbilityInfo(val name: String, val isHidden: Boolean, val description: String)
+    data class AbilityInfo(val name: String, val isHidden: Boolean, val descriptionKey: String)
 
-    data class EvoInfo(val targetName: String, val method: String)
+    data class LocalizedText(val key: String, val args: List<String> = emptyList())
+
+    data class EvoInfo(val targetName: String, val methods: List<LocalizedText>)
 
     data class MoveInfo(
         val level: Int,
@@ -60,9 +62,9 @@ object PokeInfoDataProvider {
         val minLevel: Int,
         val maxLevel: Int,
         val context: String,
-        val time: String?,
-        val conditions: List<String>,
-        val antiConditions: List<String>
+        val time: LocalizedText?,
+        val conditions: List<LocalizedText>,
+        val antiConditions: List<LocalizedText>
     )
 
     data class SpeciesDetail(
@@ -138,7 +140,7 @@ object PokeInfoDataProvider {
             AbilityInfo(
                 name = ability.template.name,
                 isHidden = ability is HiddenAbility,
-                description = Component.translatable(ability.template.description).string
+                descriptionKey = ability.template.description
             )
         }
 
@@ -188,7 +190,10 @@ object PokeInfoDataProvider {
         val preEvo = f.preEvolution?.species?.name
 
         val allForms = species.forms.map {
-            FormInfo(name = it.name, displayName = it.formOnlyShowdownId().replaceFirstChar { c -> c.uppercase() })
+            FormInfo(
+                name = it.name,
+                displayName = "cobblemon.ui.pokedex.info.form.${it.formOnlyShowdownId()}"
+            )
         }
 
         return SpeciesDetail(
@@ -241,7 +246,7 @@ object PokeInfoDataProvider {
                         .filterIsInstance<PokemonSpawnDetail>()
                         .filter { it.pokemon.species.equals(species.name, ignoreCase = true) }
                         .flatMap { it.validBiomes }
-                        .map { it.path }
+                        .map { it.toString() }
                         .distinct()
                 } catch (_: Exception) {
                     emptyList()
@@ -252,29 +257,32 @@ object PokeInfoDataProvider {
         )
     }
 
-    private fun buildEvoMethod(evo: Evolution): String {
+    private fun buildEvoMethod(evo: Evolution): List<LocalizedText> {
         val baseMethod = when (evo) {
             is LevelUpEvolution -> {
                 val level = evo.requirements.filterIsInstance<LevelRequirement>().firstOrNull()?.minLevel
-                if (level != null && level > 1) "Lv $level" else "Level Up"
+                if (level != null && level > 1) {
+                    localized("evolution.level", level)
+                } else {
+                    localized("evolution.level_up")
+                }
             }
 
-            is TradeEvolution -> "Trade"
+            is TradeEvolution -> localized("evolution.trade")
             is ItemInteractionEvolution -> extractItemName(evo)
-            else -> "Special"
+            else -> localized("evolution.special")
         }
 
-        val conditions = buildExtraConditions(evo)
-        return if (conditions.isNotEmpty()) "$baseMethod + $conditions" else baseMethod
+        return listOf(baseMethod) + buildExtraConditions(evo)
     }
 
-    private fun buildExtraConditions(evo: Evolution): String {
-        val conditions = mutableListOf<String>()
+    private fun buildExtraConditions(evo: Evolution): List<LocalizedText> {
+        val conditions = mutableListOf<LocalizedText>()
 
         for (req in evo.requirements) {
             when (req) {
                 is FriendshipRequirement -> {
-                    conditions.add("Friendship")
+                    conditions.add(localized("evolution.friendship"))
                 }
 
                 is TimeRangeRequirement -> {
@@ -282,40 +290,39 @@ object PokeInfoDataProvider {
                     if (firstRange != null) {
                         val mid = (firstRange.first + firstRange.last) / 2
                         val label = when (mid) {
-                            in 4000..10000 -> "Day"
-                            in 16000..22000 -> "Night"
-                            in 2000..5000 -> "Dawn"
-                            in 11000..15000 -> "Dusk"
+                            in 4000..10000 -> "day"
+                            in 16000..22000 -> "night"
+                            in 2000..5000 -> "dawn"
+                            in 11000..15000 -> "dusk"
                             else -> null
                         }
-                        if (label != null) conditions.add(label)
+                        if (label != null) conditions.add(localized("time.$label"))
                     }
                 }
             }
         }
 
-        return conditions.joinToString(" + ")
+        return conditions
     }
 
-    private fun extractItemName(evo: ItemInteractionEvolution): String {
+    private fun extractItemName(evo: ItemInteractionEvolution): LocalizedText {
         return try {
             val predicate = evo.requiredContext
             val itemsField = predicate::class.java.getDeclaredField("items")
             itemsField.isAccessible = true
             @Suppress("UNCHECKED_CAST")
             val itemsOpt = itemsField.get(predicate) as java.util.Optional<*>
-            val holderSet = itemsOpt.orElse(null) ?: return "Item"
+            val holderSet = itemsOpt.orElse(null) ?: return localized("evolution.item")
             val streamMethod = holderSet::class.java.getMethod("stream")
 
             @Suppress("UNCHECKED_CAST")
             val stream = streamMethod.invoke(holderSet) as java.util.stream.Stream<*>
-            val holder = stream.findFirst().orElse(null) ?: return "Item"
+            val holder = stream.findFirst().orElse(null) ?: return localized("evolution.item")
             val valueMethod = holder::class.java.getMethod("value")
             val item = valueMethod.invoke(holder) as net.minecraft.world.item.Item
-            item.descriptionId.removePrefix("item.").split(".").last()
-                .replace("_", " ").replaceFirstChar { it.uppercase() }
+            LocalizedText(item.descriptionId)
         } catch (_: Exception) {
-            "Item"
+            localized("evolution.item")
         }
     }
 
@@ -333,7 +340,7 @@ object PokeInfoDataProvider {
                 }
             } ?: continue
 
-            result.add(EvoInfo(targetName = targetName, method = buildEvoMethod(evo)))
+            result.add(EvoInfo(targetName = targetName, methods = buildEvoMethod(evo)))
 
             val targetDex = try {
                 PokemonSpecies.getByIdentifier(evo.result.species!!.asIdentifierDefaultingNamespace())?.nationalPokedexNumber
@@ -359,7 +366,7 @@ object PokeInfoDataProvider {
         return SpawnEntryData(
             bucket = bucket.name,
             weight = weight,
-            biomes = validBiomes.map { it.path },
+            biomes = validBiomes.map { it.toString() },
             minLevel = levelRange.first,
             maxLevel = levelRange.last,
             context = spawnablePositionType.name,
@@ -369,30 +376,30 @@ object PokeInfoDataProvider {
         )
     }
 
-    private fun conditionStrings(cond: SpawningCondition<*>, isAnti: Boolean): List<String> {
-        val list = mutableListOf<String>()
+    private fun conditionStrings(cond: SpawningCondition<*>, isAnti: Boolean): List<LocalizedText> {
+        val list = mutableListOf<LocalizedText>()
 
-        if (cond.canSeeSky == true) list.add(if (isAnti) "No Sky" else "Clear Sky")
-        if (cond.isRaining == true) list.add(if (isAnti) "No Rain" else "Rain")
-        if (cond.isThundering == true) list.add(if (isAnti) "No Thunder" else "Thunder")
-        if (cond.isSlimeChunk == true) list.add("Slime Chunk")
+        if (cond.canSeeSky == true) list.add(localized("condition.${if (isAnti) "no_sky" else "clear_sky"}"))
+        if (cond.isRaining == true) list.add(localized("condition.${if (isAnti) "no_rain" else "rain"}"))
+        if (cond.isThundering == true) list.add(localized("condition.${if (isAnti) "no_thunder" else "thunder"}"))
+        if (cond.isSlimeChunk == true) list.add(localized("condition.slime_chunk"))
 
-        cond.moonPhase?.let { list.add("Moon: $it") }
+        cond.moonPhase?.let { list.add(localized("condition.moon", it)) }
 
         if (cond.minLight != null || cond.maxLight != null) {
             val min = cond.minLight?.toString() ?: "0"
             val max = cond.maxLight?.toString() ?: "15"
-            list.add("Light $min-$max")
+            list.add(localized("condition.light", min, max))
         }
 
-        cond.dimensions?.forEach { dim -> list.add(dim.path) }
+        cond.dimensions?.forEach { dim -> list.add(localized("condition.value", dim.toString())) }
 
         cond.structures?.forEach { struct ->
             try {
-                struct.left().ifPresent { res -> list.add(res.path) }
+                struct.left().ifPresent { res -> list.add(localized("condition.value", res.toString())) }
             } catch (_: Exception) {
                 try {
-                    struct.right().ifPresent { tag -> list.add("#${tag.location()}") }
+                    struct.right().ifPresent { tag -> list.add(localized("condition.value", "#${tag.location()}")) }
                 } catch (_: Exception) {
                 }
             }
@@ -401,42 +408,42 @@ object PokeInfoDataProvider {
         // Subclass-specific fields (use if-chains so parent + child fields are both extracted)
         if (cond is com.cobblemon.mod.common.api.spawning.condition.AreaTypeSpawningCondition<*>) {
             cond.neededNearbyBlocks?.forEach { block ->
-                list.add(registryLikeToString(block))
+                list.add(localized("condition.value", registryLikeToString(block)))
             }
             if (cond.minHeight != null || cond.maxHeight != null) {
                 val minH = cond.minHeight?.toString() ?: "-"
                 val maxH = cond.maxHeight?.toString() ?: "-"
-                list.add("Height $minH-$maxH")
+                list.add(localized("condition.height", minH, maxH))
             }
         }
         if (cond is com.cobblemon.mod.common.api.spawning.condition.GroundedTypeSpawningCondition<*>) {
             cond.neededBaseBlocks?.forEach { block ->
-                list.add("Base: ${registryLikeToString(block)}")
+                list.add(localized("condition.base", registryLikeToString(block)))
             }
         }
         if (cond is com.cobblemon.mod.common.api.spawning.condition.SubmergedTypeSpawningCondition<*>) {
-            cond.fluid?.let { list.add("Fluid: ${registryLikeToString(it)}") }
-            cond.fluidIsSource?.let { if (it) list.add("Source Fluid") }
+            cond.fluid?.let { list.add(localized("condition.fluid", registryLikeToString(it))) }
+            cond.fluidIsSource?.let { if (it) list.add(localized("condition.source_fluid")) }
             if (cond.minDepth != null || cond.maxDepth != null) {
                 val minD = cond.minDepth?.toString() ?: "-"
                 val maxD = cond.maxDepth?.toString() ?: "-"
-                list.add("Depth $minD-$maxD")
+                list.add(localized("condition.depth", minD, maxD))
             }
         }
         if (cond is com.cobblemon.mod.common.api.spawning.condition.SurfaceTypeSpawningCondition<*>) {
-            cond.fluid?.let { list.add("Fluid: ${registryLikeToString(it)}") }
+            cond.fluid?.let { list.add(localized("condition.fluid", registryLikeToString(it))) }
         }
         if (cond is com.cobblemon.mod.common.api.spawning.condition.FishingSpawningCondition) {
-            cond.rod?.let { list.add("Rod: ${registryLikeToString(it)}") }
+            cond.rod?.let { list.add(localized("condition.rod", registryLikeToString(it))) }
             cond.neededNearbyBlocks?.forEach { block ->
-                list.add(registryLikeToString(block))
+                list.add(localized("condition.value", registryLikeToString(block)))
             }
-            cond.bait?.let { list.add("Bait: ${it.path}") }
-            cond.rodType?.let { list.add("Rod Type: ${it.path}") }
+            cond.bait?.let { list.add(localized("condition.bait", it.toString())) }
+            cond.rodType?.let { list.add(localized("condition.rod_type", it.toString())) }
             if (cond.minLureLevel != null || cond.maxLureLevel != null) {
                 val minL = cond.minLureLevel?.toString() ?: "-"
                 val maxL = cond.maxLureLevel?.toString() ?: "-"
-                list.add("Lure $minL-$maxL")
+                list.add(localized("condition.lure", minL, maxL))
             }
         }
 
@@ -451,16 +458,21 @@ object PokeInfoDataProvider {
         }
     }
 
-    private fun conditionTimeStrings(cond: SpawningCondition<*>): List<String> {
+    private fun conditionTimeStrings(cond: SpawningCondition<*>): List<LocalizedText> {
         val timeRange = cond.timeRange ?: return emptyList()
         return listOf(timeRangeToName(timeRange))
     }
 
-    private fun timeRangeToName(timeRange: TimeRange): String {
+    private fun timeRangeToName(timeRange: TimeRange): LocalizedText {
         for ((name, tr) in TimeRange.timeRanges) {
             if (name == "any") continue
-            if (tr.ranges == timeRange.ranges) return name.replaceFirstChar { it.uppercase() }
+            if (tr.ranges == timeRange.ranges) return localized("time.$name")
         }
-        return timeRange.ranges.joinToString(", ") { "${it.first}-${it.last}" }
+        return localized("condition.value", timeRange.ranges.joinToString(", ") { "${it.first}-${it.last}" })
     }
+
+    private fun localized(key: String, vararg args: Any): LocalizedText = LocalizedText(
+        key = "cobblemon_smartphone.pokeinfo.$key",
+        args = args.map(Any::toString)
+    )
 }

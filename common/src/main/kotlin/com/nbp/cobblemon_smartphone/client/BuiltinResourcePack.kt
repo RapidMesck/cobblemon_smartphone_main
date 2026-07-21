@@ -5,12 +5,12 @@ import net.minecraft.server.packs.PackType
 
 class BuiltinResourcePack(
     val id: String,
-    val name: String,
+    val translationKey: String,
     val packType: PackType,
     val activationBehavior: ResourcePackActivationBehavior,
     val neededMods: Set<String> = emptySet()
 ) {
-    val displayName: Component = Component.literal(name)
+    val displayName: Component = Component.translatable(translationKey)
 }
 
 enum class ResourcePackActivationBehavior {

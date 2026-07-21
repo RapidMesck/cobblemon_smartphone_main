@@ -29,7 +29,7 @@ object CobblemonSmartphone {
     val builtinPacks = listOf(
         BuiltinResourcePack(
             id = "oldsmartphone",
-            name = "Old Smartphone Textures",
+            translationKey = "resourcePack.cobblemon_smartphone.oldsmartphone",
             packType = PackType.CLIENT_RESOURCES,
             activationBehavior = ResourcePackActivationBehavior.NORMAL
         )

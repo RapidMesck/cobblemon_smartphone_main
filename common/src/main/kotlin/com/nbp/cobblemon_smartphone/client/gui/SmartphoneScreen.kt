@@ -17,7 +17,7 @@ import net.minecraft.world.item.ItemStack
 class SmartphoneScreen(
     private val color: SmartphoneColor,
     private val smartphoneStack: ItemStack? = null
-) : Screen(Component.literal("Smartphone")) {
+) : Screen(Component.translatable("cobblemon_smartphone.screen.smartphone")) {
     private val actions get() = SmartphoneActionOrder.apply(SmartphoneActionRegistry.getEnabledActions())
     private val frameTexture = ResourceLocation.fromNamespaceAndPath(
         "cobblemon_smartphone",
@@ -89,6 +89,7 @@ class SmartphoneScreen(
 
         renderPageDots(guiGraphics)
         renderFooterButtons(guiGraphics, mouseX, mouseY)
+        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -223,6 +224,30 @@ class SmartphoneScreen(
         renderFooterButton(guiGraphics, PREV_BUTTON_TEXTURE, FOOTER_PREV_X, mouseX, mouseY)
         renderFooterButton(guiGraphics, HOME_BUTTON_TEXTURE, FOOTER_HOME_X, mouseX, mouseY)
         renderFooterButton(guiGraphics, NEXT_BUTTON_TEXTURE, FOOTER_NEXT_X, mouseX, mouseY)
+    }
+
+    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        pagedActions().forEachIndexed { index, action ->
+            val (x, y) = getButtonPosition(index)
+            if (isHovered(mouseX, mouseY, x, y)) {
+                guiGraphics.renderTooltip(font, action.displayName, mouseX, mouseY)
+                return
+            }
+        }
+
+        val key = when {
+            isInHeaderSettingsButton(mouseX, mouseY) -> "settings"
+            isInFooterButton(mouseX, mouseY, FOOTER_PREV_X) -> "previous_page"
+            isInFooterButton(mouseX, mouseY, FOOTER_HOME_X) -> "first_page"
+            isInFooterButton(mouseX, mouseY, FOOTER_NEXT_X) -> "next_page"
+            else -> null
+        } ?: return
+        guiGraphics.renderTooltip(
+            font,
+            Component.translatable("cobblemon_smartphone.tooltip.$key"),
+            mouseX,
+            mouseY
+        )
     }
 
     private fun renderFooterButton(

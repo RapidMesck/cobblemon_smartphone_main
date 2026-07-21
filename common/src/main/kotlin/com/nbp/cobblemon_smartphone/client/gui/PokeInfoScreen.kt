@@ -14,6 +14,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.resources.language.I18n
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
@@ -22,7 +23,7 @@ import org.joml.Quaternionf
 class PokeInfoScreen(
     private val color: SmartphoneColor,
     private val smartphoneStack: ItemStack? = null
-) : Screen(Component.literal("PokeInfo")) {
+) : Screen(Component.translatable("cobblemon_smartphone.screen.pokeinfo")) {
 
     private val frameTexture get() = color.getLargeScreenTexture()
     private var screenX = 0
@@ -57,6 +58,7 @@ class PokeInfoScreen(
         )
         searchBox.setMaxLength(30)
         searchBox.setBordered(false)
+        searchBox.setHint(Component.translatable("cobblemon_smartphone.pokeinfo.search"))
         searchBox.setTextColor(0xFF888888.toInt())
         searchBox.setResponder { query -> onSearchChanged(query) }
         addRenderableWidget(searchBox)
@@ -123,6 +125,7 @@ class PokeInfoScreen(
 
         guiGraphics.disableScissor()
         renderScrollbar(guiGraphics, mouseY)
+        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -189,7 +192,16 @@ class PokeInfoScreen(
     }
 
     private fun onSearchChanged(query: String) {
-        results = PokeInfoDataProvider.search(query)
+        val normalized = query.trim().lowercase()
+        results = if (normalized.isEmpty()) {
+            PokeInfoDataProvider.all()
+        } else {
+            PokeInfoDataProvider.all().filter { species ->
+                localizedPokemonName(species).lowercase().contains(normalized) ||
+                        species.name.lowercase().contains(normalized) ||
+                        species.dexNumber.toString().startsWith(normalized)
+            }
+        }
         updateMaxScroll()
         scrollY = 0
     }
@@ -256,13 +268,13 @@ class PokeInfoScreen(
         }
 
         // Left: dex number + name + type
-        val dexAndName = "#${String.format("%03d", species.dexNumber)} ${species.name}"
+        val dexAndName = "#${String.format("%03d", species.dexNumber)} ${localizedPokemonName(species)}"
         val textColor = if (hovered) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
         guiGraphics.drawString(font, dexAndName, x1 + 8, y1 + 3, textColor, false)
 
         // Type line
         val types = listOfNotNull(species.primaryType, species.secondaryType)
-        val typeText = types.joinToString(" / ") { it.replaceFirstChar { c -> c.uppercase() } }
+        val typeText = types.joinToString(" / ") { localizedTypeName(it) }
         guiGraphics.drawString(font, typeText, x1 + 8, y1 + 15, 0xA0FFFFFF.toInt(), false)
 
         // Right: mini 3D model
@@ -281,6 +293,31 @@ class PokeInfoScreen(
 
     private fun playClickSound() {
         Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
+    }
+
+    private fun localizedPokemonName(species: PokeInfoDataProvider.SpeciesInfo): String =
+        PokemonSpecies.getByPokedexNumber(species.dexNumber)?.translatedName?.string ?: species.name
+
+    private fun localizedTypeName(type: String): String {
+        val key = "cobblemon.type.${type.lowercase()}"
+        return if (I18n.exists(key)) Component.translatable(key).string else type
+    }
+
+    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val tooltip = when {
+            isInBackButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.back_to_phone")
+            else -> {
+                val startIndex = (scrollY / (CARD_HEIGHT + CARD_GAP)).coerceAtLeast(0)
+                val endIndex = ((scrollY + LIST_END_Y - LIST_START_Y) / (CARD_HEIGHT + CARD_GAP) + 1)
+                    .coerceAtMost(results.size)
+                (startIndex until endIndex).firstOrNull { index ->
+                    val cy = screenY + LIST_START_Y + index * (CARD_HEIGHT + CARD_GAP) - scrollY
+                    mouseX >= screenX + CONTENT_X && mouseX <= screenX + CONTENT_X + LIST_WIDTH &&
+                            mouseY >= cy && mouseY <= cy + CARD_HEIGHT
+                }?.let { Component.translatable("cobblemon_smartphone.tooltip.view_pokemon_details") }
+            }
+        } ?: return
+        guiGraphics.renderTooltip(font, tooltip, mouseX, mouseY)
     }
 
     private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
