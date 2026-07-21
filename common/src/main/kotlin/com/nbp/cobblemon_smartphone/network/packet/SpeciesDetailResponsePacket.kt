@@ -3,6 +3,7 @@ package com.nbp.cobblemon_smartphone.network.packet
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider.AbilityInfo
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider.EvoInfo
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider.FormInfo
+import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider.LocalizedText
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider.MoveInfo
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider.SpawnEntryData
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider.SpeciesDetail
@@ -33,7 +34,9 @@ class SpeciesDetailResponsePacket(val detail: SpeciesDetail?) :
                 evYield = readStats(buffer),
                 abilities = readList(buffer) { readAbility(buffer) },
                 preEvolution = buffer.readNullableUtf(),
-                evolutions = readList(buffer) { EvoInfo(buffer.readUtf(), buffer.readUtf()) },
+                evolutions = readList(buffer) {
+                    EvoInfo(buffer.readUtf(), readList(buffer) { readLocalizedText(buffer) })
+                },
                 moves = readList(buffer) { readMove(buffer) },
                 catchRate = buffer.readVarInt(),
                 baseExp = buffer.readVarInt(),
@@ -55,7 +58,7 @@ class SpeciesDetailResponsePacket(val detail: SpeciesDetail?) :
         )
 
         private fun readAbility(buffer: RegistryFriendlyByteBuf) = AbilityInfo(
-            name = buffer.readUtf(), isHidden = buffer.readBoolean(), description = buffer.readUtf()
+            name = buffer.readUtf(), isHidden = buffer.readBoolean(), descriptionKey = buffer.readUtf()
         )
 
         private fun readMove(buffer: RegistryFriendlyByteBuf) = MoveInfo(
@@ -69,10 +72,18 @@ class SpeciesDetailResponsePacket(val detail: SpeciesDetail?) :
             biomes = readList(buffer) { buffer.readUtf() },
             minLevel = buffer.readVarInt(), maxLevel = buffer.readVarInt(),
             context = buffer.readUtf(),
-            time = buffer.readNullableUtf(),
-            conditions = readList(buffer) { buffer.readUtf() },
-            antiConditions = readList(buffer) { buffer.readUtf() }
+            time = readNullableLocalizedText(buffer),
+            conditions = readList(buffer) { readLocalizedText(buffer) },
+            antiConditions = readList(buffer) { readLocalizedText(buffer) }
         )
+
+        private fun readLocalizedText(buffer: RegistryFriendlyByteBuf) = LocalizedText(
+            key = buffer.readUtf(),
+            args = readList(buffer) { buffer.readUtf() }
+        )
+
+        private fun readNullableLocalizedText(buffer: RegistryFriendlyByteBuf): LocalizedText? =
+            if (buffer.readBoolean()) readLocalizedText(buffer) else null
 
         private fun <T> readList(buffer: RegistryFriendlyByteBuf, reader: () -> T): List<T> {
             val count = buffer.readVarInt()
@@ -103,7 +114,8 @@ class SpeciesDetailResponsePacket(val detail: SpeciesDetail?) :
         encodeList(buffer, d.abilities) { encodeAbility(buffer, it) }
         buffer.writeNullableUtf(d.preEvolution)
         encodeList(buffer, d.evolutions) { evo ->
-            buffer.writeUtf(evo.targetName); buffer.writeUtf(evo.method)
+            buffer.writeUtf(evo.targetName)
+            encodeList(buffer, evo.methods) { encodeLocalizedText(buffer, it) }
         }
         encodeList(buffer, d.moves) { encodeMove(buffer, it) }
         buffer.writeVarInt(d.catchRate)
@@ -127,7 +139,7 @@ class SpeciesDetailResponsePacket(val detail: SpeciesDetail?) :
     }
 
     private fun encodeAbility(buffer: RegistryFriendlyByteBuf, a: AbilityInfo) {
-        buffer.writeUtf(a.name); buffer.writeBoolean(a.isHidden); buffer.writeUtf(a.description)
+        buffer.writeUtf(a.name); buffer.writeBoolean(a.isHidden); buffer.writeUtf(a.descriptionKey)
     }
 
     private fun encodeMove(buffer: RegistryFriendlyByteBuf, m: MoveInfo) {
@@ -141,9 +153,15 @@ class SpeciesDetailResponsePacket(val detail: SpeciesDetail?) :
         encodeList(buffer, e.biomes) { buffer.writeUtf(it) }
         buffer.writeVarInt(e.minLevel); buffer.writeVarInt(e.maxLevel)
         buffer.writeUtf(e.context)
-        buffer.writeNullableUtf(e.time)
-        encodeList(buffer, e.conditions) { buffer.writeUtf(it) }
-        encodeList(buffer, e.antiConditions) { buffer.writeUtf(it) }
+        buffer.writeBoolean(e.time != null)
+        e.time?.let { encodeLocalizedText(buffer, it) }
+        encodeList(buffer, e.conditions) { encodeLocalizedText(buffer, it) }
+        encodeList(buffer, e.antiConditions) { encodeLocalizedText(buffer, it) }
+    }
+
+    private fun encodeLocalizedText(buffer: RegistryFriendlyByteBuf, text: LocalizedText) {
+        buffer.writeUtf(text.key)
+        encodeList(buffer, text.args) { buffer.writeUtf(it) }
     }
 
     private fun <T> encodeList(buffer: RegistryFriendlyByteBuf, list: List<T>, encoder: (T) -> Unit) {

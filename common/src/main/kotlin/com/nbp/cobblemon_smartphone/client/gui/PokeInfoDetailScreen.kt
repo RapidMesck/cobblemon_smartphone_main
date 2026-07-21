@@ -15,6 +15,7 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.resources.language.I18n
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
@@ -27,7 +28,7 @@ class PokeInfoDetailScreen(
     private val color: SmartphoneColor,
     private val smartphoneStack: ItemStack?,
     private val dexNumber: Int
-) : Screen(Component.literal("PokeInfo Detail")) {
+) : Screen(Component.translatable("cobblemon_smartphone.screen.pokeinfo_detail")) {
 
     private val frameTexture get() = color.getLargeScreenTexture()
     private var screenX = 0
@@ -75,6 +76,51 @@ class PokeInfoDetailScreen(
 
     private fun lang(key: String, vararg args: Any): String =
         Component.translatable("cobblemon_smartphone.pokeinfo.$key", *args.map { it.toString() }.toTypedArray()).string
+
+    private fun localized(text: PokeInfoDataProvider.LocalizedText): String =
+        Component.translatable(text.key, *text.args.toTypedArray()).string
+
+    private fun translatedOrFallback(key: String, fallback: String): String =
+        if (I18n.exists(key)) Component.translatable(key).string else fallback
+
+    private fun humanize(value: String): String = value.substringAfter(':')
+        .replace('_', ' ')
+        .replace('-', ' ')
+        .split(' ')
+        .filter(String::isNotEmpty)
+        .joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
+
+    private fun pokemonName(rawName: String, dexNumber: Int? = null): String {
+        val species = dexNumber?.let(PokemonSpecies::getByPokedexNumber)
+            ?: PokemonSpecies.implemented.firstOrNull {
+                it.name.equals(rawName.substringAfter(':'), ignoreCase = true) ||
+                        it.resourceIdentifier.toString().equals(rawName, ignoreCase = true)
+            }
+        return species?.translatedName?.string ?: humanize(rawName)
+    }
+
+    private fun typeName(type: String): String =
+        translatedOrFallback("cobblemon.type.${type.lowercase()}", humanize(type))
+
+    private fun moveName(move: String): String =
+        translatedOrFallback("cobblemon.move.${move.lowercase()}", humanize(move))
+
+    private fun abilityName(ability: String): String =
+        translatedOrFallback("cobblemon.ability.${ability.lowercase()}", humanize(ability))
+
+    private fun eggGroupName(group: String): String =
+        translatedOrFallback("cobblemon.egg_group.${group.lowercase()}", humanize(group))
+
+    private fun biomeName(id: String): String {
+        val location = ResourceLocation.tryParse(id)
+        val key = location?.let { "biome.${it.namespace}.${it.path.replace('/', '.')}" }
+        return if (key != null) translatedOrFallback(key, humanize(id)) else humanize(id)
+    }
+
+    private fun spawnValue(kind: String, value: String): String = translatedOrFallback(
+        "cobblemon_smartphone.pokeinfo.spawn.$kind.${value.lowercase().replace(' ', '_').replace('-', '_')}",
+        humanize(value)
+    )
 
     override fun init() {
         screenX = (width - GUI_WIDTH) / 2
@@ -132,6 +178,7 @@ class PokeInfoDetailScreen(
             // Still loading, show only loading state
             guiGraphics.disableScissor()
             renderLoadingOverlay(guiGraphics)
+            renderHoveredTooltip(guiGraphics, mouseX, mouseY)
             return
         }
 
@@ -172,6 +219,7 @@ class PokeInfoDetailScreen(
 
         guiGraphics.disableScissor()
         renderScrollbar(guiGraphics, mouseY)
+        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -196,6 +244,8 @@ class PokeInfoDetailScreen(
                 }
             }
         }
+        if (!::detail.isInitialized) return super.mouseClicked(mouseX, mouseY, button)
+
         // Form navigation (inside scissor, scroll-relative)
         val forms = detail.availableForms
         if (forms.size > 1) {
@@ -205,11 +255,13 @@ class PokeInfoDetailScreen(
             val mx = mouseX.toInt()
             val my = mouseY.toInt()
             if (currentFormIndex > 0 && mx >= navCenter - 64 && mx <= navCenter - 50 && my >= navY - 2 && my <= navY + 10) {
+                playClickSound()
                 currentFormIndex--
                 requestDetail()
                 return true
             }
             if (currentFormIndex < forms.size - 1 && mx >= navCenter + 50 && mx <= navCenter + 60 && my >= navY - 2 && my <= navY + 10) {
+                playClickSound()
                 currentFormIndex++
                 requestDetail()
                 return true
@@ -268,7 +320,8 @@ class PokeInfoDetailScreen(
 
         val y = sy + SECTION_PAD_TOP
         val navCenter = screenX + CONTENT_X + CONTENT_WIDTH / 2
-        val formName = forms[currentFormIndex].displayName
+        val form = forms[currentFormIndex]
+        val formName = translatedOrFallback(form.displayName, humanize(form.name))
 
         if (currentFormIndex > 0) {
             val lx = navCenter - 60
@@ -297,13 +350,13 @@ class PokeInfoDetailScreen(
         var y = sy + SECTION_PAD_TOP + topPad
         renderModel(guiGraphics, screenX + CONTENT_X, screenY + y, leftW)
 
-        val dexAndName = "#${String.format("%03d", detail.dexNumber)} ${detail.name}"
+        val dexAndName = "#${String.format("%03d", detail.dexNumber)} ${pokemonName(detail.name, detail.dexNumber)}"
         draw(guiGraphics, dexAndName, screenX + rightX, screenY + y, CONTENT_GOLD)
 
         val types = listOfNotNull(detail.primaryType, detail.secondaryType)
         var tx = screenX + rightX
         types.forEachIndexed { i, type ->
-            val name = type.replaceFirstChar { c -> c.uppercase() }
+            val name = typeName(type)
             draw(guiGraphics, name, tx, screenY + y + 10, typeColor(type))
             tx += textWidth(name)
             if (i < types.size - 1) {
@@ -314,7 +367,7 @@ class PokeInfoDetailScreen(
 
         draw(
             guiGraphics,
-            "H:${detail.height / 10f}m  W:${detail.weight / 10f}kg",
+            lang("dimensions", detail.height / 10f, detail.weight / 10f),
             screenX + rightX,
             screenY + y + 20,
             CONTENT_DIM
@@ -324,7 +377,6 @@ class PokeInfoDetailScreen(
     }
 
     private fun renderModel(guiGraphics: GuiGraphics, mx: Int, my: Int, w: Int) {
-        val modelH = 56
         val pokemon = modelPokemon
         if (pokemon != null) {
             val matrices = guiGraphics.pose()
@@ -335,8 +387,6 @@ class PokeInfoDetailScreen(
                 PoseType.PROFILE, posableState, 0f, 35f
             )
             matrices.popPose()
-        } else {
-            draw(guiGraphics, "3D", mx + w / 2 - 8, my + modelH / 2 - 4, 0x80FFFFFF.toInt())
         }
     }
 
@@ -348,12 +398,12 @@ class PokeInfoDetailScreen(
         y += TITLE_GAP + CONTENT_GAP
 
         val stats = listOf(
-            "HP" to detail.baseStats.hp,
-            "ATK" to detail.baseStats.attack,
-            "DEF" to detail.baseStats.defence,
-            "SpA" to detail.baseStats.specialAttack,
-            "SpD" to detail.baseStats.specialDefence,
-            "Spe" to detail.baseStats.speed
+            lang("stat.hp") to detail.baseStats.hp,
+            lang("stat.attack") to detail.baseStats.attack,
+            lang("stat.defence") to detail.baseStats.defence,
+            lang("stat.special_attack") to detail.baseStats.specialAttack,
+            lang("stat.special_defence") to detail.baseStats.specialDefence,
+            lang("stat.speed") to detail.baseStats.speed
         )
         val labelW = 22
         val valW = 28
@@ -374,7 +424,7 @@ class PokeInfoDetailScreen(
         }
         draw(
             guiGraphics,
-            "Total: ${detail.baseStats.total}",
+            lang("total", detail.baseStats.total),
             screenX + CONTENT_X + SECTION_PAD + labelW - 8,
             screenY + y,
             CONTENT_DIM
@@ -392,8 +442,9 @@ class PokeInfoDetailScreen(
         var lineCount = 1 // title line
         detail.abilities.forEach { a ->
             lineCount += 1 // ability name
-            if (a.description.isNotEmpty()) {
-                lineCount += wrapText(a.description, descW).size
+            val description = Component.translatable(a.descriptionKey).string
+            if (description.isNotEmpty()) {
+                lineCount += wrapText(description, descW).size
             }
         }
         val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lineCount * 9 + SECTION_PAD_BOTTOM
@@ -405,22 +456,24 @@ class PokeInfoDetailScreen(
         y += TITLE_GAP + CONTENT_GAP
 
         detail.abilities.forEach { a ->
-            val prefix = if (a.isHidden) "(H) " else ""
+            val name = abilityName(a.name)
             if (a.isHidden) {
-                draw(guiGraphics, "(H) ", tx, screenY + y, CONTENT_COND)
+                val prefix = lang("hidden_ability_prefix")
+                draw(guiGraphics, prefix, tx, screenY + y, CONTENT_COND)
                 draw(
                     guiGraphics,
-                    a.name.replaceFirstChar { it.uppercase() },
-                    tx + textWidth("(H) "),
+                    name,
+                    tx + textWidth(prefix),
                     screenY + y,
                     CONTENT_GOLD
                 )
             } else {
-                draw(guiGraphics, a.name.replaceFirstChar { it.uppercase() }, tx, screenY + y, CONTENT_GOLD)
+                draw(guiGraphics, name, tx, screenY + y, CONTENT_GOLD)
             }
             y += 9
-            if (a.description.isNotEmpty()) {
-                wrapText(a.description, descW).forEach { line ->
+            val description = Component.translatable(a.descriptionKey).string
+            if (description.isNotEmpty()) {
+                wrapText(description, descW).forEach { line ->
                     draw(guiGraphics, line, tx + 8, screenY + y, CONTENT_DIM)
                     y += 9
                 }
@@ -440,12 +493,13 @@ class PokeInfoDetailScreen(
         // Pre-calculate wrapped lines
         var lineCount = 0
         if (hasPre) {
-            val preName = detail.preEvolution!!.split(":").last().replaceFirstChar { it.uppercase() }
+            val preName = pokemonName(detail.preEvolution!!)
             lineCount += wrapText("\u2191 $preName", wrapW).size
         }
         detail.evolutions.forEach { evo ->
-            val name = evo.targetName.replaceFirstChar { it.uppercase() }
-            lineCount += wrapText("\u2193 $name (${evo.method})", wrapW).size
+            val name = pokemonName(evo.targetName)
+            val methods = evo.methods.joinToString(" + ", transform = ::localized)
+            lineCount += wrapText("\u2193 $name ($methods)", wrapW).size
         }
 
         val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lineCount * 9 + SECTION_PAD_BOTTOM
@@ -455,15 +509,16 @@ class PokeInfoDetailScreen(
         y += TITLE_GAP + CONTENT_GAP
 
         if (hasPre) {
-            val preName = detail.preEvolution!!.split(":").last().replaceFirstChar { it.uppercase() }
+            val preName = pokemonName(detail.preEvolution!!)
             wrapText("\u2191 $preName", wrapW).forEach {
                 draw(guiGraphics, it, tx, screenY + y, CONTENT_DIM)
                 y += 9
             }
         }
         detail.evolutions.forEach { evo ->
-            val name = evo.targetName.replaceFirstChar { it.uppercase() }
-            wrapText("\u2193 $name (${evo.method})", wrapW).forEach {
+            val name = pokemonName(evo.targetName)
+            val methods = evo.methods.joinToString(" + ", transform = ::localized)
+            wrapText("\u2193 $name ($methods)", wrapW).forEach {
                 draw(guiGraphics, it, tx, screenY + y, CONTENT_TEXT)
                 y += 9
             }
@@ -482,12 +537,12 @@ class PokeInfoDetailScreen(
 
         // EV Yield - only show non-zero
         val evs = listOf(
-            "HP" to detail.evYield.hp,
-            "Atk" to detail.evYield.attack,
-            "Def" to detail.evYield.defence,
-            "SpA" to detail.evYield.specialAttack,
-            "SpD" to detail.evYield.specialDefence,
-            "Spe" to detail.evYield.speed
+            lang("stat.hp") to detail.evYield.hp,
+            lang("stat.attack") to detail.evYield.attack,
+            lang("stat.defence") to detail.evYield.defence,
+            lang("stat.special_attack") to detail.evYield.specialAttack,
+            lang("stat.special_defence") to detail.evYield.specialDefence,
+            lang("stat.speed") to detail.evYield.speed
         ).filter { it.second > 0 }
         val evText = if (evs.isEmpty()) lang("none")
         else evs.joinToString(", ") { "${it.first} ${it.second}" }
@@ -555,16 +610,16 @@ class PokeInfoDetailScreen(
             // ── Header line ──
             val arrow = if (expanded) "\u25BC" else "\u25B6"
             val weight = bucketEntries.firstOrNull()?.weight ?: -1f
-            val weightStr = if (weight >= 0f) " (${weight.toInt()})" else " (Default)"
-            val headerText = "$arrow $bucket$weightStr"
-            allLines.add(LineSegments(listOf(Segment(headerText, CONTENT_GOLD))))
+            val weightStr = if (weight >= 0f) " (${weight.toInt()})" else " (${lang("default_weight")})"
+            val headerText = "$arrow ${spawnValue("bucket", bucket)}$weightStr"
+            allLines.add(LineSegments(listOf(Segment(headerText, CONTENT_GOLD)), bucket))
 
             if (expanded) {
                 // ── Expanded: show each entry ──
                 for (entry in bucketEntries) {
                     // Biomes
                     val biomeLabel = lang("biomes") + ": "
-                    val biomeValue = entry.biomes.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+                    val biomeValue = entry.biomes.joinToString(", ", transform = ::biomeName)
                     val biomePrefixW = textWidth(biomeLabel)
                     val biomeWrapped = wrapText(biomeValue, wrapW - biomePrefixW)
                     for ((bi, line) in biomeWrapped.withIndex()) {
@@ -584,7 +639,7 @@ class PokeInfoDetailScreen(
                         )
                     )
                     // Context
-                    val ctxValue = entry.context.replaceFirstChar { c -> c.uppercase() }
+                    val ctxValue = spawnValue("context", entry.context)
                     allLines.add(
                         LineSegments(
                             listOf(
@@ -594,12 +649,12 @@ class PokeInfoDetailScreen(
                         )
                     )
                     // Time
-                    if (!entry.time.isNullOrBlank()) {
+                    if (entry.time != null) {
                         allLines.add(
                             LineSegments(
                                 listOf(
                                     Segment(lang("time_label") + ": ", CONTENT_DIM),
-                                    Segment(entry.time, CONTENT_TEXT)
+                                    Segment(localized(entry.time), CONTENT_TEXT)
                                 )
                             )
                         )
@@ -607,7 +662,7 @@ class PokeInfoDetailScreen(
                     // Conditions
                     if (entry.conditions.isNotEmpty()) {
                         val condLabel = lang("cond") + ": "
-                        val condValue = entry.conditions.joinToString(", ")
+                        val condValue = entry.conditions.joinToString(", ", transform = ::localized)
                         val condPrefixW = textWidth(condLabel)
                         val condWrapped = wrapText(condValue, wrapW - condPrefixW)
                         for ((ci, line) in condWrapped.withIndex()) {
@@ -621,7 +676,7 @@ class PokeInfoDetailScreen(
                     // Anti-conditions
                     if (entry.antiConditions.isNotEmpty()) {
                         val antiLabel = lang("anti") + ": "
-                        val antiValue = entry.antiConditions.joinToString(", ")
+                        val antiValue = entry.antiConditions.joinToString(", ", transform = ::localized)
                         val antiPrefixW = textWidth(antiLabel)
                         val antiWrapped = wrapText(antiValue, wrapW - antiPrefixW)
                         for ((ai, line) in antiWrapped.withIndex()) {
@@ -637,8 +692,8 @@ class PokeInfoDetailScreen(
             } else {
                 // ── Collapsed summary ──
                 val allBiomes = bucketEntries.flatMap { it.biomes }.distinct()
-                val shown = allBiomes.take(2).joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
-                val more = if (allBiomes.size > 2) " +${allBiomes.size - 2} more" else ""
+                val shown = allBiomes.take(2).joinToString(", ", transform = ::biomeName)
+                val more = if (allBiomes.size > 2) lang("more_count", allBiomes.size - 2) else ""
                 val biomeLabel = lang("biomes") + ": "
                 val biomeText = shown + more
                 val biomePrefixW = textWidth(biomeLabel)
@@ -665,7 +720,7 @@ class PokeInfoDetailScreen(
                     allLines.add(
                         LineSegments(
                             listOf(
-                                Segment("  (${bucketEntries.size} entries)", CONTENT_DIM)
+                                Segment(lang("entry_count", bucketEntries.size), CONTENT_DIM)
                             )
                         )
                     )
@@ -680,9 +735,7 @@ class PokeInfoDetailScreen(
         var currentBucketStartY = 0
         var cy = sy + SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP
         for (line in allLines) {
-            if (line.segments.size == 1 && line.segments[0].color == CONTENT_GOLD &&
-                (line.segments[0].text.startsWith("\u25BC") || line.segments[0].text.startsWith("\u25B6"))
-            ) {
+            if (line.bucket != null) {
                 // Close previous bucket region
                 if (currentBucketStart != null) {
                     bucketHeaderRects[currentBucketStart!!] = Rect(
@@ -691,8 +744,7 @@ class PokeInfoDetailScreen(
                     )
                 }
                 // Start new bucket
-                val text = line.segments[0].text
-                currentBucketStart = text.substring(2).split(" (")[0]
+                currentBucketStart = line.bucket
                 currentBucketStartY = cy
             }
             cy += 9
@@ -724,7 +776,7 @@ class PokeInfoDetailScreen(
     }
 
     private data class Segment(val text: String, val color: Int)
-    private data class LineSegments(val segments: List<Segment>)
+    private data class LineSegments(val segments: List<Segment>, val bucket: String? = null)
 
     private fun renderBreedingSection(guiGraphics: GuiGraphics, sy: Int): Int {
         val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 3 * 9 + SECTION_PAD_BOTTOM
@@ -736,7 +788,7 @@ class PokeInfoDetailScreen(
         y += TITLE_GAP + CONTENT_GAP
 
         // Egg Groups
-        val groups = detail.eggGroups.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+        val groups = detail.eggGroups.joinToString(", ", transform = ::eggGroupName)
         draw(guiGraphics, lang("egg_groups") + ": ", tx, screenY + y, CONTENT_DIM)
         draw(guiGraphics, groups, tx + textWidth(lang("egg_groups") + ": "), screenY + y, CONTENT_TEXT)
         y += 9
@@ -750,18 +802,18 @@ class PokeInfoDetailScreen(
             }
 
             detail.maleRatio == 0f -> {
-                draw(guiGraphics, "100% F", tx + textWidth(lang("gender") + ": "), screenY + y, CONTENT_FEMALE)
+                draw(guiGraphics, lang("gender_female", 100), tx + textWidth(lang("gender") + ": "), screenY + y, CONTENT_FEMALE)
                 y += 9
             }
 
             detail.maleRatio == 1f -> {
-                draw(guiGraphics, "100% M", tx + textWidth(lang("gender") + ": "), screenY + y, CONTENT_MALE)
+                draw(guiGraphics, lang("gender_male", 100), tx + textWidth(lang("gender") + ": "), screenY + y, CONTENT_MALE)
                 y += 9
             }
 
             else -> {
-                val m = "${(detail.maleRatio * 100).toInt()}% M"
-                val f = "${((1 - detail.maleRatio) * 100).toInt()}% F"
+                val m = lang("gender_male", (detail.maleRatio * 100).toInt())
+                val f = lang("gender_female", ((1 - detail.maleRatio) * 100).toInt())
                 draw(guiGraphics, "$m / $f", tx + textWidth(lang("gender") + ": "), screenY + y, CONTENT_TEXT)
                 y += 9
             }
@@ -784,7 +836,7 @@ class PokeInfoDetailScreen(
             .filter { it.value != 1.0 }
             .groupBy({ it.value }, { it.key })
             .mapValues { (_, typeNames) ->
-                typeNames.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+                typeNames.joinToString(", ", transform = ::typeName)
             }
 
         val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
@@ -794,9 +846,9 @@ class PokeInfoDetailScreen(
         } else {
             byMultiplier.forEach { (mult, text) ->
                 val label = when {
-                    mult > 1.0 -> "Weak (x${multiplierText(mult)})"
-                    mult == 0.0 -> "Immune (x0)"
-                    else -> "Resist (x${multiplierText(mult)})"
+                    mult > 1.0 -> lang("weak") + " (x${multiplierText(mult)})"
+                    mult == 0.0 -> lang("immune") + " (x0)"
+                    else -> lang("resist") + " (x${multiplierText(mult)})"
                 }
                 totalLines += wrapText("$label: $text", wrapW).size
             }
@@ -873,15 +925,17 @@ class PokeInfoDetailScreen(
             val pw = if (move.power == 0) "\u2014" else move.power.toString()
             val ac = if (move.accuracy == 0) "\u221E" else move.accuracy.toString()
             val cat = when (move.category) {
-                "physical" -> "Ph"; "special" -> "Sp"; else -> "St"
+                "physical" -> lang("category.physical")
+                "special" -> lang("category.special")
+                else -> lang("category.status")
             }
             val catColor = when (move.category) {
                 "physical" -> 0xFFE07030.toInt()
                 "special" -> 0xFF5070B8.toInt()
                 else -> 0xFF888888.toInt()
             }
-            val typeAbbr = typeAbbreviation(move.type)
-            val moveName = truncate(move.name.replaceFirstChar { it.uppercase() }, MOVE_W - 2)
+            val typeAbbr = lang("type_abbr.${move.type.lowercase()}")
+            val moveName = truncate(moveName(move.name), MOVE_W - 2)
 
             draw(guiGraphics, "${move.level}", 0, ry, CONTENT_TEXT)
             draw(guiGraphics, moveName, LV_W, ry, CONTENT_TEXT)
@@ -936,20 +990,25 @@ class PokeInfoDetailScreen(
 
         for (move in sorted) {
             val methodLabel = when (move.method) {
-                "tm" -> "TM"; "egg" -> "Egg"; "tutor" -> "Tut"; else -> move.method
+                "tm" -> lang("method.tm")
+                "egg" -> lang("method.egg")
+                "tutor" -> lang("method.tutor")
+                else -> humanize(move.method)
             }
             val pw = if (move.power == 0) "\u2014" else move.power.toString()
             val ac = if (move.accuracy == 0) "\u221E" else move.accuracy.toString()
             val cat = when (move.category) {
-                "physical" -> "Ph"; "special" -> "Sp"; else -> "St"
+                "physical" -> lang("category.physical")
+                "special" -> lang("category.special")
+                else -> lang("category.status")
             }
             val catColor = when (move.category) {
                 "physical" -> 0xFFE07030.toInt()
                 "special" -> 0xFF5070B8.toInt()
                 else -> 0xFF888888.toInt()
             }
-            val typeAbbr = typeAbbreviation(move.type)
-            val moveName = truncate(move.name.replaceFirstChar { it.uppercase() }, MOVE_W - 2)
+            val typeAbbr = lang("type_abbr.${move.type.lowercase()}")
+            val moveName = truncate(moveName(move.name), MOVE_W - 2)
 
             draw(guiGraphics, methodLabel, 0, ry, CONTENT_DIM)
             draw(guiGraphics, moveName, MET_W, ry, CONTENT_TEXT)
@@ -1029,21 +1088,51 @@ class PokeInfoDetailScreen(
 
     private fun wrapText(text: String, maxWidth: Int): List<String> {
         if (textWidth(text) <= maxWidth) return listOf(text)
-        val words = text.split(" ")
         val lines = mutableListOf<String>()
         var currentLine = StringBuilder()
-        words.forEach { word ->
-            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
-            if (textWidth(testLine) <= maxWidth) {
-                if (currentLine.isNotEmpty()) currentLine.append(" ")
-                currentLine.append(word)
+        text.forEach { char ->
+            val candidate = currentLine.toString() + char
+            if (currentLine.isEmpty() || textWidth(candidate) <= maxWidth) {
+                currentLine.append(char)
             } else {
-                if (currentLine.isNotEmpty()) lines.add(currentLine.toString())
-                currentLine = StringBuilder(word)
+                lines.add(currentLine.toString().trimEnd())
+                currentLine = StringBuilder().append(char)
             }
         }
-        if (currentLine.isNotEmpty()) lines.add(currentLine.toString())
+        if (currentLine.isNotEmpty()) lines.add(currentLine.toString().trimEnd())
         return lines.ifEmpty { listOf(text) }
+    }
+
+    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val key = when {
+            isInBackButton(mouseX, mouseY) -> "back_to_pokemon_list"
+            !::detail.isInitialized -> null
+            isInPreviousFormButton(mouseX, mouseY) -> "previous_form"
+            isInNextFormButton(mouseX, mouseY) -> "next_form"
+            else -> bucketHeaderRects.entries.firstOrNull { it.value.contains(mouseX, mouseY) }?.let { (bucket, _) ->
+                if (expandedBuckets.contains(bucket)) "collapse_spawn_details" else "expand_spawn_details"
+            }
+        } ?: return
+        guiGraphics.renderTooltip(
+            font,
+            Component.translatable("cobblemon_smartphone.tooltip.$key"),
+            mouseX,
+            mouseY
+        )
+    }
+
+    private fun isInPreviousFormButton(mouseX: Int, mouseY: Int): Boolean {
+        if (detail.availableForms.size <= 1 || currentFormIndex <= 0) return false
+        val navY = screenY + CONTENT_START_Y - scrollY + SECTION_PAD_TOP
+        val navCenter = screenX + CONTENT_X + CONTENT_WIDTH / 2
+        return mouseX in (navCenter - 64)..(navCenter - 50) && mouseY in (navY - 2)..(navY + 10)
+    }
+
+    private fun isInNextFormButton(mouseX: Int, mouseY: Int): Boolean {
+        if (detail.availableForms.size <= 1 || currentFormIndex >= detail.availableForms.size - 1) return false
+        val navY = screenY + CONTENT_START_Y - scrollY + SECTION_PAD_TOP
+        val navCenter = screenX + CONTENT_X + CONTENT_WIDTH / 2
+        return mouseX in (navCenter + 50)..(navCenter + 60) && mouseY in (navY - 2)..(navY + 10)
     }
 
     private fun statBarColor(value: Int): Int = when {
@@ -1066,7 +1155,8 @@ class PokeInfoDetailScreen(
                 var lines = 1
                 detail.abilities.forEach { a ->
                     lines += 1
-                    if (a.description.isNotEmpty()) lines += wrapText(a.description, descW).size
+                    val description = Component.translatable(a.descriptionKey).string
+                    if (description.isNotEmpty()) lines += wrapText(description, descW).size
                 }
                 SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
             } else 0
@@ -1078,12 +1168,13 @@ class PokeInfoDetailScreen(
                 val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
                 var lines = 0
                 if (hasPre) {
-                    val preName = detail.preEvolution!!.split(":").last().replaceFirstChar { it.uppercase() }
+                    val preName = pokemonName(detail.preEvolution!!)
                     lines += wrapText("\u2191 $preName", wrapW).size
                 }
                 detail.evolutions.forEach { evo ->
-                    val name = evo.targetName.replaceFirstChar { it.uppercase() }
-                    lines += wrapText("\u2193 $name (${evo.method})", wrapW).size
+                    val name = pokemonName(evo.targetName)
+                    val methods = evo.methods.joinToString(" + ", transform = ::localized)
+                    lines += wrapText("\u2193 $name ($methods)", wrapW).size
                 }
                 SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
             }
@@ -1100,26 +1191,25 @@ class PokeInfoDetailScreen(
                     lines++ // header
                     if (expanded) {
                         for (entry in bucketEntries) {
-                            val biomeText =
-                                entry.biomes.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+                            val biomeText = entry.biomes.joinToString(", ", transform = ::biomeName)
                             lines += wrapText(biomeText, wrapW - textWidth(lang("biomes") + ": ")).size
                             lines++ // level
                             lines++ // context
-                            if (!entry.time.isNullOrBlank()) lines++
+                            if (entry.time != null) lines++
                             if (entry.conditions.isNotEmpty()) {
-                                val condText = entry.conditions.joinToString(", ")
+                                val condText = entry.conditions.joinToString(", ", transform = ::localized)
                                 lines += wrapText(condText, wrapW - textWidth(lang("cond") + ": ")).size
                             }
                             if (entry.antiConditions.isNotEmpty()) {
-                                val antiText = entry.antiConditions.joinToString(", ")
+                                val antiText = entry.antiConditions.joinToString(", ", transform = ::localized)
                                 lines += wrapText(antiText, wrapW - textWidth(lang("anti") + ": ")).size
                             }
                             lines++ // gap between entries in bucket
                         }
                     } else {
                         val allBiomes = bucketEntries.flatMap { it.biomes }.distinct()
-                        val shown = allBiomes.take(2).joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
-                        val more = if (allBiomes.size > 2) " +${allBiomes.size - 2} more" else ""
+                        val shown = allBiomes.take(2).joinToString(", ", transform = ::biomeName)
+                        val more = if (allBiomes.size > 2) lang("more_count", allBiomes.size - 2) else ""
                         val biomeText = shown + more
                         lines += wrapText(biomeText, wrapW - textWidth(lang("biomes") + ": ")).size
                         lines++ // level
@@ -1145,11 +1235,11 @@ class PokeInfoDetailScreen(
             } else {
                 groups.forEach { (mult, typeNames) ->
                     val label = when {
-                        mult > 1.0 -> "Weak (x${multiplierText(mult)})"
-                        mult == 0.0 -> "Immune (x0)"
-                        else -> "Resist (x${multiplierText(mult)})"
+                        mult > 1.0 -> lang("weak") + " (x${multiplierText(mult)})"
+                        mult == 0.0 -> lang("immune") + " (x0)"
+                        else -> lang("resist") + " (x${multiplierText(mult)})"
                     }
-                    val text = typeNames.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+                    val text = typeNames.joinToString(", ", transform = ::typeName)
                     lines += wrapText("$label: $text", wrapW).size
                 }
             }
@@ -1309,14 +1399,6 @@ class PokeInfoDetailScreen(
             "rock", "ghost", "dragon", "dark", "steel", "fairy"
         )
 
-        private val typeAbbr = mapOf(
-            "normal" to "Nor", "fire" to "Fir", "water" to "Wat", "electric" to "Ele",
-            "grass" to "Gra", "ice" to "Ice", "fighting" to "Fig", "poison" to "Poi",
-            "ground" to "Gro", "flying" to "Fly", "psychic" to "Psy", "bug" to "Bug",
-            "rock" to "Roc", "ghost" to "Gho", "dragon" to "Dra", "dark" to "Dar",
-            "steel" to "Ste", "fairy" to "Fai"
-        )
-
         fun getEffectiveness(types: List<String>): Map<String, Double> {
             val result = mutableMapOf<String, Double>()
             allTypes.forEach { result[it] = 1.0 }
@@ -1337,8 +1419,6 @@ class PokeInfoDetailScreen(
             4.0 -> "4"
             else -> value.toString()
         }
-
-        fun typeAbbreviation(type: String): String = typeAbbr[type.lowercase()] ?: type.take(3)
 
         fun typeColor(type: String): Int = when (type.lowercase()) {
             "normal" -> 0xFFA8A77A.toInt()
