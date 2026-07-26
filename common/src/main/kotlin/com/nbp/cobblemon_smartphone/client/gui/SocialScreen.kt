@@ -99,6 +99,8 @@ class SocialScreen(
         maxScroll = (contentHeight() - (LIST_END_Y - LIST_START_Y)).coerceAtLeast(0)
         scrollY = scrollY.coerceIn(0, maxScroll)
         renderScrollbar(guiGraphics)
+
+        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
 
     private fun renderFeed(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -573,6 +575,50 @@ class SocialScreen(
             seconds < 86_400 -> "${seconds / 3600}h"
             else -> "${seconds / 86_400}d"
         }
+    }
+
+    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val tooltip = when {
+            isInMuteButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_mute")
+            isInComposeButton(mouseX, mouseY) -> {
+                val key = if (tab == Tab.FEED) "social_new_post" else "social_new_message"
+                Component.translatable("cobblemon_smartphone.tooltip.$key")
+            }
+            tab == Tab.DMS -> findHoveredThread(mouseX, mouseY)?.let {
+                Component.translatable("cobblemon_smartphone.tooltip.social_open_conversation")
+            }
+            tab == Tab.FEED -> findHoveredCardTooltip(mouseX, mouseY)
+            else -> null
+        } ?: return
+        guiGraphics.renderTooltip(font, tooltip, mouseX, mouseY)
+    }
+
+    private fun findHoveredThread(mouseX: Int, mouseY: Int): DmThreadSummary? {
+        if (mouseY !in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) return null
+        var y = screenY + LIST_START_Y - scrollY
+        for (thread in SocialDmCache.threads()) {
+            if (isInThreadRow(mouseX, mouseY, y)) return thread
+            y += THREAD_ROW_HEIGHT + CARD_GAP
+        }
+        return null
+    }
+
+    private fun findHoveredCardTooltip(mouseX: Int, mouseY: Int): Component? {
+        if (mouseY !in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) return null
+        var y = screenY + LIST_START_Y - scrollY
+        for (post in SocialFeedCache.posts()) {
+            val height = measureCard(post)
+            val cardX = screenX + CONTENT_X
+            if (isInLikeButton(mouseX, mouseY, cardX, y, height)) {
+                val key = if (post.likedByMe) "social_unlike" else "social_like"
+                return Component.translatable("cobblemon_smartphone.tooltip.$key")
+            }
+            if (canDelete(post) && isInDeleteButton(mouseX, mouseY, cardX, y, height)) {
+                return Component.translatable("cobblemon_smartphone.tooltip.social_delete")
+            }
+            y += height + CARD_GAP
+        }
+        return null
     }
 
     private fun lang(key: String): String = Component.translatable("cobblemon_smartphone.social.$key").string

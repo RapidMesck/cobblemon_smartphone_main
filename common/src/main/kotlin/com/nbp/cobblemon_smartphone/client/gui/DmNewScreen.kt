@@ -113,6 +113,8 @@ class DmNewScreen(
         }
 
         guiGraphics.disableScissor()
+
+        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
 
     private fun renderRow(guiGraphics: GuiGraphics, info: PlayerInfo, y: Int, mouseX: Int, mouseY: Int) {
@@ -170,6 +172,25 @@ class DmNewScreen(
     private fun isInBack(mouseX: Int, mouseY: Int): Boolean =
         mouseX in (screenX + CONTENT_X)..(screenX + CONTENT_X + font.width(lang("back"))) &&
                 mouseY in (screenY + TITLE_Y)..(screenY + TITLE_Y + font.lineHeight)
+
+    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val tooltip = when {
+            isInBack(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_back_to_social")
+            findHoveredPlayer(mouseX, mouseY) != null -> Component.translatable("cobblemon_smartphone.tooltip.social_start_conversation")
+            else -> null
+        } ?: return
+        guiGraphics.renderTooltip(font, tooltip, mouseX, mouseY)
+    }
+
+    private fun findHoveredPlayer(mouseX: Int, mouseY: Int): PlayerInfo? {
+        if (mouseY !in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) return null
+        var y = screenY + LIST_START_Y - scrollY
+        for (info in candidates()) {
+            if (isInRow(mouseX, mouseY, y)) return info
+            y += ROW_HEIGHT + ROW_GAP
+        }
+        return null
+    }
 
     private fun lang(key: String): String = Component.translatable("cobblemon_smartphone.social.$key").string
 

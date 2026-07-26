@@ -118,6 +118,8 @@ class DmThreadScreen(
 
         input.render(guiGraphics, mouseX, mouseY, delta)
         renderSendButton(guiGraphics, mouseX, mouseY)
+
+        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
 
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -343,6 +345,24 @@ class DmThreadScreen(
     private fun isInBack(mouseX: Int, mouseY: Int): Boolean =
         mouseX in (screenX + CONTENT_X)..(screenX + CONTENT_X + font.width(lang("back"))) &&
                 mouseY in (screenY + TITLE_Y)..(screenY + TITLE_Y + font.lineHeight)
+
+    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val tooltip = when {
+            isInBack(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_back_to_social")
+            isInBellButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_mute_player")
+            callAvailable() && isInCallButton(mouseX, mouseY) -> {
+                val key = when {
+                    CallState.isBusyWith(otherUuid) -> "social_call_end"
+                    CallState.status == CallStatus.OUTGOING && CallState.otherUuid == otherUuid -> "social_call_end"
+                    else -> "social_call_start"
+                }
+                Component.translatable("cobblemon_smartphone.tooltip.$key")
+            }
+            isInSend(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_send")
+            else -> null
+        } ?: return
+        guiGraphics.renderTooltip(font, tooltip, mouseX, mouseY)
+    }
 
     private fun lang(key: String): String = Component.translatable("cobblemon_smartphone.social.$key").string
 

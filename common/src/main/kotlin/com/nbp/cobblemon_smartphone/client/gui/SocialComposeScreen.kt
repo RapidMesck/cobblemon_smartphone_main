@@ -89,6 +89,8 @@ class SocialComposeScreen(
         guiGraphics.drawString(font, lang("attach"), screenX + CONTENT_X, screenY + ATTACH_LABEL_Y, MUTED_COLOR, false)
         renderPartyPicker(guiGraphics, mouseX, mouseY)
         renderFooterButtons(guiGraphics, mouseX, mouseY)
+
+        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
 
     private fun partySlots() = CobblemonClient.storage.party.slots
@@ -200,6 +202,21 @@ class SocialComposeScreen(
 
     private fun inButton(mouseX: Int, mouseY: Int, x: Int): Boolean =
         mouseX in x..(x + BUTTON_WIDTH) && mouseY in (screenY + BUTTON_Y)..(screenY + BUTTON_Y + BUTTON_HEIGHT)
+
+    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val tooltip = when {
+            isInCancel(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_cancel")
+            isInPost(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_create_post")
+            findHoveredSlot(mouseX, mouseY) != null -> Component.translatable("cobblemon_smartphone.tooltip.social_select_pokemon")
+            else -> null
+        } ?: return
+        guiGraphics.renderTooltip(font, tooltip, mouseX, mouseY)
+    }
+
+    private fun findHoveredSlot(mouseX: Int, mouseY: Int): Int? =
+        partySlots().indices.firstOrNull { index ->
+            partySlots()[index] != null && isInSlot(mouseX, mouseY, index)
+        }
 
     private fun lang(key: String): String = Component.translatable("cobblemon_smartphone.social.$key").string
 
