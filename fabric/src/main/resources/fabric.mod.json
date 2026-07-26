@@ -21,6 +21,9 @@
     ],
     "client": [
       "com.nbp.cobblemon_smartphone.client.CobblemonSmartphoneFabricClient"
+    ],
+    "voicechat": [
+      "com.nbp.cobblemon_smartphone.compat.voicechat.SmartphoneVoicechatPlugin"
     ]
   },
   "mixins": [
@@ -37,6 +40,7 @@
     "accessories": "*",
     "cobblenav": "*",
     "cobbledollars": "*",
+    "voicechat": "*",
     "waystones": "*"
   }
 }

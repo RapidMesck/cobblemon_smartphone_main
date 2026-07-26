@@ -36,6 +36,10 @@ subprojects {
             name = "Cobblemon"
             url = "https://maven.impactdev.net/repository/development/"
         }
+        maven {
+            name = "Henkelmax (Simple Voice Chat API)"
+            url = "https://maven.maxhenkel.de/repository/public"
+        }
     }
 
     loom {

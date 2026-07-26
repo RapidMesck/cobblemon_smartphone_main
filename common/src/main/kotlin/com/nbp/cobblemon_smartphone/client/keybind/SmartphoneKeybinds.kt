@@ -22,6 +22,20 @@ object SmartphoneKeybinds {
         CATEGORY
     )
 
+    // Call answer/decline hotkeys. Registered only when Simple Voice Chat is present (see the
+    // platform client initializers). "Decline" doubles as cancel (outgoing) and hang up (in-call).
+    val ANSWER_CALL: KeyMapping = KeyMapping(
+        "key.cobblemon_smartphone.answer_call",
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    )
+
+    val DECLINE_CALL: KeyMapping = KeyMapping(
+        "key.cobblemon_smartphone.decline_call",
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    )
+
     const val QUICK_ACTION_SLOT_COUNT = 6
 
     val QUICK_ACTION_SLOTS: List<KeyMapping> = (0 until QUICK_ACTION_SLOT_COUNT).map { index ->

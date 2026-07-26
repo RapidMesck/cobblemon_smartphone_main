@@ -4,14 +4,22 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.Implementation
 import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
+import com.nbp.cobblemon_smartphone.command.SocialCommands
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.social.CallManager
+import com.nbp.cobblemon_smartphone.social.SocialData
 import com.nbp.cobblemon_smartphone.util.ActionOrderStorage
+import com.nbp.cobblemon_smartphone.util.MutedPlayersStorage
 import com.nbp.cobblemon_smartphone.util.QuickActionBindingsStorage
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.util.SocialMuteStorage
 import com.nbp.neoforge.compat.SmartphoneCompatManager
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
@@ -34,6 +42,7 @@ import net.neoforged.fml.ModList
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.AddPackFindersEvent
 import net.neoforged.neoforge.event.AddReloadListenerEvent
+import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.registries.RegisterEvent
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
@@ -61,6 +70,18 @@ class CobblemonSmartphoneNeoForge : Implementation {
             SyncDatapackActionsPacket(data).sendToPlayer(player)
             SyncActionOrderPacket(ActionOrderStorage.read(player)).sendToPlayer(player)
             SyncQuickActionsPacket(QuickActionBindingsStorage.read(player)).sendToPlayer(player)
+            // DMs received while offline are already persisted; this lights up the badge on login.
+            player.server?.let { srv ->
+                SyncUnreadPacket(SocialData.get(srv).totalUnreadFor(player.uuid)).sendToPlayer(player)
+            }
+            SyncSocialMutePacket(SocialMuteStorage.read(player)).sendToPlayer(player)
+            SyncMutedPlayersPacket(MutedPlayersStorage.read(player).toList()).sendToPlayer(player)
+        }
+
+        // End any call a player was in when they disconnect, restoring the other side's voice group.
+        NeoForge.EVENT_BUS.addListener<PlayerEvent.PlayerLoggedOutEvent> { event ->
+            val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
+            player.server?.let { CallManager.onLogout(it, player) }
         }
     }
     
@@ -95,6 +116,9 @@ class CobblemonSmartphoneNeoForge : Implementation {
     }
 
     override fun registerCommands() {
+        NeoForge.EVENT_BUS.addListener<RegisterCommandsEvent> { event ->
+            SocialCommands.register(event.dispatcher)
+        }
     }
 
     override fun registerReloadListeners() {

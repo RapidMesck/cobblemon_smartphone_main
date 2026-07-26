@@ -8,6 +8,8 @@ public interface PreferencesSaver {
     String SORTING_KEY = "sorting_key";
     String ACTION_ORDER_KEY = "action_order";
     String QUICK_ACTIONS_KEY = "quick_actions";
+    String SOCIAL_MUTED_KEY = "social_muted";
+    String MUTED_PLAYERS_KEY = "muted_players";
 
     CompoundTag cobblemonsmartphone$getSavedPreferences();
 }

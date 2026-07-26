@@ -1,6 +1,7 @@
 package com.nbp.neoforge
 
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
+import com.nbp.cobblemon_smartphone.compat.voicechat.VoiceChatBridge
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.api.distmarker.OnlyIn
 import net.neoforged.bus.api.SubscribeEvent
@@ -18,5 +19,10 @@ object CobblemonSmartphoneNeoForgeClient {
         event.register(OPEN_SMARTPHONE)
         event.register(SCANNER)
         SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEach { event.register(it) }
+        // Call hotkeys only make sense (and only appear in Controls) when Simple Voice Chat is present.
+        if (VoiceChatBridge.isModPresent) {
+            event.register(SmartphoneKeybinds.ANSWER_CALL)
+            event.register(SmartphoneKeybinds.DECLINE_CALL)
+        }
     }
 }

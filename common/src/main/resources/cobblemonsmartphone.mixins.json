@@ -17,6 +17,8 @@
     "ModelLoaderMixin",
     "MixinPlayerExtensionsKt",
     "MixinPokedexUsageContext",
-    "MixinItemInHandRenderer"
+    "MixinItemInHandRenderer",
+    "MouseHandlerMixin",
+    "ScreenRenderMixin"
   ]
 }

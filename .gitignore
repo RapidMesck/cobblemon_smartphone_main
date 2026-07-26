@@ -121,3 +121,7 @@ run/
 neoforge/bin
 fabric/bin
 common/bin
+
+runClientA
+runClientB
+runServerMp

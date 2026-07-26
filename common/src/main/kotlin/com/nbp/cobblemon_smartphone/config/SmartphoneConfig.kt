@@ -14,6 +14,7 @@ class SmartphoneConfig {
     val cooldowns = Cooldowns()
     val features = Features()
     val pokeInfo = PokeInfo()
+    val social = Social()
 
     class Cooldowns {
         val healButton: Int = 60  // 1 minuto em segundos
@@ -21,6 +22,22 @@ class SmartphoneConfig {
         val cloudButton: Int = 5  // 5 segundos
         val waystoneButton: Int = 5 // 5 segundos
         val pokedexButton: Int = 1 // 1 segundo
+        val socialPost: Int = 30  // 30 segundos entre posts
+        val socialMessage: Int = 1 // 1 segundo entre mensagens privadas
+    }
+
+    /**
+     * [maxPosts] bounds the world save: the feed is a ring buffer and the oldest post is evicted
+     * once the cap is passed. It also pairs with [Cooldowns.socialPost] — without a cooldown a
+     * spammer could evict the whole server's history. Use 0 for unlimited.
+     */
+    class Social {
+        val maxPosts: Int = 1000
+        val maxPostLength: Int = 280
+        val feedPageSize: Int = 20
+        val maxMessagesPerThread: Int = 500
+        val maxMessageLength: Int = 280
+        val messagePageSize: Int = 30
     }
 
     class Features {
@@ -35,6 +52,8 @@ class SmartphoneConfig {
         val enableScanner: Boolean = true
         val enableCrafting: Boolean = true
         val enableQuickActions: Boolean = true
+        val enableSocial: Boolean = true
+        val enableCalls: Boolean = true
     }
 
     class PokeInfo {

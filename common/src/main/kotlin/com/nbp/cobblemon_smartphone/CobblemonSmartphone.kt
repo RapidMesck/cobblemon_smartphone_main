@@ -9,6 +9,7 @@ import com.nbp.cobblemon_smartphone.actions.OpenPcAction
 import com.nbp.cobblemon_smartphone.actions.OpenWaystonesAction
 import com.nbp.cobblemon_smartphone.actions.PokeInfoAction
 import com.nbp.cobblemon_smartphone.actions.PokedexAction
+import com.nbp.cobblemon_smartphone.actions.SocialAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
 import com.nbp.cobblemon_smartphone.client.BuiltinResourcePack
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
@@ -48,6 +49,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(OpenWaystonesAction)
         SmartphoneActionRegistry.register(PokedexAction)
         SmartphoneActionRegistry.register(PokeInfoAction)
+        SmartphoneActionRegistry.register(SocialAction)
     }
 
     fun registerDefaultUpgrades() {
@@ -78,6 +80,7 @@ object CobblemonSmartphone {
         this.implementation = implementation
         implementation.registerItems()
         implementation.registerReloadListeners()
+        implementation.registerCommands()
         registerDefaultActions()
         registerDefaultUpgrades()
     }

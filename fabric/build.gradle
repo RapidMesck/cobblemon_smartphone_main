@@ -68,8 +68,121 @@ dependencies {
         exclude group: "net.fabricmc.fabric-api"
     }
 
+    // Simple Voice Chat - Optional dependency. Compile against the loader-agnostic API only; nothing
+    // is bundled. To exercise voice in dev, drop the SVC jar into fabric/run/mods manually — it is
+    // NOT pulled automatically because the published SVC jar is built with a newer Loom than this
+    // project uses, which modLocalRuntime's remapper rejects.
+    compileOnly "de.maxhenkel.voicechat:voicechat-api:${rootProject.voicechat_api_version}"
+
     common(project(path: ':common', configuration: 'namedElements')) { transitive false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
+}
+
+// A dedicated multiplayer server plus two extra clients, each with its own run directory so they
+// never clash on options.txt/logs, and distinct usernames so the two clients get distinct offline
+// UUIDs and can message each other. Every one carries the -Dcobblemonsmartphone.devInstance=mp
+// marker so `stopDevInstances` can find and kill exactly these processes (and nothing else) when
+// they've been left running and are holding common/build locked.
+// Generated Gradle tasks: runServerMp, runClientA, runClientB.
+loom {
+    runs {
+        serverMp {
+            inherit server
+            runDir "runServerMp"
+            vmArg "-Dcobblemonsmartphone.devInstance=mp"
+        }
+        clientA {
+            inherit client
+            runDir "runClientA"
+            programArgs "--username", "PlayerA"
+            vmArg "-Dcobblemonsmartphone.devInstance=mp"
+        }
+        clientB {
+            inherit client
+            runDir "runClientB"
+            programArgs "--username", "PlayerB"
+            vmArg "-Dcobblemonsmartphone.devInstance=mp"
+        }
+    }
+}
+
+// Kills only the dev instances launched by runMultiplayer — matched by the unique -D marker above,
+// so the Gradle daemon, the IDE and any unrelated Java process are never touched. Runs before the
+// jar copy and the relaunch so their recompile isn't blocked by locked class files.
+tasks.register("stopDevInstances") {
+    group = "cobblemon smartphone"
+    description = "Kills stale runMultiplayer server/clients that keep common/build locked."
+    doLast {
+        def isWindows = System.getProperty("os.name").toLowerCase().contains("win")
+        if (isWindows) {
+            def ps = 'Get-CimInstance Win32_Process -Filter "Name=\'java.exe\' OR Name=\'javaw.exe\'" | Where-Object { $_.CommandLine -like \'*cobblemonsmartphone.devInstance=mp*\' } | ForEach-Object { Write-Host "Stopping stale dev instance PID $($_.ProcessId)"; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }'
+            new ProcessBuilder("powershell", "-NoProfile", "-Command", ps).inheritIO().start().waitFor()
+        } else {
+            new ProcessBuilder("pkill", "-f", "cobblemonsmartphone.devInstance=mp").start().waitFor()
+        }
+        // Give the OS a moment to release the file handles before anything recompiles.
+        Thread.sleep(2000)
+    }
+}
+
+// Downloads the Simple Voice Chat mod jar and drops it into every dev run/mods folder, so voice can
+// be tested in dev. We copy it into mods/ rather than declaring a Gradle dependency because Loom's
+// mod remapper rejects the jar (built with a newer Loom); Fabric Loader's own dev-runtime remapper
+// handles it at load time. The download is cached under build/, so it only hits the network once.
+tasks.register("installVoicechatDev") {
+    group = "cobblemon smartphone"
+    description = "Downloads Simple Voice Chat into the dev run/mods folders (runServerMp, runClientA, runClientB)."
+    // Stop stale instances first, otherwise the copy would hit a jar locked by a running client.
+    dependsOn "stopDevInstances"
+    doLast {
+        def url = "https://cdn.modrinth.com/data/9eGKb6K1/versions/IttovdN3/voicechat-fabric-1.21.1-2.6.20.jar"
+        def fileName = "voicechat-fabric-1.21.1-2.6.20.jar"
+        def cache = new File(projectDir, "build/voicechat-cache/${fileName}")
+        if (!cache.exists()) {
+            cache.parentFile.mkdirs()
+            println "Downloading Simple Voice Chat (${fileName})..."
+            def connection = new URL(url).openConnection()
+            connection.setRequestProperty("User-Agent", "cobblemon_smartphone-dev-setup")
+            connection.inputStream.withCloseable { input -> cache.withOutputStream { out -> out << input } }
+        }
+        ["runServerMp", "runClientA", "runClientB"].each { dir ->
+            def mods = new File(projectDir, "${dir}/mods")
+            mods.mkdirs()
+            java.nio.file.Files.copy(
+                    cache.toPath(),
+                    new File(mods, fileName).toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            println "Installed ${fileName} -> ${dir}/mods"
+        }
+    }
+}
+
+// One command to open a dev server plus both clients, each in its own console window, with Simple
+// Voice Chat installed in all three. First stops any stale instances from a previous run (via the
+// stopDevInstances -> installVoicechatDev dependency chain) so their locked class files don't fail
+// the relaunch's recompile. In each client: Multiplayer -> Direct Connect -> localhost.
+tasks.register("runMultiplayer") {
+    group = "cobblemon smartphone"
+    description = "Stops stale dev instances, then opens a server + two clients (PlayerA/PlayerB) in separate windows."
+    dependsOn "installVoicechatDev"
+    doLast {
+        def root = rootProject.projectDir
+        def isWindows = System.getProperty("os.name").toLowerCase().contains("win")
+        def launches = [
+                ["Fabric Server", ":fabric:runServerMp"],
+                ["Fabric Client A", ":fabric:runClientA"],
+                ["Fabric Client B", ":fabric:runClientB"],
+        ]
+        launches.each { entry ->
+            if (isWindows) {
+                new ProcessBuilder("cmd", "/c", "start", entry[0], "cmd", "/k", "gradlew.bat", entry[1])
+                        .directory(root).start()
+            } else {
+                new ProcessBuilder("sh", "-c", "./gradlew ${entry[1]}").directory(root).start()
+            }
+        }
+        println "Launched server + 2 clients. In each client: Multiplayer -> Direct Connect -> localhost"
+    }
 }
 
 processResources {

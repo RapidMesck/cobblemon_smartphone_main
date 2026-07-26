@@ -1,17 +1,26 @@
 package com.nbp.cobblemon_smartphone
 
 import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
+import com.nbp.cobblemon_smartphone.command.SocialCommands
 import com.nbp.cobblemon_smartphone.compat.SmartphoneCompatManager
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.social.CallManager
+import com.nbp.cobblemon_smartphone.social.SocialData
 import com.nbp.cobblemon_smartphone.util.ActionOrderStorage
+import com.nbp.cobblemon_smartphone.util.MutedPlayersStorage
 import com.nbp.cobblemon_smartphone.util.QuickActionBindingsStorage
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.util.SocialMuteStorage
 import net.fabricmc.api.ModInitializer
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper
@@ -61,6 +70,16 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
             SyncDatapackActionsPacket(data).sendToPlayer(handler.player)
             SyncActionOrderPacket(ActionOrderStorage.read(handler.player)).sendToPlayer(handler.player)
             SyncQuickActionsPacket(QuickActionBindingsStorage.read(handler.player)).sendToPlayer(handler.player)
+            // DMs received while offline are already persisted; this lights up the badge on login.
+            SyncUnreadPacket(SocialData.get(_server).totalUnreadFor(handler.player.uuid))
+                .sendToPlayer(handler.player)
+            SyncSocialMutePacket(SocialMuteStorage.read(handler.player)).sendToPlayer(handler.player)
+            SyncMutedPlayersPacket(MutedPlayersStorage.read(handler.player).toList()).sendToPlayer(handler.player)
+        }
+
+        // End any call a player was in when they disconnect, restoring the other side's voice group.
+        ServerPlayConnectionEvents.DISCONNECT.register { handler, server ->
+            CallManager.onLogout(server, handler.player)
         }
     }
 
@@ -78,6 +97,9 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
     }
 
     override fun registerCommands() {
+        CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
+            SocialCommands.register(dispatcher)
+        }
     }
 
     override fun registerReloadListeners() {

@@ -72,6 +72,7 @@ interface SmartphoneAction {
 
     fun onClick()                           // Called when player clicks the button
     fun isEnabled(): Boolean = true         // Return false to hide the button
+    fun badgeCount(): Int = 0               // Notification badge count; 0 = no badge
 }
 ```
 
@@ -92,6 +93,20 @@ Called to determine if the button should appear. Return `false` to hide it. Comm
 For upgrade-gated actions, prefer `SmartphoneHelper.satisfiesUpgradeRequirement(player, upgradeKey, actionId)` so your action respects the mod config's `ignoreUpgrades` list.
 
 **Important**: `isEnabled()` runs on the **render thread**. Keep it fast — no network calls or file I/O.
+
+### `badgeCount()`
+
+Return a number to draw a notification badge on your app's icon in the home screen grid. Return `0`
+(the default) for no badge. Counts above 99 render as `99+`.
+
+```kotlin
+override fun badgeCount(): Int = MyModClientCache.unreadCount
+```
+
+Like `isEnabled()`, this runs on the **render thread every frame** — it must be a cheap read of
+client state you already synced, never a network call.
+
+This method has a default implementation, so existing actions do not need to change.
 
 ## Server-Side Handling with Network Packets
 

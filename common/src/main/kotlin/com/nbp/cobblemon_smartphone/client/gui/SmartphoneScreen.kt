@@ -85,6 +85,7 @@ class SmartphoneScreen(
                 width = BUTTON_WIDTH,
                 height = BUTTON_HEIGHT
             )
+            renderBadge(guiGraphics, action.badgeCount(), x, y)
         }
 
         renderPageDots(guiGraphics)
@@ -177,6 +178,26 @@ class SmartphoneScreen(
 
     private fun playClickSound() {
         Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
+    }
+
+    /** Notification badge on an app icon's top-right corner. Nothing is drawn when [count] is 0. */
+    private fun renderBadge(guiGraphics: GuiGraphics, count: Int, buttonX: Int, buttonY: Int) {
+        if (count <= 0) return
+        val font = Minecraft.getInstance().font
+        val label = if (count > BADGE_MAX) "$BADGE_MAX+" else count.toString()
+        val badgeWidth = (font.width(label) * BADGE_SCALE).toInt() + BADGE_PADDING * 2
+        val badgeHeight = (font.lineHeight * BADGE_SCALE).toInt() + BADGE_PADDING
+        val badgeX = screenX + buttonX + BUTTON_WIDTH - badgeWidth
+        val badgeY = screenY + buttonY
+
+        guiGraphics.fill(badgeX, badgeY, badgeX + badgeWidth, badgeY + badgeHeight, BADGE_BG_COLOR)
+
+        val matrices = guiGraphics.pose()
+        matrices.pushPose()
+        matrices.translate((badgeX + BADGE_PADDING).toDouble(), (badgeY + BADGE_PADDING / 2.0), 0.0)
+        matrices.scale(BADGE_SCALE, BADGE_SCALE, 1f)
+        guiGraphics.drawString(font, label, 0, 0, BADGE_TEXT_COLOR, false)
+        matrices.popPose()
     }
 
     private fun renderWorldTime(guiGraphics: GuiGraphics) {
@@ -320,6 +341,12 @@ class SmartphoneScreen(
         private const val GUI_HEIGHT = 207
         private const val BUTTON_WIDTH = 36
         private const val BUTTON_HEIGHT = 36
+
+        private const val BADGE_MAX = 99
+        private const val BADGE_SCALE = 0.5f
+        private const val BADGE_PADDING = 2
+        private const val BADGE_BG_COLOR = 0xFFD03030.toInt()
+        private const val BADGE_TEXT_COLOR = 0xFFFFFFFF.toInt()
 
         private const val HEADER_SETTINGS_X = 80
         private const val HEADER_SETTINGS_Y = 17

@@ -13,4 +13,13 @@ interface SmartphoneAction {
         )
     fun onClick()
     fun isEnabled(): Boolean = true
+
+    /**
+     * Number shown as a notification badge on this app's home-screen icon. Return 0 (the default)
+     * for no badge.
+     *
+     * Called on the render thread every frame — keep it a cheap read of already-synced client
+     * state, never a network call or file I/O.
+     */
+    fun badgeCount(): Int = 0
 }

@@ -58,6 +58,10 @@ dependencies {
         exclude group: "net.neoforged.fancymodloader", module: "loader"
     }
     
+    // Simple Voice Chat - Optional dependency. Compile against the loader-agnostic API only; nothing
+    // is bundled. To exercise voice in dev, drop the SVC jar into neoforge/run/mods manually.
+    compileOnly "de.maxhenkel.voicechat:voicechat-api:${rootProject.voicechat_api_version}"
+
     // Curios API (optional) - compile against API only, full jar at runtime
     compileOnly "top.theillusivec4.curios:curios-neoforge:${rootProject.curios_version}:api"
     runtimeOnly "top.theillusivec4.curios:curios-neoforge:${rootProject.curios_version}"

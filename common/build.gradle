@@ -8,4 +8,8 @@ dependencies {
     // Do NOT use other classes from Fabric Loader.
     modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
     modImplementation "com.cobblemon:mod:$rootProject.cobblemon_version"
+
+    // Simple Voice Chat (optional). Loader-agnostic plain API jar, compile-time only — every
+    // reference to it is isolated behind an isModLoaded check so the mod runs fine without it.
+    compileOnly "de.maxhenkel.voicechat:voicechat-api:$rootProject.voicechat_api_version"
 }
