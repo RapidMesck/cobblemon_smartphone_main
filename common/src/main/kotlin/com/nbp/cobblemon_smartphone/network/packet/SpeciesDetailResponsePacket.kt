@@ -11,15 +11,24 @@ import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider.StatsInfo
 import com.nbp.cobblemon_smartphone.util.smartphoneResource
 import net.minecraft.network.RegistryFriendlyByteBuf
 
-class SpeciesDetailResponsePacket(val detail: SpeciesDetail?) :
+class SpeciesDetailResponsePacket(
+    val requestId: Long,
+    val dexNumber: Int,
+    val status: Status,
+    val details: List<SpeciesDetail>
+) :
     CobblemonSmartphoneNetworkPacket<SpeciesDetailResponsePacket> {
+    enum class Status { SUCCESS, NOT_FOUND, RATE_LIMITED, ERROR }
+
     companion object {
         val ID = smartphoneResource("species_detail_response")
 
         fun decode(buffer: RegistryFriendlyByteBuf): SpeciesDetailResponsePacket {
-            val hasDetail = buffer.readBoolean()
-            val detail = if (hasDetail) readDetail(buffer) else null
-            return SpeciesDetailResponsePacket(detail)
+            val requestId = buffer.readVarLong()
+            val dexNumber = buffer.readVarInt()
+            val status = runCatching { Status.valueOf(buffer.readUtf(32)) }.getOrDefault(Status.ERROR)
+            val details = readList(buffer) { readDetail(buffer) }
+            return SpeciesDetailResponsePacket(requestId, dexNumber, status, details)
         }
 
         private fun readDetail(buffer: RegistryFriendlyByteBuf): SpeciesDetail {
@@ -87,19 +96,24 @@ class SpeciesDetailResponsePacket(val detail: SpeciesDetail?) :
 
         private fun <T> readList(buffer: RegistryFriendlyByteBuf, reader: () -> T): List<T> {
             val count = buffer.readVarInt()
+            require(count in 0..MAX_LIST_ENTRIES) { "PokeInfo list exceeds network limit: $count" }
             return (0 until count).map { reader() }
         }
 
         private fun RegistryFriendlyByteBuf.readNullableUtf(): String? {
             return if (readBoolean()) readUtf() else null
         }
+
+        private const val MAX_LIST_ENTRIES = 2048
     }
 
     override val id = ID
 
     override fun encode(buffer: RegistryFriendlyByteBuf) {
-        buffer.writeBoolean(detail != null)
-        detail?.let { encodeDetail(buffer, it) }
+        buffer.writeVarLong(requestId)
+        buffer.writeVarInt(dexNumber)
+        buffer.writeUtf(status.name)
+        encodeList(buffer, details) { encodeDetail(buffer, it) }
     }
 
     private fun encodeDetail(buffer: RegistryFriendlyByteBuf, d: SpeciesDetail) {
@@ -165,8 +179,9 @@ class SpeciesDetailResponsePacket(val detail: SpeciesDetail?) :
     }
 
     private fun <T> encodeList(buffer: RegistryFriendlyByteBuf, list: List<T>, encoder: (T) -> Unit) {
-        buffer.writeVarInt(list.size)
-        list.forEach { encoder(it) }
+        val bounded = list.take(MAX_LIST_ENTRIES)
+        buffer.writeVarInt(bounded.size)
+        bounded.forEach { encoder(it) }
     }
 
     private fun RegistryFriendlyByteBuf.writeNullableUtf(value: String?) {

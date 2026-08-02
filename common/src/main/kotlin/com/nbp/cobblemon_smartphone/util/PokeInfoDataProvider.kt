@@ -3,22 +3,17 @@ package com.nbp.cobblemon_smartphone.util
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.api.pokemon.evolution.Evolution
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
-import com.cobblemon.mod.common.api.moves.MoveTemplate
 import com.cobblemon.mod.common.pokemon.Species
+import com.cobblemon.mod.common.pokemon.FormData
 import com.cobblemon.mod.common.pokemon.abilities.HiddenAbility
 import com.cobblemon.mod.common.pokemon.evolution.variants.ItemInteractionEvolution
 import com.cobblemon.mod.common.pokemon.evolution.variants.LevelUpEvolution
 import com.cobblemon.mod.common.pokemon.evolution.variants.TradeEvolution
-import com.cobblemon.mod.common.pokemon.requirements.FriendshipRequirement
-import com.cobblemon.mod.common.pokemon.requirements.LevelRequirement
 import com.cobblemon.mod.common.api.spawning.CobblemonSpawnPools
-import com.cobblemon.mod.common.api.spawning.SpawnBucket
 import com.cobblemon.mod.common.api.spawning.TimeRange
 import com.cobblemon.mod.common.api.spawning.condition.SpawningCondition
 import com.cobblemon.mod.common.api.spawning.detail.PokemonSpawnDetail
-import net.minecraft.network.chat.Component
-import com.cobblemon.mod.common.pokemon.requirements.TimeRangeRequirement
-import net.minecraft.resources.ResourceLocation
+import com.cobblemon.mod.common.pokemon.requirements.*
 import com.cobblemon.mod.common.util.asIdentifierDefaultingNamespace
 
 object PokeInfoDataProvider {
@@ -93,16 +88,8 @@ object PokeInfoDataProvider {
         val selectedForm: String
     )
 
-    private var speciesCache: List<SpeciesInfo>? = null
-
-    /** Pending detail from server, consumed by PokeInfoDetailScreen. */
-    @Volatile
-    var pendingDetail: SpeciesDetail? = null
-
     fun all(): List<SpeciesInfo> {
-        if (speciesCache != null) return speciesCache!!
-
-        speciesCache = PokemonSpecies.implemented.map { species ->
+        return PokemonSpecies.implemented.map { species ->
             SpeciesInfo(
                 name = species.name,
                 dexNumber = species.nationalPokedexNumber,
@@ -111,7 +98,6 @@ object PokeInfoDataProvider {
             )
         }.sortedBy { it.dexNumber }
 
-        return speciesCache!!
     }
 
     fun search(query: String): List<SpeciesInfo> {
@@ -125,15 +111,26 @@ object PokeInfoDataProvider {
 
     fun getDetail(dexNumber: Int, formName: String? = null): SpeciesDetail? {
         val species = PokemonSpecies.getByPokedexNumber(dexNumber) ?: return null
+        if (formName != null && species.forms.none {
+                it.name.equals(formName, ignoreCase = true) ||
+                        it.formOnlyShowdownId().equals(formName, ignoreCase = true)
+            }) return null
         return buildDetail(species, formName)
     }
 
-    fun clearCache() {
-        speciesCache = null
+    /** Builds every server-defined form in one response so form navigation needs no extra packets. */
+    fun getAllDetails(dexNumber: Int): List<SpeciesDetail> {
+        val species = PokemonSpecies.getByPokedexNumber(dexNumber) ?: return emptyList()
+        return (listOf(species.standardForm) + species.forms)
+            .distinctBy { it.name.lowercase() }
+            .map { buildDetail(species, it.name) }
     }
 
     private fun buildDetail(species: Species, formName: String? = null): SpeciesDetail {
-        val form = if (formName != null) species.forms.firstOrNull { it.name == formName } else null
+        val form = if (formName != null) species.forms.firstOrNull {
+            it.name.equals(formName, ignoreCase = true) ||
+                    it.formOnlyShowdownId().equals(formName, ignoreCase = true)
+        } else null
         val f = form ?: species.standardForm
 
         val abilities = f.abilities.toList().map { ability ->
@@ -144,7 +141,7 @@ object PokeInfoDataProvider {
             )
         }
 
-        val evolutions = collectEvolutionChain(species)
+        val evolutions = collectEvolutionChain(f)
 
         val moves = mutableListOf<MoveInfo>()
         val learnset = f.moves
@@ -189,11 +186,22 @@ object PokeInfoDataProvider {
 
         val preEvo = f.preEvolution?.species?.name
 
-        val allForms = species.forms.map {
+        val allForms = (listOf(species.standardForm) + species.forms).distinctBy { it.name }.map {
             FormInfo(
                 name = it.name,
                 displayName = "cobblemon.ui.pokedex.info.form.${it.formOnlyShowdownId()}"
             )
+        }
+
+        val matchingSpawnDetails = run {
+            try {
+                CobblemonSpawnPools.WORLD_SPAWN_POOL.details
+                    .filterIsInstance<PokemonSpawnDetail>()
+                    .filter { it.matchesSpecies(species) }
+                    .filter { it.matchesSelectedForm(species, f) }
+            } catch (_: Exception) {
+                emptyList()
+            }
         }
 
         return SpeciesDetail(
@@ -230,28 +238,8 @@ object PokeInfoDataProvider {
             eggGroups = f.eggGroups.map { it.showdownID },
             eggCycles = species.eggCycles,
             maleRatio = f.maleRatio,
-            spawnEntries = run {
-                try {
-                    CobblemonSpawnPools.WORLD_SPAWN_POOL.details
-                        .filterIsInstance<PokemonSpawnDetail>()
-                        .filter { it.pokemon.species.equals(species.name, ignoreCase = true) }
-                        .map { it.toSpawnEntryData() }
-                } catch (_: Exception) {
-                    emptyList()
-                }
-            },
-            spawnBiomes = run {
-                try {
-                    CobblemonSpawnPools.WORLD_SPAWN_POOL.details
-                        .filterIsInstance<PokemonSpawnDetail>()
-                        .filter { it.pokemon.species.equals(species.name, ignoreCase = true) }
-                        .flatMap { it.validBiomes }
-                        .map { it.toString() }
-                        .distinct()
-                } catch (_: Exception) {
-                    emptyList()
-                }
-            },
+            spawnEntries = matchingSpawnDetails.map { it.toSpawnEntryData() },
+            spawnBiomes = matchingSpawnDetails.flatMap { it.validBiomes }.map { it.toString() }.distinct(),
             availableForms = allForms,
             selectedForm = f.name
         )
@@ -281,28 +269,139 @@ object PokeInfoDataProvider {
 
         for (req in evo.requirements) {
             when (req) {
+                is LevelRequirement -> Unit // already represented by the base method
                 is FriendshipRequirement -> {
-                    conditions.add(localized("evolution.friendship"))
+                    conditions.add(
+                        if (req.amount > 0) localized("evolution.requirement.friendship", req.amount)
+                        else localized("evolution.friendship")
+                    )
                 }
 
                 is TimeRangeRequirement -> {
-                    val firstRange = req.range.ranges.firstOrNull()
-                    if (firstRange != null) {
-                        val mid = (firstRange.first + firstRange.last) / 2
-                        val label = when (mid) {
-                            in 4000..10000 -> "day"
-                            in 16000..22000 -> "night"
-                            in 2000..5000 -> "dawn"
-                            in 11000..15000 -> "dusk"
-                            else -> null
-                        }
-                        if (label != null) conditions.add(localized("time.$label"))
-                    }
+                    conditions.add(timeRangeToName(req.range))
                 }
+
+                is HeldItemRequirement -> conditions.add(
+                    extractItemPredicateName(req.itemCondition)
+                        ?: localized("evolution.requirement.held_item")
+                )
+                is OwnerHoldsItemRequirement -> conditions.add(
+                    extractItemPredicateName(req.itemCondition)
+                        ?: localized("evolution.requirement.owner_item")
+                )
+                is MoveSetRequirement -> conditions.add(localized("evolution.requirement.move", moveArg(req.move.name)))
+                is MoveTypeRequirement -> conditions.add(localized("evolution.requirement.move_type", typeArg(req.type.name)))
+                is WeatherRequirement -> {
+                    if (req.isThundering == true) conditions.add(localized("evolution.requirement.thunder"))
+                    else if (req.isRaining == true) conditions.add(localized("evolution.requirement.rain"))
+                    else if (req.isRaining == false) conditions.add(localized("evolution.requirement.no_rain"))
+                }
+                is BiomeRequirement -> {
+                    req.biomeCondition?.let { conditions.add(localized("evolution.requirement.biome", registryLikeToString(it))) }
+                    req.biomeAnticondition?.let { conditions.add(localized("evolution.requirement.not_biome", registryLikeToString(it))) }
+                }
+                is PartyMemberRequirement -> conditions.add(describePartyRequirement(req))
+                is PokemonPropertiesRequirement -> conditions.add(describePropertiesRequirement(req))
+                is AttackDefenceRatioRequirement -> conditions.add(
+                    localized("evolution.requirement.stat_ratio.${req.ratio.name.lowercase()}")
+                )
+                is MoonPhaseRequirement -> conditions.add(localized("evolution.requirement.moon", req.moonPhase.name.lowercase()))
+                is WorldRequirement -> conditions.add(localized("evolution.requirement.world", req.identifier))
+                is UseMoveRequirement -> conditions.add(
+                    localized("evolution.requirement.use_move", moveArg(req.move.name), req.amount)
+                )
+                is DefeatRequirement -> conditions.add(describeDefeatRequirement(req))
+                is BlocksTraveledRequirement -> conditions.add(localized("evolution.requirement.blocks", req.amount))
+                is DamageTakenRequirement -> conditions.add(localized("evolution.requirement.damage", req.amount))
+                is RecoilRequirement -> conditions.add(localized("evolution.requirement.recoil", req.amount))
+                is BattleCriticalHitsRequirement -> conditions.add(localized("evolution.requirement.critical_hits", req.amount))
+                is PropertyRangeRequirement -> conditions.add(
+                    localized("evolution.requirement.property_range", req.feature, req.range.first, req.range.last)
+                )
+                is StatCompareRequirement -> conditions.add(localized("evolution.requirement.stat_compare", req.highStat, req.lowStat))
+                is StatEqualRequirement -> conditions.add(localized("evolution.requirement.stat_equal", req.statOne, req.statTwo))
+                is AnyRequirement -> conditions.add(localized("evolution.requirement.any"))
+                else -> conditions.add(localized("evolution.special"))
             }
         }
 
         return conditions
+    }
+
+    private fun describeDefeatRequirement(req: DefeatRequirement): LocalizedText {
+        return defeatRequirementText(
+            req.amount,
+            req.target.species,
+            req.target.heldItem,
+            req.target.type,
+            humanizePropertyString(req.target.asString())
+        )
+    }
+
+    internal fun defeatRequirementText(
+        amount: Int,
+        species: String?,
+        heldItem: String?,
+        type: String?,
+        fallback: String
+    ): LocalizedText {
+        return when {
+            species != null && heldItem != null -> localized(
+                "evolution.requirement.defeat_holding",
+                amount,
+                pokemonArg(species),
+                itemArg(heldItem)
+            )
+            species != null -> localized("evolution.requirement.defeat", amount, pokemonArg(species))
+            type != null -> localized("evolution.requirement.defeat_type", amount, typeArg(type))
+            else -> localized("evolution.requirement.defeat_target", amount, fallback)
+        }
+    }
+
+    private fun describePartyRequirement(req: PartyMemberRequirement): LocalizedText {
+        val prefix = if (req.contains) "evolution.requirement.party" else "evolution.requirement.not_party"
+        return when {
+            req.target.species != null -> localized("$prefix.species", pokemonArg(req.target.species!!))
+            req.target.type != null -> localized("$prefix.type", typeArg(req.target.type!!))
+            else -> localized(prefix, humanizePropertyString(req.target.asString()))
+        }
+    }
+
+    private fun describePropertiesRequirement(req: PokemonPropertiesRequirement): LocalizedText {
+        val species = req.target.species
+        val heldItem = req.target.heldItem
+        return when {
+            species != null && heldItem != null -> localized(
+                "evolution.requirement.properties_holding", pokemonArg(species), itemArg(heldItem)
+            )
+            species != null -> localized("evolution.requirement.properties_species", pokemonArg(species))
+            req.target.type != null -> localized("evolution.requirement.properties_type", typeArg(req.target.type!!))
+            else -> localized("evolution.requirement.properties", humanizePropertyString(req.target.asString()))
+        }
+    }
+
+    private fun humanizePropertyString(value: String): String = value
+        .replace('_', ' ')
+        .replace('=', ':')
+
+    private fun pokemonArg(value: String) = "pokemon:$value"
+    private fun itemArg(value: String) = "item:$value"
+    private fun moveArg(value: String) = "move:$value"
+    private fun typeArg(value: String) = "type:$value"
+
+    private fun extractItemPredicateName(predicate: Any): LocalizedText? {
+        return try {
+            val itemsField = predicate::class.java.getDeclaredField("items")
+            itemsField.isAccessible = true
+            val itemsOpt = itemsField.get(predicate) as java.util.Optional<*>
+            val holderSet = itemsOpt.orElse(null) ?: return null
+            val stream = holderSet::class.java.getMethod("stream").invoke(holderSet) as java.util.stream.Stream<*>
+            val holder = stream.findFirst().orElse(null) ?: return null
+            val item = holder::class.java.getMethod("value").invoke(holder) as net.minecraft.world.item.Item
+            LocalizedText(item.descriptionId)
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun extractItemName(evo: ItemInteractionEvolution): LocalizedText {
@@ -326,12 +425,13 @@ object PokeInfoDataProvider {
         }
     }
 
-    private fun collectEvolutionChain(species: Species, visited: MutableSet<Int> = mutableSetOf()): List<EvoInfo> {
-        if (species.nationalPokedexNumber in visited) return emptyList()
-        visited.add(species.nationalPokedexNumber)
+    private fun collectEvolutionChain(form: FormData, visited: MutableSet<String> = mutableSetOf()): List<EvoInfo> {
+        val species = form.species
+        val visitKey = "${species.resourceIdentifier}:${form.name.lowercase()}"
+        if (!visited.add(visitKey)) return emptyList()
 
         val result = mutableListOf<EvoInfo>()
-        for (evo in species.evolutions) {
+        for (evo in form.evolutions) {
             val targetName = evo.result.species?.let { speciesId ->
                 try {
                     PokemonSpecies.getByIdentifier(speciesId.asIdentifierDefaultingNamespace())?.name
@@ -342,19 +442,53 @@ object PokeInfoDataProvider {
 
             result.add(EvoInfo(targetName = targetName, methods = buildEvoMethod(evo)))
 
-            val targetDex = try {
-                PokemonSpecies.getByIdentifier(evo.result.species!!.asIdentifierDefaultingNamespace())?.nationalPokedexNumber
+            val targetSpecies = try {
+                PokemonSpecies.getByIdentifier(evo.result.species!!.asIdentifierDefaultingNamespace())
             } catch (_: Exception) {
                 null
             }
-            if (targetDex != null) {
-                val targetSpecies = PokemonSpecies.getByPokedexNumber(targetDex)
-                if (targetSpecies != null) {
-                    result.addAll(collectEvolutionChain(targetSpecies, visited))
-                }
+            if (targetSpecies != null) {
+                val targetForm = evo.result.form?.let(targetSpecies::getFormByShowdownId)
+                    ?: targetSpecies.getForm(evo.result.aspects)
+                result.addAll(collectEvolutionChain(targetForm, visited))
             }
         }
         return result
+    }
+
+    private fun PokemonSpawnDetail.matchesSelectedForm(species: Species, selectedForm: FormData): Boolean {
+        val formAspects = species.forms.flatMap { it.aspects }.toSet()
+        return matchesSpawnForm(
+            pokemon.form,
+            pokemon.aspects,
+            formAspects,
+            selectedForm.name,
+            selectedForm.formOnlyShowdownId(),
+            selectedForm.aspects.toSet()
+        )
+    }
+
+    private fun PokemonSpawnDetail.matchesSpecies(species: Species): Boolean {
+        val configured = pokemon.species ?: return false
+        return configured.equals(species.name, ignoreCase = true) ||
+                configured.equals(species.resourceIdentifier.toString(), ignoreCase = true) ||
+                configured.substringAfter(':').equals(species.resourceIdentifier.path, ignoreCase = true)
+    }
+
+    internal fun matchesSpawnForm(
+        configuredForm: String?,
+        configuredAspects: Set<String>,
+        knownFormAspects: Set<String>,
+        selectedName: String,
+        selectedShowdownId: String,
+        selectedAspects: Set<String>
+    ): Boolean {
+        if (configuredForm != null) {
+            return configuredForm.equals(selectedName, ignoreCase = true) ||
+                    configuredForm.equals(selectedShowdownId, ignoreCase = true)
+        }
+        val relevantAspects = configuredAspects.intersect(knownFormAspects)
+        return relevantAspects.isEmpty() || relevantAspects.all { it in selectedAspects }
     }
 
 // ─── Spawn entry helpers ───────────────────────────────────────────────

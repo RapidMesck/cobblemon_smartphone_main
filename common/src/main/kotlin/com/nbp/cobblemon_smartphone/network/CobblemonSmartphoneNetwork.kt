@@ -25,6 +25,8 @@ import com.nbp.cobblemon_smartphone.network.handler.OpenPCHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenPokedexHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesDetailHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesListHandler
+import com.nbp.cobblemon_smartphone.network.handler.SpeciesListResponseHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveActionOrderHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveQuickActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.MutePlayerHandler
@@ -61,6 +63,7 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenPCPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokedexPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesDetailPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesListPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.MutePlayerPacket
@@ -68,6 +71,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SaveSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.SpeciesDetailResponsePacket
+import com.nbp.cobblemon_smartphone.network.packet.SpeciesListResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
@@ -94,6 +98,7 @@ object CobblemonSmartphoneNetwork {
                 SpeciesDetailResponseHandler
             )
         )
+        list.add(PacketRegisterInfo(SpeciesListResponsePacket.ID, SpeciesListResponsePacket::decode, SpeciesListResponseHandler))
         list.add(
             PacketRegisterInfo(
                 SyncQuickActionsPacket.ID,
@@ -169,6 +174,7 @@ object CobblemonSmartphoneNetwork {
                 RequestSpeciesDetailHandler
             )
         )
+        list.add(PacketRegisterInfo(RequestSpeciesListPacket.ID, RequestSpeciesListPacket::decode, RequestSpeciesListHandler))
         list.add(
             PacketRegisterInfo(
                 SaveQuickActionsPacket.ID,

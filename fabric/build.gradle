@@ -168,19 +168,43 @@ tasks.register("runMultiplayer") {
     doLast {
         def root = rootProject.projectDir
         def isWindows = System.getProperty("os.name").toLowerCase().contains("win")
-        def launches = [
-                ["Fabric Server", ":fabric:runServerMp"],
-                ["Fabric Client A", ":fabric:runClientA"],
-                ["Fabric Client B", ":fabric:runClientB"],
-        ]
-        launches.each { entry ->
+        def linuxTerminal = !isWindows && new File("/usr/bin/konsole").canExecute() ? "konsole" :
+                (!isWindows && new File("/usr/bin/alacritty").canExecute() ? "alacritty" : null)
+        def launch = { title, task, separateTerminal = false ->
             if (isWindows) {
-                new ProcessBuilder("cmd", "/c", "start", entry[0], "cmd", "/k", "gradlew.bat", entry[1])
-                        .directory(root).start()
+                new ProcessBuilder("cmd", "/c", "start", title, "cmd", "/k", "gradlew.bat", task)
+                        .directory(root).inheritIO().start()
+            } else if (separateTerminal && linuxTerminal == "konsole") {
+                new ProcessBuilder("konsole", "--hold", "-e", "sh", "-c",
+                        "./gradlew ${task}; exec bash").directory(root).start()
+            } else if (separateTerminal && linuxTerminal == "alacritty") {
+                new ProcessBuilder("alacritty", "-e", "sh", "-c",
+                        "./gradlew ${task}; exec bash").directory(root).start()
             } else {
-                new ProcessBuilder("sh", "-c", "./gradlew ${entry[1]}").directory(root).start()
+                new ProcessBuilder("sh", "-c", "./gradlew ${task}")
+                        .directory(root).inheritIO().start()
             }
         }
+
+        // Start the server first. Launching all three Loom tasks at once races while
+        // remapping the development mods (especially Simple Voice Chat).
+        launch("Fabric Server", ":fabric:runServerMp", true)
+        def ready = false
+        def deadline = System.currentTimeMillis() + 120000
+        while (!ready && System.currentTimeMillis() < deadline) {
+            try {
+                new java.net.Socket("127.0.0.1", 25565).withCloseable { ready = true }
+            } catch (Exception ignored) {
+                Thread.sleep(1000)
+            }
+        }
+        if (!ready) {
+            throw new GradleException("O servidor não abriu a porta 25565 em até 120 segundos.")
+        }
+
+        launch("Fabric Client A", ":fabric:runClientA")
+        Thread.sleep(3000)
+        launch("Fabric Client B", ":fabric:runClientB")
         println "Launched server + 2 clients. In each client: Multiplayer -> Direct Connect -> localhost"
     }
 }

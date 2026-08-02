@@ -9,7 +9,10 @@ import com.cobblemon.mod.common.entity.PoseType
 import com.cobblemon.mod.common.pokemon.RenderablePokemon
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesDetailPacket
+import com.nbp.cobblemon_smartphone.network.packet.SpeciesDetailResponsePacket
+import com.nbp.cobblemon_smartphone.client.PokeInfoClientState
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider
+import com.nbp.cobblemon_smartphone.util.PokeInfoLayout
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import net.minecraft.client.Minecraft
@@ -18,6 +21,7 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.resources.language.I18n
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.item.ItemStack
 import org.joml.Quaternionf
 import kotlin.math.pow
@@ -41,9 +45,20 @@ class PokeInfoDetailScreen(
     private var modelPokemon: RenderablePokemon? = null
     private var posableState = FloatingState()
     private lateinit var detail: PokeInfoDataProvider.SpeciesDetail
+    private var formDetails: List<PokeInfoDataProvider.SpeciesDetail> = emptyList()
     private var currentFormIndex = 0
     private var detailLoading = true
+    private var detailRequestId = -1L
+    private var detailRequestStartedAt = 0L
+    private var detailErrorKey: String? = null
     private val expandedBuckets = mutableSetOf<String>()
+    private var currentPage = DetailPage.INFO
+
+    private enum class DetailPage(val translationKey: String) {
+        INFO("page.info"),
+        SPAWNS("page.spawns"),
+        MOVES("page.moves")
+    }
 
     // Clickable header regions: bucketName -> (x1, y1, x2, y2) in screen coords
     private val bucketHeaderRects = mutableMapOf<String, Rect>()
@@ -55,21 +70,24 @@ class PokeInfoDetailScreen(
     private fun applyDetail(received: PokeInfoDataProvider.SpeciesDetail) {
         detail = received
         detailLoading = false
+        detailErrorKey = null
+        currentFormIndex = detail.availableForms.indexOfFirst { it.name == detail.selectedForm }.coerceAtLeast(0)
         val species = PokemonSpecies.getByPokedexNumber(dexNumber)
         if (species != null) {
-            val formName = if (currentFormIndex == 0) null else detail.availableForms.getOrNull(currentFormIndex)?.name
-            val form = if (formName != null) species.forms.firstOrNull { it.name == formName } else species.standardForm
+            val form = species.forms.firstOrNull { it.name == detail.selectedForm } ?: species.standardForm
             modelPokemon = RenderablePokemon(species, (form?.aspects ?: emptyList()).toSet())
         }
-        maxScroll = maxOf(0, calculateContentHeight() - (CONTENT_END_Y - CONTENT_START_Y))
         scrollY = 0
+        updateMaxScroll()
     }
 
     private fun requestDetail() {
-        val formName = if (currentFormIndex == 0) null else
-            (if (::detail.isInitialized) detail.availableForms.getOrNull(currentFormIndex)?.name else null)
+        detailRequestId = PokeInfoClientState.nextRequestId()
+        PokeInfoClientState.beginDetailRequest(detailRequestId, dexNumber)
+        detailRequestStartedAt = System.currentTimeMillis()
         detailLoading = true
-        RequestSpeciesDetailPacket(dexNumber, formName).sendToServer()
+        detailErrorKey = null
+        RequestSpeciesDetailPacket(detailRequestId, dexNumber).sendToServer()
     }
 
     override fun isPauseScreen(): Boolean = false
@@ -78,7 +96,21 @@ class PokeInfoDetailScreen(
         Component.translatable("cobblemon_smartphone.pokeinfo.$key", *args.map { it.toString() }.toTypedArray()).string
 
     private fun localized(text: PokeInfoDataProvider.LocalizedText): String =
-        Component.translatable(text.key, *text.args.toTypedArray()).string
+        Component.translatable(text.key, *text.args.map(::localizedArgument).toTypedArray()).string
+
+    private fun localizedArgument(argument: String): String = when {
+        argument.startsWith("pokemon:") -> pokemonName(argument.removePrefix("pokemon:"))
+        argument.startsWith("move:") -> moveName(argument.removePrefix("move:"))
+        argument.startsWith("type:") -> typeName(argument.removePrefix("type:"))
+        argument.startsWith("item:") -> {
+            val raw = argument.removePrefix("item:")
+            val location = ResourceLocation.tryParse(raw)
+            if (location != null && BuiltInRegistries.ITEM.containsKey(location)) {
+                Component.translatable(BuiltInRegistries.ITEM.get(location).descriptionId).string
+            } else humanize(raw)
+        }
+        else -> argument
+    }
 
     private fun translatedOrFallback(key: String, fallback: String): String =
         if (I18n.exists(key)) Component.translatable(key).string else fallback
@@ -133,6 +165,8 @@ class PokeInfoDetailScreen(
 
     override fun removed() {
         modelPokemon = null
+        formDetails = emptyList()
+        PokeInfoClientState.cancelDetailRequest(detailRequestId)
         SmartphoneHelper.contextSmartphone = null
         SmartphoneHelper.contextColor = null
         super.removed()
@@ -165,60 +199,58 @@ class PokeInfoDetailScreen(
             screenX + CONTENT_X + CONTENT_WIDTH, screenY + CONTENT_END_Y
         )
 
-        // Check if detail arrived from server while screen is open
-        if (detailLoading) {
-            val pending = PokeInfoDataProvider.pendingDetail
-            if (pending != null) {
-                PokeInfoDataProvider.pendingDetail = null
-                applyDetail(pending)
-            }
-        }
-
-        if (!::detail.isInitialized) {
-            // Still loading, show only loading state
+        receiveDetailResponse()
+        if (detailLoading || detailErrorKey != null || !::detail.isInitialized) {
             guiGraphics.disableScissor()
             renderLoadingOverlay(guiGraphics)
             renderHoveredTooltip(guiGraphics, mouseX, mouseY)
             return
         }
 
+        bucketHeaderRects.clear()
         var cy = CONTENT_START_Y - scrollY
         val cfg = CobblemonSmartphone.config.pokeInfo
 
         cy = renderFormSection(guiGraphics, cy, mouseX, mouseY)
         cy = drawSep(guiGraphics, cy)
-        cy = renderTopSection(guiGraphics, cy)
-        cy = drawSep(guiGraphics, cy)
-        if (cfg.showBaseStats) {
-            cy = renderBaseStatsSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-        }
-        if (cfg.showAbilities) {
-            cy = renderAbilitiesSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-        }
-        if (cfg.showEvolution) {
-            cy = renderEvolutionSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-        }
-        if (cfg.showTraining) {
-            cy = renderTrainingSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-        }
-        if (cfg.showBreeding) {
-            cy = renderBreedingSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-        }
-        if (cfg.showTypeDefenses) {
-            cy = renderTypeDefensesSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-        }
-        if (cfg.showLevelMoves) {
-            cy = renderLevelMovesTable(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-        }
-        if (cfg.showLearnableMoves) {
-            cy = renderLearnableMoves(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-        }
-        if (cfg.showSpawning) {
-            cy = renderSpawningSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+        when (currentPage) {
+            DetailPage.INFO -> {
+                cy = renderTopSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+                if (cfg.showBaseStats) {
+                    cy = renderBaseStatsSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+                }
+                if (cfg.showAbilities) {
+                    cy = renderAbilitiesSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+                }
+                if (cfg.showEvolution) {
+                    cy = renderEvolutionSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+                }
+                if (cfg.showTraining) {
+                    cy = renderTrainingSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+                }
+                if (cfg.showBreeding) {
+                    cy = renderBreedingSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+                }
+                if (cfg.showTypeDefenses) {
+                    cy = renderTypeDefensesSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+                }
+            }
+            DetailPage.SPAWNS -> if (cfg.showSpawning) {
+                cy = renderSpawningSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+            }
+            DetailPage.MOVES -> {
+                if (cfg.showLevelMoves) {
+                    cy = renderLevelMovesTable(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+                }
+                if (cfg.showLearnableMoves) {
+                    cy = renderLearnableMoves(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
+                }
+            }
         }
 
         guiGraphics.disableScissor()
         renderScrollbar(guiGraphics, mouseY)
+        renderPageTabs(guiGraphics, mouseX, mouseY)
         renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
 
@@ -232,14 +264,28 @@ class PokeInfoDetailScreen(
             return true
         }
 
+        (if (::detail.isInitialized) pageAt(mx, my) else null)?.let { selectedPage ->
+            if (selectedPage != currentPage) {
+                playClickSound()
+                currentPage = selectedPage
+                scrollY = 0
+                draggingScrollbar = false
+                bucketHeaderRects.clear()
+                updateMaxScroll()
+            }
+            return true
+        }
+
         // Bucket header toggle
-        if (::detail.isInitialized) {
+        if (::detail.isInitialized && currentPage == DetailPage.SPAWNS &&
+            my in (screenY + CONTENT_START_Y)..(screenY + CONTENT_END_Y)
+        ) {
             for ((bucket, rect) in bucketHeaderRects) {
                 if (rect.contains(mx, my)) {
                     playClickSound()
                     if (expandedBuckets.contains(bucket)) expandedBuckets.remove(bucket)
                     else expandedBuckets.add(bucket)
-                    maxScroll = maxOf(0, calculateContentHeight() - (CONTENT_END_Y - CONTENT_START_Y))
+                    updateMaxScroll()
                     return true
                 }
             }
@@ -257,13 +303,13 @@ class PokeInfoDetailScreen(
             if (currentFormIndex > 0 && mx >= navCenter - 64 && mx <= navCenter - 50 && my >= navY - 2 && my <= navY + 10) {
                 playClickSound()
                 currentFormIndex--
-                requestDetail()
+                applyForm(currentFormIndex)
                 return true
             }
             if (currentFormIndex < forms.size - 1 && mx >= navCenter + 50 && mx <= navCenter + 60 && my >= navY - 2 && my <= navY + 10) {
                 playClickSound()
                 currentFormIndex++
-                requestDetail()
+                applyForm(currentFormIndex)
                 return true
             }
         }
@@ -304,11 +350,82 @@ class PokeInfoDetailScreen(
         draw(guiGraphics, lang("back"), screenX + HEADER_BACK_X, backY, color)
     }
 
+    private fun renderPageTabs(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        DetailPage.entries.forEachIndexed { index, page ->
+            val x1 = screenX + CONTENT_X + index * PAGE_TAB_WIDTH
+            val x2 = if (index == DetailPage.entries.lastIndex) {
+                screenX + CONTENT_X + CONTENT_WIDTH
+            } else {
+                x1 + PAGE_TAB_WIDTH - PAGE_TAB_GAP
+            }
+            val y1 = screenY + PAGE_TABS_Y
+            val selected = page == currentPage
+            val hovered = mouseX in x1 until x2 && mouseY in y1 until (y1 + PAGE_TABS_HEIGHT)
+            val background = when {
+                selected -> SECTION_TITLE_BG
+                hovered -> 0xFF2D7188.toInt()
+                else -> 0xCC173D4B.toInt()
+            }
+            guiGraphics.fill(x1, y1, x2, y1 + PAGE_TABS_HEIGHT, background)
+
+            val label = lang(page.translationKey)
+            val color = if (selected || hovered) 0xFFFFFFFF.toInt() else 0xFFB8DCE8.toInt()
+            draw(guiGraphics, label, x1 + (x2 - x1 - textWidth(label)) / 2, y1 + 2, color)
+        }
+    }
+
+    private fun pageAt(mouseX: Int, mouseY: Int): DetailPage? {
+        val y1 = screenY + PAGE_TABS_Y
+        if (mouseY !in y1 until (y1 + PAGE_TABS_HEIGHT)) return null
+        return DetailPage.entries.firstOrNull { page ->
+            val index = page.ordinal
+            val x1 = screenX + CONTENT_X + index * PAGE_TAB_WIDTH
+            val x2 = if (index == DetailPage.entries.lastIndex) {
+                screenX + CONTENT_X + CONTENT_WIDTH
+            } else {
+                x1 + PAGE_TAB_WIDTH - PAGE_TAB_GAP
+            }
+            mouseX in x1 until x2
+        }
+    }
+
     private fun renderLoadingOverlay(guiGraphics: GuiGraphics) {
         val cx = screenX + CONTENT_X + CONTENT_WIDTH / 2
         val cy = screenY + CONTENT_START_Y + (CONTENT_END_Y - CONTENT_START_Y) / 2
-        val text = lang("loading_spawn_data")
+        val text = Component.translatable(
+            detailErrorKey ?: "cobblemon_smartphone.pokeinfo.loading_detail"
+        ).string
         draw(guiGraphics, text, cx - textWidth(text) / 2, cy, 0xFFAAAAAA.toInt())
+    }
+
+    private fun receiveDetailResponse() {
+        if (!detailLoading) return
+        val response = PokeInfoClientState.consumeDetailResponse(detailRequestId)
+        if (response != null) {
+            when (response.status) {
+                SpeciesDetailResponsePacket.Status.SUCCESS -> {
+                    formDetails = response.details
+                    val received = formDetails.firstOrNull()
+                    if (received != null) applyDetail(received)
+                    else failDetail("cobblemon_smartphone.pokeinfo.error.server")
+                }
+                SpeciesDetailResponsePacket.Status.NOT_FOUND -> failDetail("cobblemon_smartphone.pokeinfo.error.not_found")
+                SpeciesDetailResponsePacket.Status.RATE_LIMITED -> failDetail("cobblemon_smartphone.pokeinfo.error.rate_limited")
+                SpeciesDetailResponsePacket.Status.ERROR -> failDetail("cobblemon_smartphone.pokeinfo.error.server")
+            }
+        } else if (System.currentTimeMillis() - detailRequestStartedAt >= REQUEST_TIMEOUT_MS) {
+            failDetail("cobblemon_smartphone.pokeinfo.error.timeout")
+        }
+    }
+
+    private fun failDetail(key: String) {
+        detailLoading = false
+        detailErrorKey = key
+    }
+
+    private fun applyForm(index: Int) {
+        val received = formDetails.getOrNull(index) ?: return
+        applyDetail(received)
     }
 
     private fun renderFormSection(guiGraphics: GuiGraphics, sy: Int, mouseX: Int, mouseY: Int): Int {
@@ -498,8 +615,9 @@ class PokeInfoDetailScreen(
         }
         detail.evolutions.forEach { evo ->
             val name = pokemonName(evo.targetName)
-            val methods = evo.methods.joinToString(" + ", transform = ::localized)
-            lineCount += wrapText("\u2193 $name ($methods)", wrapW).size
+            val methods = evo.methods.joinToString("  •  ", transform = ::localized)
+            lineCount += wrapText("\u2193 $name", wrapW).size
+            if (methods.isNotEmpty()) lineCount += wrapText("\u2022 $methods", wrapW - 8).size
         }
 
         val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lineCount * 9 + SECTION_PAD_BOTTOM
@@ -517,17 +635,23 @@ class PokeInfoDetailScreen(
         }
         detail.evolutions.forEach { evo ->
             val name = pokemonName(evo.targetName)
-            val methods = evo.methods.joinToString(" + ", transform = ::localized)
-            wrapText("\u2193 $name ($methods)", wrapW).forEach {
+            val methods = evo.methods.joinToString("  •  ", transform = ::localized)
+            wrapText("\u2193 $name", wrapW).forEach {
                 draw(guiGraphics, it, tx, screenY + y, CONTENT_TEXT)
                 y += 9
+            }
+            if (methods.isNotEmpty()) {
+                wrapText("\u2022 $methods", wrapW - 8).forEach {
+                    draw(guiGraphics, it, tx + 8, screenY + y, CONTENT_DIM)
+                    y += 9
+                }
             }
         }
         return sy + totalH
     }
 
     private fun renderTrainingSection(guiGraphics: GuiGraphics, sy: Int): Int {
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 4 * 9 + SECTION_PAD_BOTTOM
+        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 5 * 9 + SECTION_PAD_BOTTOM
         sectionBox(guiGraphics, sy, totalH)
 
         var y = sy + SECTION_PAD_TOP
@@ -575,6 +699,16 @@ class PokeInfoDetailScreen(
         // Base Exp
         draw(guiGraphics, lang("base_exp") + ": ", tx, screenY + y, CONTENT_DIM)
         draw(guiGraphics, "${detail.baseExp}", tx + textWidth(lang("base_exp") + ": "), screenY + y, CONTENT_TEXT)
+        y += 9
+
+        draw(guiGraphics, lang("growth_rate") + ": ", tx, screenY + y, CONTENT_DIM)
+        draw(
+            guiGraphics,
+            humanize(detail.growthRate),
+            tx + textWidth(lang("growth_rate") + ": "),
+            screenY + y,
+            CONTENT_TEXT
+        )
         y += 9
 
         return sy + totalH
@@ -892,7 +1026,7 @@ class PokeInfoDetailScreen(
 
     private fun renderLevelMovesTable(guiGraphics: GuiGraphics, sy: Int): Int {
         val levelUp = detail.moves.filter { it.method == "level" }.sortedBy { it.level }
-        val moveCount = minOf(levelUp.size, 20)
+        val moveCount = levelUp.size
         val scale = 0.8f
         val totalRowsHeight = Math.ceil((moveCount + 1) * 9.0 * scale).toInt()
         val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + totalRowsHeight + SECTION_PAD_BOTTOM
@@ -921,7 +1055,7 @@ class PokeInfoDetailScreen(
         draw(guiGraphics, lang("ac"), LV_W + MOVE_W + TYPE_W + CAT_W + PW_W, 0, CONTENT_DIM)
         var ry = 9
 
-        levelUp.take(20).forEach { move ->
+        levelUp.forEach { move ->
             val pw = if (move.power == 0) "\u2014" else move.power.toString()
             val ac = if (move.accuracy == 0) "\u221E" else move.accuracy.toString()
             val cat = when (move.category) {
@@ -1145,6 +1279,7 @@ class PokeInfoDetailScreen(
     }
 
     private fun calculateContentHeight(): Int {
+        val cfg = CobblemonSmartphone.config.pokeInfo
         val topH = SECTION_PAD_TOP + 20 + 56 + SECTION_PAD_BOTTOM
         val formNavH = if (detail.availableForms.size > 1) SECTION_PAD_TOP + TITLE_GAP else 0
         val statsH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 6 * 9 + 9 + SECTION_PAD_BOTTOM
@@ -1173,13 +1308,14 @@ class PokeInfoDetailScreen(
                 }
                 detail.evolutions.forEach { evo ->
                     val name = pokemonName(evo.targetName)
-                    val methods = evo.methods.joinToString(" + ", transform = ::localized)
-                    lines += wrapText("\u2193 $name ($methods)", wrapW).size
+                    val methods = evo.methods.joinToString("  •  ", transform = ::localized)
+                    lines += wrapText("\u2193 $name", wrapW).size
+                    if (methods.isNotEmpty()) lines += wrapText("\u2022 $methods", wrapW - 8).size
                 }
                 SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
             }
         }
-        val trainH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 4 * 9 + SECTION_PAD_BOTTOM
+        val trainH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 5 * 9 + SECTION_PAD_BOTTOM
         val spawnH = when {
             detailLoading -> SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 9 + SECTION_PAD_BOTTOM
             detail.spawnEntries.isNotEmpty() -> {
@@ -1246,7 +1382,7 @@ class PokeInfoDetailScreen(
             SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
         }
         val movesH = run {
-            val levelCount = minOf(detail.moves.count { it.method == "level" }, 20)
+            val levelCount = detail.moves.count { it.method == "level" }
             val totalRowsHeight = kotlin.math.ceil((levelCount + 1) * 9.0 * 0.8).toInt()
             SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + totalRowsHeight + SECTION_PAD_BOTTOM
         }
@@ -1258,8 +1394,31 @@ class PokeInfoDetailScreen(
                 SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + totalRowsHeight + SECTION_PAD_BOTTOM
             }
         }
-        val separators = 10 * 4
-        return topH + formNavH + statsH + abiH + evoH + trainH + spawnH + breedH + defH + movesH + learnH + separators
+        val sections = mutableListOf(formNavH)
+        when (currentPage) {
+            DetailPage.INFO -> {
+                sections += topH
+                listOf(
+                    cfg.showBaseStats to statsH,
+                    cfg.showAbilities to abiH,
+                    cfg.showEvolution to evoH,
+                    cfg.showTraining to trainH,
+                    cfg.showBreeding to breedH,
+                    cfg.showTypeDefenses to defH
+                ).filter { it.first }.forEach { sections += it.second }
+            }
+            DetailPage.SPAWNS -> if (cfg.showSpawning) sections += spawnH
+            DetailPage.MOVES -> listOf(
+                cfg.showLevelMoves to movesH,
+                cfg.showLearnableMoves to learnH
+            ).filter { it.first }.forEach { sections += it.second }
+        }
+        return PokeInfoLayout.totalHeight(sections)
+    }
+
+    private fun updateMaxScroll() {
+        maxScroll = maxOf(0, calculateContentHeight() - (CONTENT_END_Y - CONTENT_START_Y))
+        scrollY = scrollY.coerceIn(0, maxScroll)
     }
 
     private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
@@ -1273,6 +1432,7 @@ class PokeInfoDetailScreen(
     }
 
     companion object {
+        private const val REQUEST_TIMEOUT_MS = 10_000L
         private const val GUI_WIDTH = 211
         private const val GUI_HEIGHT = 207
 
@@ -1282,7 +1442,11 @@ class PokeInfoDetailScreen(
         private const val CONTENT_X = 20
         private const val CONTENT_WIDTH = 166
         private const val CONTENT_START_Y = 28
-        private const val CONTENT_END_Y = 192
+        private const val CONTENT_END_Y = 180
+        private const val PAGE_TABS_Y = 183
+        private const val PAGE_TABS_HEIGHT = 11
+        private const val PAGE_TAB_WIDTH = 56
+        private const val PAGE_TAB_GAP = 1
 
         private const val SECTION_PAD = 4
         private const val SECTION_PAD_TOP = 4
