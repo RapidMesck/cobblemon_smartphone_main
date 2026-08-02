@@ -39,6 +39,8 @@ class SmartphoneConfig {
         val maxMessagesPerThread: Int = 500
         val maxMessageLength: Int = 280
         val messagePageSize: Int = 30
+        val threadPageSize: Int = 30
+        val callRingTimeoutSeconds: Int = 30
     }
 
     class Features {

@@ -4,6 +4,8 @@ import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
 import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.client.social.CallClientTicker
+import com.nbp.cobblemon_smartphone.client.social.SocialClientSession
+import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.neoforge.keybind.NeoForgeSmartphoneKeybindHandler
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.api.distmarker.OnlyIn
@@ -12,6 +14,7 @@ import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.common.EventBusSubscriber.Bus
 import net.neoforged.neoforge.client.event.ClientTickEvent
 import net.neoforged.neoforge.client.event.RenderGuiEvent
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent
 
 @OnlyIn(Dist.CLIENT)
 @EventBusSubscriber(modid = "cobblemon_smartphone", bus = Bus.GAME, value = [Dist.CLIENT])
@@ -37,10 +40,17 @@ object CobblemonSmartphoneNeoForgeTickHandler {
         }
         NeoForgeSmartphoneKeybindHandler.onClientTick(net.minecraft.client.Minecraft.getInstance())
         CallClientTicker.tick()
+        SocialPhotoClient.tick()
     }
 
     @SubscribeEvent
     fun onRenderGui(event: RenderGuiEvent.Post) {
         CallOverlay.render(event.guiGraphics)
+        SocialPhotoClient.renderCameraOverlay(event.guiGraphics)
+    }
+
+    @SubscribeEvent
+    fun onLogout(event: ClientPlayerNetworkEvent.LoggingOut) {
+        SocialClientSession.clear()
     }
 }

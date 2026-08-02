@@ -6,6 +6,7 @@ import com.nbp.cobblemon_smartphone.api.SmartphoneAction
 import com.nbp.cobblemon_smartphone.client.gui.SocialScreen
 import com.nbp.cobblemon_smartphone.client.social.SocialDmCache
 import com.nbp.cobblemon_smartphone.client.social.SocialFeedCache
+import com.nbp.cobblemon_smartphone.client.social.SocialClientSession
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.ResourceLocation
@@ -33,7 +34,7 @@ object SocialAction : SmartphoneAction {
      * No upgrade gate on purpose: a social network has network effects. Gating it behind a
      * smithing recipe would fragment the player base and leave the feed empty early on.
      */
-    override fun isEnabled(): Boolean = CobblemonSmartphone.config.features.enableSocial
+    override fun isEnabled(): Boolean = SocialClientSession.capabilities.enabled
 
     override fun badgeCount(): Int = SocialDmCache.unreadTotal
 }

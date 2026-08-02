@@ -6,12 +6,17 @@ import com.nbp.cobblemon_smartphone.network.packet.FeedPagePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestFeedPagePacket
 import com.nbp.cobblemon_smartphone.social.SocialData
 import com.nbp.cobblemon_smartphone.social.SocialPostView
+import com.nbp.cobblemon_smartphone.network.SocialRequestLimiter
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 
 object RequestFeedPageHandler : ServerNetworkPacketHandler<RequestFeedPagePacket> {
     override fun handle(packet: RequestFeedPagePacket, server: MinecraftServer, player: ServerPlayer) {
-        server.execute { sendPage(server, player, packet.beforeId) }
+        server.execute {
+            if (SocialRequestLimiter.allow(player.uuid, SocialRequestLimiter.Action.FEED_PAGE)) {
+                sendPage(server, player, packet.beforeId)
+            }
+        }
     }
 
     /**

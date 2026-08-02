@@ -13,6 +13,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
@@ -80,6 +81,7 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
                 .sendToPlayer(handler.player)
             SyncSocialMutePacket(SocialMuteStorage.read(handler.player)).sendToPlayer(handler.player)
             SyncMutedPlayersPacket(MutedPlayersStorage.read(handler.player).toList()).sendToPlayer(handler.player)
+            SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(handler.player)
         }
 
         // End any call a player was in when they disconnect, restoring the other side's voice group.
@@ -87,12 +89,12 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
             CallManager.onLogout(server, handler.player)
             TomsStorageRemoteSession.onLogout(handler.player)
         }
-
         // Fabric API has no generic "container closed" event, so a per-tick poll (see
         // TomsStorageRemoteSession.tick) is what closes out the remote-access bypass once the
         // remotely-opened Toms Storage terminal closes. This poll itself needs no mixin; the
         // held-item range check bypass is a separate mixin, see MixinStorageTerminalBlockEntity.
         ServerTickEvents.END_SERVER_TICK.register { server -> TomsStorageRemoteSession.tick(server) }
+        ServerTickEvents.END_SERVER_TICK.register(ServerTickEvents.EndTick(CallManager::tick))
     }
 
     override fun registerItems() {

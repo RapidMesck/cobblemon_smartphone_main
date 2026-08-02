@@ -8,6 +8,9 @@ import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState
 import com.cobblemon.mod.common.entity.PoseType
 import com.cobblemon.mod.common.pokemon.RenderablePokemon
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.client.PokeInfoClientState
+import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesListPacket
+import com.nbp.cobblemon_smartphone.network.packet.SpeciesListResponsePacket
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
@@ -35,6 +38,11 @@ class PokeInfoScreen(
     private var dragStartScrollY = 0
     private lateinit var searchBox: EditBox
     private var results: List<PokeInfoDataProvider.SpeciesInfo> = emptyList()
+    private var allSpecies: List<PokeInfoDataProvider.SpeciesInfo> = emptyList()
+    private var listRequestId = -1L
+    private var listRequestStartedAt = 0L
+    private var listLoading = true
+    private var listErrorKey: String? = null
     private val modelCache = mutableMapOf<Int, RenderablePokemon?>()
 
     override fun isPauseScreen(): Boolean = false
@@ -63,19 +71,25 @@ class PokeInfoScreen(
         searchBox.setResponder { query -> onSearchChanged(query) }
         addRenderableWidget(searchBox)
 
-        results = PokeInfoDataProvider.all()
-        updateMaxScroll()
+        listRequestId = PokeInfoClientState.nextRequestId()
+        PokeInfoClientState.beginListRequest(listRequestId)
+        listRequestStartedAt = System.currentTimeMillis()
+        listLoading = true
+        listErrorKey = null
+        RequestSpeciesListPacket(listRequestId).sendToServer()
         scrollY = 0
     }
 
     override fun removed() {
         modelCache.clear()
+        PokeInfoClientState.cancelListRequest(listRequestId)
         SmartphoneHelper.contextSmartphone = null
         SmartphoneHelper.contextColor = null
         super.removed()
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        receiveSpeciesList()
         val matrices = guiGraphics.pose()
 
         blitk(
@@ -124,6 +138,14 @@ class PokeInfoScreen(
         }
 
         guiGraphics.disableScissor()
+        if (results.isEmpty() && (listLoading || listErrorKey != null)) {
+            val message = Component.translatable(
+                listErrorKey ?: "cobblemon_smartphone.pokeinfo.loading_species"
+            ).string
+            val centerX = screenX + CONTENT_X + LIST_WIDTH / 2
+            val centerY = screenY + (LIST_START_Y + LIST_END_Y) / 2
+            guiGraphics.drawString(font, message, centerX - font.width(message) / 2, centerY, 0xFFAAAAAA.toInt(), false)
+        }
         renderScrollbar(guiGraphics, mouseY)
         renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
@@ -194,9 +216,9 @@ class PokeInfoScreen(
     private fun onSearchChanged(query: String) {
         val normalized = query.trim().lowercase()
         results = if (normalized.isEmpty()) {
-            PokeInfoDataProvider.all()
+            allSpecies
         } else {
-            PokeInfoDataProvider.all().filter { species ->
+            allSpecies.filter { species ->
                 localizedPokemonName(species).lowercase().contains(normalized) ||
                         species.name.lowercase().contains(normalized) ||
                         species.dexNumber.toString().startsWith(normalized)
@@ -204,6 +226,25 @@ class PokeInfoScreen(
         }
         updateMaxScroll()
         scrollY = 0
+    }
+
+    private fun receiveSpeciesList() {
+        if (!listLoading) return
+        val response = PokeInfoClientState.consumeListResponse(listRequestId)
+        if (response != null) {
+            listLoading = false
+            when (response.status) {
+                SpeciesListResponsePacket.Status.SUCCESS -> {
+                    allSpecies = response.species
+                    onSearchChanged(if (::searchBox.isInitialized) searchBox.value else "")
+                }
+                SpeciesListResponsePacket.Status.RATE_LIMITED -> listErrorKey = "cobblemon_smartphone.pokeinfo.error.rate_limited"
+                SpeciesListResponsePacket.Status.ERROR -> listErrorKey = "cobblemon_smartphone.pokeinfo.error.server"
+            }
+        } else if (System.currentTimeMillis() - listRequestStartedAt >= REQUEST_TIMEOUT_MS) {
+            listLoading = false
+            listErrorKey = "cobblemon_smartphone.pokeinfo.error.timeout"
+        }
     }
 
     private fun renderScrollbar(guiGraphics: GuiGraphics, mouseY: Int) {
@@ -326,6 +367,7 @@ class PokeInfoScreen(
     }
 
     companion object {
+        private const val REQUEST_TIMEOUT_MS = 10_000L
         private const val GUI_WIDTH = 211
         private const val GUI_HEIGHT = 207
 

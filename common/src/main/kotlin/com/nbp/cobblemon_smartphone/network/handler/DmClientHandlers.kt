@@ -14,7 +14,7 @@ import net.minecraft.network.chat.Component
 
 object ThreadListHandler : ClientNetworkPacketHandler<ThreadListPacket> {
     override fun handle(packet: ThreadListPacket, client: Minecraft) {
-        SocialDmCache.acceptThreadList(packet.threads)
+        SocialDmCache.acceptThreadList(packet.threads, packet.hasMore, packet.append)
     }
 }
 

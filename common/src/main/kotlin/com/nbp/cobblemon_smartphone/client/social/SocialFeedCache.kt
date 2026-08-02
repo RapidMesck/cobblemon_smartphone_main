@@ -62,6 +62,14 @@ object SocialFeedCache {
         return liked
     }
 
+    fun applyUpdate(deletedId: Long, post: SocialPostView?) {
+        if (deletedId > 0) posts.removeIf { it.id == deletedId }
+        if (post != null) {
+            val index = posts.indexOfFirst { it.id == post.id }
+            if (index >= 0) posts[index] = post else posts.add(0, post)
+        }
+    }
+
     fun clear() {
         posts.clear()
         hasMore = false

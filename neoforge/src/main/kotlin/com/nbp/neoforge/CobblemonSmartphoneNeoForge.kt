@@ -14,6 +14,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
@@ -48,6 +49,7 @@ import net.neoforged.neoforge.event.AddReloadListenerEvent
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
+import net.neoforged.neoforge.event.tick.ServerTickEvent
 import net.neoforged.neoforge.registries.RegisterEvent
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import java.util.Optional
@@ -81,6 +83,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
             }
             SyncSocialMutePacket(SocialMuteStorage.read(player)).sendToPlayer(player)
             SyncMutedPlayersPacket(MutedPlayersStorage.read(player).toList()).sendToPlayer(player)
+            SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(player)
         }
 
         // End any call a player was in when they disconnect, restoring the other side's voice group.
@@ -96,6 +99,9 @@ class CobblemonSmartphoneNeoForge : Implementation {
         NeoForge.EVENT_BUS.addListener<PlayerContainerEvent.Close> { event ->
             val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
             TomsStorageRemoteSession.end(player)
+        }
+        NeoForge.EVENT_BUS.addListener<ServerTickEvent.Post> { event ->
+            CallManager.tick(event.server)
         }
     }
     
