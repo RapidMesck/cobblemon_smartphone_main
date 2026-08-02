@@ -1,0 +1,13 @@
+{
+  "required": false,
+  "package": "com.nbp.neoforge.mixin.tomsstorage",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "plugin": "com.nbp.neoforge.mixin.tomsstorage.TomsStorageMixinPlugin",
+  "mixins": [
+    "MixinStorageTerminalBlockEntity"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -3,6 +3,7 @@ package com.nbp.cobblemon_smartphone
 import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
 import com.nbp.cobblemon_smartphone.command.SocialCommands
 import com.nbp.cobblemon_smartphone.compat.SmartphoneCompatManager
+import com.nbp.cobblemon_smartphone.compat.tomsstorage.TomsStorageRemoteSession
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
@@ -23,6 +24,7 @@ import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.util.SocialMuteStorage
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper
@@ -83,7 +85,14 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
         // End any call a player was in when they disconnect, restoring the other side's voice group.
         ServerPlayConnectionEvents.DISCONNECT.register { handler, server ->
             CallManager.onLogout(server, handler.player)
+            TomsStorageRemoteSession.onLogout(handler.player)
         }
+
+        // Fabric API has no generic "container closed" event, so a per-tick poll (see
+        // TomsStorageRemoteSession.tick) is what closes out the remote-access bypass once the
+        // remotely-opened Toms Storage terminal closes. This poll itself needs no mixin; the
+        // held-item range check bypass is a separate mixin, see MixinStorageTerminalBlockEntity.
+        ServerTickEvents.END_SERVER_TICK.register { server -> TomsStorageRemoteSession.tick(server) }
     }
 
     override fun registerItems() {

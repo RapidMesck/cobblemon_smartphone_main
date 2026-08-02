@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:smithing_transform",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": ["toms_storage"]
+    }
+  ],
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "toms_storage"
+    }
+  ],
+  "template": {
+    "item": "cobblemon:upgrade"
+  },
+  "base": {
+    "tag": "cobblemon_smartphone:smartphones"
+  },
+  "addition": {
+    "item": "toms_storage:adv_wireless_terminal"
+  },
+  "result": {
+    "id": "cobblemon_smartphone:red_smartphone",
+    "count": 1,
+    "components": {
+      "minecraft:custom_data": {
+        "cobblemon_smartphone:upgrades": {
+          "upgrade_toms_storage": true
+        }
+      }
+    }
+  }
+}

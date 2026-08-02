@@ -5,6 +5,7 @@ import com.nbp.cobblemon_smartphone.Implementation
 import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
 import com.nbp.cobblemon_smartphone.command.SocialCommands
+import com.nbp.cobblemon_smartphone.compat.tomsstorage.TomsStorageRemoteSession
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
@@ -45,6 +46,7 @@ import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.AddPackFindersEvent
 import net.neoforged.neoforge.event.AddReloadListenerEvent
 import net.neoforged.neoforge.event.RegisterCommandsEvent
+import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.registries.RegisterEvent
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
@@ -85,6 +87,15 @@ class CobblemonSmartphoneNeoForge : Implementation {
         NeoForge.EVENT_BUS.addListener<PlayerEvent.PlayerLoggedOutEvent> { event ->
             val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
             player.server?.let { CallManager.onLogout(it, player) }
+            TomsStorageRemoteSession.onLogout(player)
+        }
+
+        // Close out the remote-access bypass once the remotely-opened Toms Storage terminal
+        // closes. Native NeoForge event - no mixin needed to detect the container closing
+        // (the mixin is only for bypassing the held-item range check, see MixinStorageTerminalBlockEntity).
+        NeoForge.EVENT_BUS.addListener<PlayerContainerEvent.Close> { event ->
+            val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
+            TomsStorageRemoteSession.end(player)
         }
     }
     

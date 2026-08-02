@@ -62,6 +62,12 @@ dependencies {
     // is bundled. To exercise voice in dev, drop the SVC jar into neoforge/run/mods manually.
     compileOnly "de.maxhenkel.voicechat:voicechat-api:${rootProject.voicechat_api_version}"
 
+    // Toms Storage (optional) - the smartphone integration only talks to it through vanilla
+    // block tags/NBT (see compat/tomsstorage), so this is purely for IDE completion and
+    // dev-instance testing; nothing from the mod's own classes is referenced or bundled.
+    compileOnly "maven.modrinth:toms-storage:${rootProject.toms_storage_version}"
+    runtimeOnly "maven.modrinth:toms-storage:${rootProject.toms_storage_version}"
+
     // Curios API (optional) - compile against API only, full jar at runtime
     compileOnly "top.theillusivec4.curios:curios-neoforge:${rootProject.curios_version}:api"
     runtimeOnly "top.theillusivec4.curios:curios-neoforge:${rootProject.curios_version}"

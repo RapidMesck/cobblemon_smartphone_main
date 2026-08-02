@@ -8,11 +8,14 @@ import com.nbp.cobblemon_smartphone.actions.OpenCobblenavFishingnavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobbledollarsAction
 import com.nbp.cobblemon_smartphone.actions.OpenPcAction
 import com.nbp.cobblemon_smartphone.actions.OpenRctTrainerCardAction
+import com.nbp.cobblemon_smartphone.actions.OpenTomsStorageAction
 import com.nbp.cobblemon_smartphone.actions.OpenWaystonesAction
 import com.nbp.cobblemon_smartphone.actions.PokeInfoAction
 import com.nbp.cobblemon_smartphone.actions.PokedexAction
 import com.nbp.cobblemon_smartphone.actions.SocialAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
+import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
+import com.nbp.cobblemon_smartphone.compat.tomsstorage.TomsStorageLink
 import com.nbp.cobblemon_smartphone.client.BuiltinResourcePack
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
@@ -50,6 +53,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(OpenCobblenavFishingnavAction)
         SmartphoneActionRegistry.register(OpenCobbledollarsAction)
         SmartphoneActionRegistry.register(OpenWaystonesAction)
+        SmartphoneActionRegistry.register(OpenTomsStorageAction)
         SmartphoneActionRegistry.register(OpenRctTrainerCardAction)
         SmartphoneActionRegistry.register(PokedexAction)
         SmartphoneActionRegistry.register(PokeInfoAction)
@@ -84,6 +88,17 @@ object CobblemonSmartphone {
                 requiredModId = "waystones"
             )
         )
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = TomsStorageLink.UPGRADE_NBT_KEY,
+                nbtKey = TomsStorageLink.UPGRADE_NBT_KEY,
+                requiredModId = TomsStorageLink.MOD_ID
+            )
+        )
+    }
+
+    fun registerDefaultStorageLinks() {
+        SmartphoneStorageLinkRegistry.register(TomsStorageLink)
     }
 
     fun init(implementation: Implementation) {
@@ -94,6 +109,7 @@ object CobblemonSmartphone {
         implementation.registerCommands()
         registerDefaultActions()
         registerDefaultUpgrades()
+        registerDefaultStorageLinks()
     }
 
     fun getSmartphoneActionRegistry() = SmartphoneActionRegistry

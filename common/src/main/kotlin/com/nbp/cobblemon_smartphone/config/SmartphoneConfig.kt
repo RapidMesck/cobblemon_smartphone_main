@@ -21,6 +21,7 @@ class SmartphoneConfig {
         val pcButton: Int = 5     // 5 segundos
         val cloudButton: Int = 5  // 5 segundos
         val waystoneButton: Int = 5 // 5 segundos
+        val tomsStorageButton: Int = 5 // 5 segundos
         val pokedexButton: Int = 1 // 1 segundo
         val socialPost: Int = 30  // 30 segundos entre posts
         val socialMessage: Int = 1 // 1 segundo entre mensagens privadas
@@ -48,6 +49,7 @@ class SmartphoneConfig {
         val enableFishingnav: Boolean = true
         val enableCobbleDollars: Boolean = true
         val enableWaystone: Boolean = true
+        val enableTomsStorage: Boolean = true
         val enableRctTrainerCard: Boolean = true
         val enablePokedex: Boolean = true
         val enablePokeInfo: Boolean = true

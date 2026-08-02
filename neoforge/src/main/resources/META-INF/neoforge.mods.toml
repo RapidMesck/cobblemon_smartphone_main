@@ -68,3 +68,6 @@ side = "BOTH"
 
 [[mixins]]
 config = "cobblemonsmartphone.mixins.json"
+
+[[mixins]]
+config = "cobblemonsmartphone-tomsstorage.mixins.json"

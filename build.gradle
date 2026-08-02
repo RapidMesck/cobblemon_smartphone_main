@@ -40,6 +40,13 @@ subprojects {
             name = "Henkelmax (Simple Voice Chat API)"
             url = "https://maven.maxhenkel.de/repository/public"
         }
+        maven {
+            name = "Modrinth"
+            url = "https://api.modrinth.com/maven"
+            content {
+                includeGroup "maven.modrinth"
+            }
+        }
     }
 
     loom {

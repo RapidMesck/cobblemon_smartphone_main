@@ -52,4 +52,26 @@ object SmartphoneHelper {
 
     private fun ItemStack.isSmartphoneWithUpgrade(upgradeKey: String): Boolean =
         this.item is SmartphoneItem && this.hasUpgrade(upgradeKey)
+
+    /**
+     * Finds the first smartphone the player is carrying that has the given upgrade AND
+     * satisfies [predicate] (e.g. "has a stored terminal link"). Searches inventory, offhand,
+     * and platform compat slots (Trinkets/Curios), same order as [hasUpgradeOnAnySmartphone].
+     */
+    fun findSmartphoneWithUpgradeAndLink(
+        player: Player,
+        upgradeKey: String,
+        predicate: (ItemStack) -> Boolean,
+        actionId: String? = null
+    ): ItemStack? {
+        val ignoreUpgrade = actionId != null && CobblemonSmartphone.config.ignoreUpgrades.contains(actionId)
+
+        fun matches(stack: ItemStack): Boolean =
+            stack.item is SmartphoneItem && (ignoreUpgrade || stack.hasUpgrade(upgradeKey)) && predicate(stack)
+
+        player.inventory.items.firstOrNull(::matches)?.let { return it }
+        if (matches(player.offhandItem)) return player.offhandItem
+        getSmartphoneImpl?.invoke(player)?.let { if (matches(it)) return it }
+        return null
+    }
 }

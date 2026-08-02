@@ -74,6 +74,16 @@ dependencies {
     // project uses, which modLocalRuntime's remapper rejects.
     compileOnly "de.maxhenkel.voicechat:voicechat-api:${rootProject.voicechat_api_version}"
 
+    // Toms Storage - Optional dependency. The smartphone integration only talks to it through
+    // vanilla block tags/NBT (see compat/tomsstorage), so this is purely for IDE completion and
+    // dev-instance testing; nothing from the mod's own classes is referenced or bundled.
+    modCompileOnly("maven.modrinth:toms-storage:${rootProject.toms_storage_version}-fabric") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+    modLocalRuntime("maven.modrinth:toms-storage:${rootProject.toms_storage_version}-fabric") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+
     common(project(path: ':common', configuration: 'namedElements')) { transitive false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
 }

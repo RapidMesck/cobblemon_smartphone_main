@@ -2,6 +2,14 @@
   "message.nbp.crafting.disabled": "O crafting está desabilitado neste servidor",
   "message.nbp.rct.disabled": "O Trainer Card está desabilitado neste servidor",
   "message.nbp.rct.unavailable": "O Radical Cobblemon Trainers não está instalado neste servidor",
+  "message.nbp.toms_storage.disabled": "A função do Tom's Storage está desativada neste servidor",
+  "message.nbp.toms_storage.unavailable": "O Tom's Storage não está instalado neste servidor",
+  "message.nbp.toms_storage.no_toms_storage_upgrade": "Seu smartphone precisa do upgrade do Tom's Storage via Mesa de Ferraria",
+  "message.nbp.toms_storage.not_linked": "Seu smartphone ainda não está vinculado a um terminal — agache e clique com o botão direito em um Storage Terminal para vincular",
+  "message.nbp.toms_storage.bound": "Smartphone vinculado a este terminal",
+  "message.nbp.toms_storage.invalid_block": "O bloco vinculado não é mais um Storage Terminal válido",
+  "message.nbp.toms_storage.not_loaded": "O chunk do terminal vinculado não está carregado no momento",
+  "message.nbp.toms_storage.cooldown": "Você precisa esperar %d segundos antes de usar o Tom's Storage novamente",
   "message.nbp.social.disabled": "O recurso social está desabilitado neste servidor",
   "message.nbp.social.post_banned": "Você está banido de postar",
   "message.nbp.social.cooldown": "Você precisa esperar %d segundos para postar de novo",
@@ -29,6 +37,7 @@
   "item.cobblemon_smartphone.smartphone.desc": "Um dispositivo inteligente com Pokédex, PC e cura de Pokémon.",
 
   "upgrade.cobblemon_smartphone.upgrade_crafting": "Upgrade: Crafting Table",
+  "upgrade.cobblemon_smartphone.upgrade_toms_storage": "Upgrade: Tom's Storage",
 
   "key.cobblemon_smartphone.quick_action_1": "Atalho Rápido 1",
   "key.cobblemon_smartphone.quick_action_2": "Atalho Rápido 2",
@@ -86,6 +95,7 @@
   "cobblemon_smartphone.tooltip.show_app": "Mostrar aplicativo",
 
   "cobblemon_smartphone.action.rct_trainer_card": "Abrir Trainer Card",
+  "cobblemon_smartphone.action.toms_storage_terminal": "Abrir Storage Terminal",
 
   "cobblemon_smartphone.social.title": "Social",
   "cobblemon_smartphone.social.compose_title": "Novo Post",

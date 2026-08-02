@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.item
 
 import com.cobblemon.mod.common.CobblemonSounds
+import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
 import com.nbp.cobblemon_smartphone.client.gui.SmartphoneScreen
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
 import net.minecraft.ChatFormatting
@@ -8,12 +9,14 @@ import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.InteractionResultHolder
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.item.UseAnim
+import net.minecraft.world.item.context.UseOnContext
 import net.minecraft.world.level.Level
 
 class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().stacksTo(MAX_STACK)) {
@@ -48,6 +51,17 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
             player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.5f, 1f)
         }
         return InteractionResultHolder.success(player.getItemInHand(interactionHand))
+    }
+
+    // Lets optional storage-mod integrations (e.g. Toms Storage) bind their own remote
+    // terminal to this smartphone on sneak-right-click, without this item knowing they exist.
+    override fun useOn(context: UseOnContext): InteractionResult {
+        val stack = context.itemInHand
+        for (link in SmartphoneStorageLinkRegistry.getAll()) {
+            val result = link.tryLink(context, stack)
+            if (result != null) return result
+        }
+        return InteractionResult.PASS
     }
 
     override fun getDescriptionId(itemStack: ItemStack): String {
