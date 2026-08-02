@@ -24,6 +24,8 @@ import com.nbp.cobblemon_smartphone.network.handler.OpenCobbledollarsShopHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenCraftingTableHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenPCHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenPokedexHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenRctTrainerCardHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenRctTrainerCardScreenHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesDetailHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveActionOrderHandler
@@ -63,6 +65,8 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenCraftingTablePacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenEnderChestPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPCPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokedexPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenRctTrainerCardPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenRctTrainerCardScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesDetailPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
@@ -119,6 +123,13 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(ThreadPagePacket.ID, ThreadPagePacket::decode, ThreadPageHandler))
         list.add(PacketRegisterInfo(NewDmPacket.ID, NewDmPacket::decode, NewDmHandler))
         list.add(PacketRegisterInfo(SyncUnreadPacket.ID, SyncUnreadPacket::decode, SyncUnreadHandler))
+        list.add(
+            PacketRegisterInfo(
+                OpenRctTrainerCardScreenPacket.ID,
+                OpenRctTrainerCardScreenPacket::decode,
+                OpenRctTrainerCardScreenHandler
+            )
+        )
         list.add(PacketRegisterInfo(CallStatePacket.ID, CallStatePacket::decode, CallStateHandler))
         list.add(PacketRegisterInfo(SyncSocialMutePacket.ID, SyncSocialMutePacket::decode, SyncSocialMuteHandler))
         list.add(
@@ -164,6 +175,13 @@ object CobblemonSmartphoneNetwork {
                 OpenWaystonesWarpStonePacket.ID,
                 OpenWaystonesWarpStonePacket::decode,
                 OpenWaystonesWarpStoneHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenRctTrainerCardPacket.ID,
+                OpenRctTrainerCardPacket::decode,
+                OpenRctTrainerCardHandler
             )
         )
         list.add(PacketRegisterInfo(OpenPokedexPacket.ID, OpenPokedexPacket::decode, OpenPokedexHandler))

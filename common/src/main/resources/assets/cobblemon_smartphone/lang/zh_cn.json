@@ -20,6 +20,8 @@
   "message.nbp.cobbledollars.unavailable": "此服务器未安装 CobbleDollars",
   "message.nbp.cobbledollars.disabled": "此服务器已禁用 CobbleDollars 功能",
   "message.nbp.cobbledollars.open_failed": "无法打开 CobbleDollars 商店",
+  "message.nbp.rct.disabled": "此服务器已禁用训练师卡片功能",
+  "message.nbp.rct.unavailable": "此服务器未安装 Radical Cobblemon Trainers",
   "message.nbp.waystones.disabled": "此服务器已禁用传送石碑功能",
   "message.nbp.waystones.unavailable": "此服务器未安装 Waystones",
   "message.nbp.waystones.no_warp_stone_item": "物品栏中需要有 Waystones 传送石",
@@ -129,6 +131,7 @@
   "cobblemon_smartphone.action.cobblenav_fishingnav": "打开钓鱼导航",
   "cobblemon_smartphone.action.cobbledollars_shop": "打开 CobbleDollars 商店",
   "cobblemon_smartphone.action.waystones_warp_stone": "打开传送石碑",
+  "cobblemon_smartphone.action.rct_trainer_card": "打开训练师卡片",
   "cobblemon_smartphone.action.pokedex": "打开宝可梦图鉴",
   "cobblemon_smartphone.action.pokeinfo": "查看宝可梦资料",
 

@@ -20,6 +20,8 @@
   "message.nbp.cobbledollars.unavailable": "CobbleDollars is not installed on this server",
   "message.nbp.cobbledollars.disabled": "The CobbleDollars feature is disabled on this server",
   "message.nbp.cobbledollars.open_failed": "Could not open CobbleDollars shop",
+  "message.nbp.rct.disabled": "The Trainer Card feature is disabled on this server",
+  "message.nbp.rct.unavailable": "Radical Cobblemon Trainers is not installed on this server",
   "message.nbp.waystones.disabled": "The Waystones feature is disabled on this server",
   "message.nbp.waystones.unavailable": "Waystones is not installed on this server",
   "message.nbp.waystones.no_warp_stone_item": "You need a Waystones Warp Stone in your inventory",
@@ -157,6 +159,7 @@
   "cobblemon_smartphone.action.cobblenav_fishingnav": "Open FishingNav",
   "cobblemon_smartphone.action.cobbledollars_shop": "Open CobbleDollars Shop",
   "cobblemon_smartphone.action.waystones_warp_stone": "Open Waystones",
+  "cobblemon_smartphone.action.rct_trainer_card": "Open Trainer Card",
   "cobblemon_smartphone.action.pokedex": "Open Pokédex",
   "cobblemon_smartphone.action.pokeinfo": "View Pokémon Information",
 

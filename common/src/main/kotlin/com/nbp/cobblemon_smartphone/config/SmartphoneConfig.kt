@@ -48,6 +48,7 @@ class SmartphoneConfig {
         val enableFishingnav: Boolean = true
         val enableCobbleDollars: Boolean = true
         val enableWaystone: Boolean = true
+        val enableRctTrainerCard: Boolean = true
         val enablePokedex: Boolean = true
         val enablePokeInfo: Boolean = true
         val enableScanner: Boolean = true

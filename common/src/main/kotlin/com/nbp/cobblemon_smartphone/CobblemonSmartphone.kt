@@ -7,6 +7,7 @@ import com.nbp.cobblemon_smartphone.actions.OpenCobblenavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavFishingnavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobbledollarsAction
 import com.nbp.cobblemon_smartphone.actions.OpenPcAction
+import com.nbp.cobblemon_smartphone.actions.OpenRctTrainerCardAction
 import com.nbp.cobblemon_smartphone.actions.OpenWaystonesAction
 import com.nbp.cobblemon_smartphone.actions.PokeInfoAction
 import com.nbp.cobblemon_smartphone.actions.PokedexAction
@@ -49,6 +50,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(OpenCobblenavFishingnavAction)
         SmartphoneActionRegistry.register(OpenCobbledollarsAction)
         SmartphoneActionRegistry.register(OpenWaystonesAction)
+        SmartphoneActionRegistry.register(OpenRctTrainerCardAction)
         SmartphoneActionRegistry.register(PokedexAction)
         SmartphoneActionRegistry.register(PokeInfoAction)
         SmartphoneActionRegistry.register(SocialAction)
