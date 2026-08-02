@@ -6,23 +6,31 @@ import com.nbp.cobblemon_smartphone.util.smartphoneResource
 import net.minecraft.network.RegistryFriendlyByteBuf
 import java.util.UUID
 
-/** Asks for the viewer's DM thread list. */
-class RequestThreadListPacket : CobblemonSmartphoneNetworkPacket<RequestThreadListPacket> {
+/** [beforeTimestamp] of zero requests the newest conversation summaries. */
+class RequestThreadListPacket(val beforeTimestamp: Long = 0L) : CobblemonSmartphoneNetworkPacket<RequestThreadListPacket> {
     companion object {
         val ID = smartphoneResource("request_thread_list")
-        fun decode(buffer: RegistryFriendlyByteBuf) = RequestThreadListPacket()
+        fun decode(buffer: RegistryFriendlyByteBuf) = RequestThreadListPacket(buffer.readLong())
     }
 
     override val id = ID
-    override fun encode(buffer: RegistryFriendlyByteBuf) = Unit
+    override fun encode(buffer: RegistryFriendlyByteBuf) { buffer.writeLong(beforeTimestamp) }
 }
 
-class ThreadListPacket(val threads: List<DmThreadSummary>) : CobblemonSmartphoneNetworkPacket<ThreadListPacket> {
+class ThreadListPacket(
+    val threads: List<DmThreadSummary>,
+    val hasMore: Boolean,
+    val append: Boolean
+) : CobblemonSmartphoneNetworkPacket<ThreadListPacket> {
     companion object {
         val ID = smartphoneResource("thread_list")
         fun decode(buffer: RegistryFriendlyByteBuf): ThreadListPacket {
             val count = buffer.readVarInt()
-            return ThreadListPacket((0 until count).map { DmThreadSummary.decode(buffer) })
+            return ThreadListPacket(
+                (0 until count).map { DmThreadSummary.decode(buffer) },
+                buffer.readBoolean(),
+                buffer.readBoolean()
+            )
         }
     }
 
@@ -31,6 +39,8 @@ class ThreadListPacket(val threads: List<DmThreadSummary>) : CobblemonSmartphone
     override fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeVarInt(threads.size)
         threads.forEach { it.encode(buffer) }
+        buffer.writeBoolean(hasMore)
+        buffer.writeBoolean(append)
     }
 }
 
@@ -83,17 +93,41 @@ class ThreadPagePacket(
     }
 }
 
-class SendDmPacket(val targetUuid: UUID, val text: String) : CobblemonSmartphoneNetworkPacket<SendDmPacket> {
+class SendDmPacket(
+    val requestId: Long,
+    val targetUuid: UUID,
+    val text: String,
+    val attachSlot: Int = -1,
+    val showDetails: Boolean = false,
+    val showIvs: Boolean = false,
+    val showEvs: Boolean = false,
+    val showAbility: Boolean = false,
+    val showNature: Boolean = false,
+    val photoId: UUID? = null
+) : CobblemonSmartphoneNetworkPacket<SendDmPacket> {
     companion object {
         val ID = smartphoneResource("send_dm")
-        fun decode(buffer: RegistryFriendlyByteBuf) = SendDmPacket(buffer.readUUID(), buffer.readUtf())
+        fun decode(buffer: RegistryFriendlyByteBuf) = SendDmPacket(
+            buffer.readVarLong(), buffer.readUUID(), buffer.readUtf(4_096), buffer.readVarInt(),
+            buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(),
+            if (buffer.readBoolean()) buffer.readUUID() else null
+        )
     }
 
     override val id = ID
 
     override fun encode(buffer: RegistryFriendlyByteBuf) {
+        buffer.writeVarLong(requestId)
         buffer.writeUUID(targetUuid)
-        buffer.writeUtf(text)
+        buffer.writeUtf(text, 4_096)
+        buffer.writeVarInt(attachSlot)
+        buffer.writeBoolean(showDetails)
+        buffer.writeBoolean(showIvs)
+        buffer.writeBoolean(showEvs)
+        buffer.writeBoolean(showAbility)
+        buffer.writeBoolean(showNature)
+        buffer.writeBoolean(photoId != null)
+        photoId?.let(buffer::writeUUID)
     }
 }
 

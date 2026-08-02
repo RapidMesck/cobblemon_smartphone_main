@@ -31,7 +31,12 @@ data class DmThreadSummary(
             return DmThreadSummary(
                 otherUuid = other,
                 otherName = thread.displayNameOf(other),
-                preview = last?.text?.take(PREVIEW_LENGTH) ?: "",
+                preview = last?.text?.take(PREVIEW_LENGTH)?.takeIf { it.isNotBlank() }
+                    ?: when {
+                        last?.photo != null -> "[Photo]"
+                        last?.attachment != null -> "[Pokémon]"
+                        else -> ""
+                    },
                 lastTimestamp = last?.timestamp ?: 0L,
                 unreadCount = thread.unreadCountFor(viewer)
             )

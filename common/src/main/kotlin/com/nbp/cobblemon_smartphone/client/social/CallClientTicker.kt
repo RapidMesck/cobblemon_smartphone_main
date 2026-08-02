@@ -1,7 +1,6 @@
 package com.nbp.cobblemon_smartphone.client.social
 
 import com.cobblemon.mod.common.CobblemonSounds
-import com.nbp.cobblemon_smartphone.network.packet.CallActionPacket
 import com.nbp.cobblemon_smartphone.social.CallStatus
 import net.minecraft.client.Minecraft
 
@@ -24,21 +23,10 @@ object CallClientTicker {
                     lastRing = now
                     player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.6f, 1.5f)
                 }
-                if (now - CallState.since > TIMEOUT_MS) {
-                    CallActionPacket(CallActionPacket.Action.DECLINE, other).sendToServer()
-                    CallState.reset()
-                }
             }
-            CallStatus.OUTGOING -> {
-                if (now - CallState.since > TIMEOUT_MS) {
-                    CallActionPacket(CallActionPacket.Action.HANGUP, other).sendToServer()
-                    CallState.reset()
-                }
-            }
-            else -> Unit
+            CallStatus.OUTGOING, CallStatus.IN_CALL, CallStatus.IDLE -> Unit
         }
     }
 
-    private const val TIMEOUT_MS = 30_000L
     private const val RING_INTERVAL_MS = 2_500L
 }

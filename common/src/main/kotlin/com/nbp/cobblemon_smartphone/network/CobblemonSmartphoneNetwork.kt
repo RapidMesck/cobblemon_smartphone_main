@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.network
 
 import com.cobblemon.mod.common.net.PacketRegisterInfo
 import com.nbp.cobblemon_smartphone.network.handler.CallActionHandler
+import com.nbp.cobblemon_smartphone.network.handler.CallOfflineHandler
 import com.nbp.cobblemon_smartphone.network.handler.CallStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.CreatePostHandler
 import com.nbp.cobblemon_smartphone.network.handler.DeletePostHandler
@@ -37,8 +38,17 @@ import com.nbp.cobblemon_smartphone.network.handler.SpeciesDetailResponseHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncActionOrderHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncDatapackActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncQuickActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SocialCapabilitiesHandler
+import com.nbp.cobblemon_smartphone.network.handler.SocialMutationResultHandler
+import com.nbp.cobblemon_smartphone.network.handler.FeedPostUpdateHandler
+import com.nbp.cobblemon_smartphone.network.handler.ThreadSummaryUpdateHandler
+import com.nbp.cobblemon_smartphone.network.handler.UploadSocialPhotoHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestSocialPhotoHandler
+import com.nbp.cobblemon_smartphone.network.handler.SocialPhotoUploadResultHandler
+import com.nbp.cobblemon_smartphone.network.handler.SocialPhotoChunkHandler
 import com.nbp.cobblemon_smartphone.network.handler.server.OpenEnderChestHandler
 import com.nbp.cobblemon_smartphone.network.packet.CallActionPacket
+import com.nbp.cobblemon_smartphone.network.packet.CallOfflinePacket
 import com.nbp.cobblemon_smartphone.network.packet.CallStatePacket
 import com.nbp.cobblemon_smartphone.network.packet.CreatePostPacket
 import com.nbp.cobblemon_smartphone.network.packet.DeletePostPacket
@@ -75,6 +85,14 @@ import com.nbp.cobblemon_smartphone.network.packet.SpeciesListResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialMutationResultPacket
+import com.nbp.cobblemon_smartphone.network.packet.FeedPostUpdatePacket
+import com.nbp.cobblemon_smartphone.network.packet.ThreadSummaryUpdatePacket
+import com.nbp.cobblemon_smartphone.network.packet.UploadSocialPhotoPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestSocialPhotoPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialPhotoUploadResultPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialPhotoChunkPacket
 
 object CobblemonSmartphoneNetwork {
     val s2cPayloads = generateS2CPacketInfoList()
@@ -112,6 +130,13 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(NewDmPacket.ID, NewDmPacket::decode, NewDmHandler))
         list.add(PacketRegisterInfo(SyncUnreadPacket.ID, SyncUnreadPacket::decode, SyncUnreadHandler))
         list.add(PacketRegisterInfo(CallStatePacket.ID, CallStatePacket::decode, CallStateHandler))
+        list.add(PacketRegisterInfo(CallOfflinePacket.ID, CallOfflinePacket::decode, CallOfflineHandler))
+        list.add(PacketRegisterInfo(SocialCapabilitiesPacket.ID, SocialCapabilitiesPacket::decode, SocialCapabilitiesHandler))
+        list.add(PacketRegisterInfo(SocialMutationResultPacket.ID, SocialMutationResultPacket::decode, SocialMutationResultHandler))
+        list.add(PacketRegisterInfo(FeedPostUpdatePacket.ID, FeedPostUpdatePacket::decode, FeedPostUpdateHandler))
+        list.add(PacketRegisterInfo(ThreadSummaryUpdatePacket.ID, ThreadSummaryUpdatePacket::decode, ThreadSummaryUpdateHandler))
+        list.add(PacketRegisterInfo(SocialPhotoUploadResultPacket.ID, SocialPhotoUploadResultPacket::decode, SocialPhotoUploadResultHandler))
+        list.add(PacketRegisterInfo(SocialPhotoChunkPacket.ID, SocialPhotoChunkPacket::decode, SocialPhotoChunkHandler))
         list.add(PacketRegisterInfo(SyncSocialMutePacket.ID, SyncSocialMutePacket::decode, SyncSocialMuteHandler))
         list.add(
             PacketRegisterInfo(
@@ -190,6 +215,8 @@ object CobblemonSmartphoneNetwork {
             )
         )
         list.add(PacketRegisterInfo(CreatePostPacket.ID, CreatePostPacket::decode, CreatePostHandler))
+        list.add(PacketRegisterInfo(UploadSocialPhotoPacket.ID, UploadSocialPhotoPacket::decode, UploadSocialPhotoHandler))
+        list.add(PacketRegisterInfo(RequestSocialPhotoPacket.ID, RequestSocialPhotoPacket::decode, RequestSocialPhotoHandler))
         list.add(PacketRegisterInfo(LikePostPacket.ID, LikePostPacket::decode, LikePostHandler))
         list.add(PacketRegisterInfo(DeletePostPacket.ID, DeletePostPacket::decode, DeletePostHandler))
         list.add(

@@ -5,6 +5,8 @@ import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
 import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.client.social.CallClientTicker
+import com.nbp.cobblemon_smartphone.client.social.SocialClientSession
+import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.cobblemon_smartphone.compat.voicechat.VoiceChatBridge
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import net.fabricmc.api.ClientModInitializer
@@ -12,6 +14,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
 import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.minecraft.client.Minecraft
 
 class CobblemonSmartphoneFabricClient : ClientModInitializer {
@@ -51,11 +54,15 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             }
             FabricSmartphoneKeybindHandler.onClientTick(client)
             CallClientTicker.tick()
+            SocialPhotoClient.tick()
         })
 
         HudRenderCallback.EVENT.register(HudRenderCallback { guiGraphics, _ ->
             CallOverlay.render(guiGraphics)
+            SocialPhotoClient.renderCameraOverlay(guiGraphics)
         })
+
+        ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> SocialClientSession.clear() }
 
         CobblemonSmartphoneFabricNetworkManager.registerClientHandlers()
     }

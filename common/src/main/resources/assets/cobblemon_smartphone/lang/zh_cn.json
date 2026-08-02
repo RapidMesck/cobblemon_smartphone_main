@@ -1,4 +1,10 @@
 {
+  "message.nbp.social.result.disabled": "服务器已禁用社交功能",
+  "message.nbp.social.result.banned": "你无权执行此操作",
+  "message.nbp.social.result.rate_limited": "请稍候再试",
+  "message.nbp.social.result.invalid_target": "未找到玩家",
+  "message.nbp.social.result.empty": "内容为空",
+  "message.nbp.social.result.error": "无法完成操作",
   "message.nbp.heal.battle_error": "战斗期间无法治疗宝可梦！",
   "message.nbp.heal.success": "你的宝可梦已恢复健康！",
   "message.nbp.pc.battle_error": "战斗期间无法打开宝可梦盒！",
@@ -233,5 +239,7 @@
   "cobblemon_smartphone.pokeinfo.spawn.context.grounded": "陆地",
   "cobblemon_smartphone.pokeinfo.spawn.context.submerged": "水下",
   "cobblemon_smartphone.pokeinfo.spawn.context.surface": "水面",
-  "cobblemon_smartphone.pokeinfo.spawn.context.fishing": "垂钓"
+  "cobblemon_smartphone.pokeinfo.spawn.context.fishing": "垂钓",
+  "cobblemon_smartphone.social.one_day_ago": "一天前",
+  "cobblemon_smartphone.social.days_ago": "%s 天前"
 }

@@ -17,6 +17,7 @@ data class SocialPostView(
     val text: String,
     val timestamp: Long,
     val attachment: PokemonAttachment?,
+    val photo: SocialPhotoRef?,
     val likeCount: Int,
     val likedByMe: Boolean
 ) {
@@ -34,6 +35,24 @@ data class SocialPostView(
             buffer.writeVarInt(it.level)
             buffer.writeBoolean(it.nickname != null)
             it.nickname?.let { nick -> buffer.writeUtf(nick) }
+            buffer.writeVarInt(it.ivs.size)
+            it.ivs.forEach(buffer::writeVarInt)
+            buffer.writeVarInt(it.evs.size)
+            it.evs.forEach(buffer::writeVarInt)
+            buffer.writeBoolean(it.gender != null)
+            it.gender?.let(buffer::writeUtf)
+            buffer.writeBoolean(it.ability != null)
+            it.ability?.let(buffer::writeUtf)
+            buffer.writeBoolean(it.nature != null)
+            it.nature?.let(buffer::writeUtf)
+            buffer.writeVarInt(it.types.size)
+            it.types.forEach(buffer::writeUtf)
+        }
+        buffer.writeBoolean(photo != null)
+        photo?.let {
+            buffer.writeUUID(it.id)
+            buffer.writeVarInt(it.width)
+            buffer.writeVarInt(it.height)
         }
         buffer.writeVarInt(likeCount)
         buffer.writeBoolean(likedByMe)
@@ -47,6 +66,7 @@ data class SocialPostView(
             text = post.text,
             timestamp = post.timestamp,
             attachment = post.attachment,
+            photo = post.photo,
             likeCount = post.likes.size,
             likedByMe = post.isLikedBy(viewer)
         )
@@ -63,10 +83,19 @@ data class SocialPostView(
                 val aspects = (0 until aspectCount).map { buffer.readUtf() }.toSet()
                 val level = buffer.readVarInt()
                 val nickname = if (buffer.readBoolean()) buffer.readUtf() else null
-                PokemonAttachment(species, aspects, level, nickname)
+                val ivs = List(buffer.readVarInt()) { buffer.readVarInt() }
+                val evs = List(buffer.readVarInt()) { buffer.readVarInt() }
+                val gender = if (buffer.readBoolean()) buffer.readUtf() else null
+                val ability = if (buffer.readBoolean()) buffer.readUtf() else null
+                val nature = if (buffer.readBoolean()) buffer.readUtf() else null
+                val types = List(buffer.readVarInt()) { buffer.readUtf() }
+                PokemonAttachment(species, aspects, level, nickname, ivs, evs, gender, ability, nature, types)
             } else {
                 null
             }
+            val photo = if (buffer.readBoolean()) {
+                SocialPhotoRef(buffer.readUUID(), buffer.readVarInt(), buffer.readVarInt())
+            } else null
             return SocialPostView(
                 id = id,
                 authorUuid = authorUuid,
@@ -74,6 +103,7 @@ data class SocialPostView(
                 text = text,
                 timestamp = timestamp,
                 attachment = attachment,
+                photo = photo,
                 likeCount = buffer.readVarInt(),
                 likedByMe = buffer.readBoolean()
             )

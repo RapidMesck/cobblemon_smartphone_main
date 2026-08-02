@@ -43,8 +43,10 @@ object CallOverlay {
         val panel = panelRect(window.guiScaledWidth, window.guiScaledHeight)
         val font = minecraft.font
 
-        guiGraphics.fill(panel.x1 - 1, panel.y1 - 1, panel.x2 + 1, panel.y2 + 1, BORDER_COLOR)
-        guiGraphics.fill(panel.x1, panel.y1, panel.x2, panel.y2, PANEL_COLOR)
+        guiGraphics.fill(panel.x1 + 2, panel.y1 + 3, panel.x2 + 2, panel.y2 + 3, SocialUi.SHADOW)
+        guiGraphics.fill(panel.x1 - 1, panel.y1 - 1, panel.x2 + 1, panel.y2 + 1, SocialUi.CYAN)
+        guiGraphics.fill(panel.x1, panel.y1, panel.x2, panel.y2, SocialUi.NAVY)
+        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.PHONE, panel.x2 - PAD - 8, panel.y1 + PAD, SocialUi.GOLD)
 
         PlayerFaceRenderer.draw(
             guiGraphics,
@@ -56,15 +58,17 @@ object CallOverlay {
         val textX = panel.x1 + PAD + HEAD_SIZE + 4
         guiGraphics.drawString(font, CallState.otherName, textX, panel.y1 + PAD, NAME_COLOR, false)
         guiGraphics.drawString(font, statusLine(), textX, panel.y1 + PAD + 10, MUTED_COLOR, false)
-
         val mouse = guiMouse()
         buttons(panel).forEach { button ->
             val hovered = mouse != null && button.rect.has(mouse.first, mouse.second)
+            val renderedLabel = font.plainSubstrByWidth(button.label, button.rect.x2 - button.rect.x1 - 16)
             guiGraphics.fill(button.rect.x1, button.rect.y1, button.rect.x2, button.rect.y2, if (hovered) button.color else dim(button.color))
+            val icon = if (button.action == CallActionPacket.Action.ACCEPT) SocialUi.Icon.PHONE else SocialUi.Icon.CLOSE
+            SocialUi.drawIcon(guiGraphics, icon, button.rect.x1 + 3, button.rect.y1 + 2, SocialUi.WHITE)
             guiGraphics.drawString(
                 font,
-                button.label,
-                button.rect.x1 + (button.rect.x2 - button.rect.x1 - font.width(button.label)) / 2,
+                renderedLabel,
+                button.rect.x1 + 14,
                 button.rect.y1 + (BUTTON_HEIGHT - font.lineHeight) / 2 + 1,
                 0xFFFFFFFF.toInt(),
                 false

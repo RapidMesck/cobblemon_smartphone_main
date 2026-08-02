@@ -40,14 +40,15 @@ class SocialData : SavedData() {
 
     fun postById(id: Long): SocialPost? = posts.firstOrNull { it.id == id }
 
-    fun addPost(authorUuid: UUID, authorName: String, text: String, attachment: PokemonAttachment?): SocialPost {
+    fun addPost(authorUuid: UUID, authorName: String, text: String, attachment: PokemonAttachment?, photo: SocialPhotoRef? = null): SocialPost {
         val post = SocialPost(
             id = nextPostId++,
             authorUuid = authorUuid,
             authorName = authorName,
             text = text,
             timestamp = System.currentTimeMillis(),
-            attachment = attachment
+            attachment = attachment,
+            photo = photo
         )
         posts.add(post)
         enforceRetention()
@@ -81,7 +82,14 @@ class SocialData : SavedData() {
 
     fun thread(key: ThreadKey): DmThread? = threads[key]
 
-    fun addMessage(sender: ServerPlayer, targetUuid: UUID, targetName: String, text: String): DmMessage {
+    fun addMessage(
+        sender: ServerPlayer,
+        targetUuid: UUID,
+        targetName: String,
+        text: String,
+        attachment: PokemonAttachment? = null,
+        photo: SocialPhotoRef? = null
+    ): DmMessage {
         val key = ThreadKey.of(sender.uuid, targetUuid)
         val thread = threads.getOrPut(key) { DmThread(key) }
         thread.rememberName(sender.uuid, sender.gameProfile.name)
@@ -91,7 +99,9 @@ class SocialData : SavedData() {
             id = nextMessageId++,
             senderUuid = sender.uuid,
             text = text,
-            timestamp = System.currentTimeMillis()
+            timestamp = System.currentTimeMillis(),
+            attachment = attachment,
+            photo = photo
         )
         thread.messages.add(message)
 
@@ -118,6 +128,12 @@ class SocialData : SavedData() {
 
     fun totalUnreadFor(viewer: UUID): Int =
         threads.values.filter { it.key.involves(viewer) }.sumOf { it.unreadCountFor(viewer) }
+
+    fun canViewPhoto(viewer: UUID, photoId: UUID): Boolean =
+        posts.any { it.photo?.id == photoId } ||
+            threads.values.any { thread ->
+                thread.key.involves(viewer) && thread.messages.any { it.photo?.id == photoId }
+            }
 
     private fun enforceThreadRetention(thread: DmThread) {
         val max = CobblemonSmartphone.config.social.maxMessagesPerThread

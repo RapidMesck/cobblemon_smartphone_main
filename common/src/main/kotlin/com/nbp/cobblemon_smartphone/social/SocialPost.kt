@@ -18,6 +18,7 @@ data class SocialPost(
     val text: String,
     val timestamp: Long,
     val attachment: PokemonAttachment?,
+    val photo: SocialPhotoRef? = null,
     val likes: MutableSet<UUID> = mutableSetOf()
 ) {
     fun isLikedBy(uuid: UUID): Boolean = likes.contains(uuid)
@@ -30,6 +31,7 @@ data class SocialPost(
         tag.putString(TEXT_KEY, text)
         tag.putLong(TIMESTAMP_KEY, timestamp)
         attachment?.let { tag.put(ATTACHMENT_KEY, it.toNbt()) }
+        photo?.let { tag.put(PHOTO_KEY, it.toNbt()) }
 
         val likeList = ListTag()
         likes.forEach { likeList.add(net.minecraft.nbt.NbtUtils.createUUID(it)) }
@@ -44,6 +46,7 @@ data class SocialPost(
         private const val TEXT_KEY = "text"
         private const val TIMESTAMP_KEY = "timestamp"
         private const val ATTACHMENT_KEY = "attachment"
+        private const val PHOTO_KEY = "photo"
         private const val LIKES_KEY = "likes"
 
         fun fromNbt(tag: CompoundTag): SocialPost? {
@@ -63,6 +66,7 @@ data class SocialPost(
                 } else {
                     null
                 },
+                photo = if (tag.contains(PHOTO_KEY)) SocialPhotoRef.fromNbt(tag.getCompound(PHOTO_KEY)) else null,
                 likes = likes
             )
         }

@@ -28,6 +28,8 @@ object SocialDmCache {
         private set
     var loading: Boolean = false
         private set
+    var threadListHasMore: Boolean = false
+        private set
 
     fun threads(): List<DmThreadSummary> = threads
 
@@ -38,15 +40,31 @@ object SocialDmCache {
         unreadTotal = total.coerceAtLeast(0)
     }
 
-    fun acceptThreadList(list: List<DmThreadSummary>) {
-        threads.clear()
-        threads.addAll(list)
+    fun acceptThreadList(list: List<DmThreadSummary>, hasMore: Boolean, append: Boolean) {
+        if (!append) threads.clear()
+        val known = threads.mapTo(mutableSetOf()) { it.otherUuid }
+        threads.addAll(list.filter { it.otherUuid !in known })
+        threads.sortByDescending { it.lastTimestamp }
+        threadListHasMore = hasMore
         loading = false
+    }
+
+    fun applySummary(summary: DmThreadSummary) {
+        threads.removeIf { it.otherUuid == summary.otherUuid }
+        threads.add(summary)
+        threads.sortByDescending { it.lastTimestamp }
     }
 
     fun refreshThreads() {
         loading = true
         RequestThreadListPacket().sendToServer()
+    }
+
+    fun loadMoreThreads() {
+        if (loading || !threadListHasMore) return
+        val oldest = threads.lastOrNull() ?: return
+        loading = true
+        RequestThreadListPacket(oldest.lastTimestamp).sendToServer()
     }
 
     // --- Open conversation ---
@@ -107,5 +125,6 @@ object SocialDmCache {
         unreadTotal = 0
         hasMore = false
         loading = false
+        threadListHasMore = false
     }
 }

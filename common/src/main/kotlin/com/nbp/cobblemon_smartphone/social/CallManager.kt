@@ -4,6 +4,8 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.compat.voicechat.VoiceChatBridge
 import com.nbp.cobblemon_smartphone.compat.voicechat.VoiceChatCalls
 import com.nbp.cobblemon_smartphone.network.packet.CallStatePacket
+import com.nbp.cobblemon_smartphone.network.packet.CallOfflinePacket
+import com.nbp.cobblemon_smartphone.network.SocialRequestLimiter
 import com.nbp.cobblemon_smartphone.util.MutedPlayersStorage
 import com.nbp.cobblemon_smartphone.util.SocialMuteStorage
 import net.minecraft.network.chat.Component
@@ -25,7 +27,8 @@ object CallManager {
         val caller: UUID,
         val callee: UUID,
         val callerName: String,
-        val calleeName: String
+        val calleeName: String,
+        val startedAt: Long = System.currentTimeMillis()
     ) {
         var accepted = false
         var group: VoiceChatCalls.ActiveGroup? = null
@@ -39,13 +42,14 @@ object CallManager {
             return
         }
         if (calleeUuid == caller.uuid) return
+        if (!SocialRequestLimiter.allow(caller.uuid, SocialRequestLimiter.Action.CALL_START)) return
         if (sessions.containsKey(caller.uuid)) {
             caller.err("message.nbp.social.call_in_progress")
             return
         }
         val callee = server.playerList.getPlayer(calleeUuid)
         if (callee == null) {
-            caller.err("message.nbp.social.call_offline")
+            CallOfflinePacket(calleeUuid).sendToPlayer(caller)
             return
         }
         // Do Not Disturb (global) or the callee having muted this caller specifically: block the
@@ -103,8 +107,18 @@ object CallManager {
     }
 
     fun onLogout(server: MinecraftServer, player: ServerPlayer) {
+        SocialRequestLimiter.clear(player.uuid)
         val session = sessions[player.uuid] ?: return
         endSession(server, session)
+    }
+
+    /** Server-authoritative ring timeout; clients only mirror it for responsive presentation. */
+    fun tick(server: MinecraftServer) {
+        val timeoutMs = CobblemonSmartphone.config.social.callRingTimeoutSeconds.coerceIn(5, 300) * 1_000L
+        val now = System.currentTimeMillis()
+        sessions.values.toSet()
+            .filter { !it.accepted && now - it.startedAt >= timeoutMs }
+            .forEach { endSession(server, it) }
     }
 
     private fun endSession(server: MinecraftServer, session: Session) {

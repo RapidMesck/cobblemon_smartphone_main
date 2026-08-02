@@ -11,6 +11,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
@@ -23,6 +24,7 @@ import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper
 import net.fabricmc.fabric.api.resource.ResourcePackActivationType
 import net.minecraft.server.packs.PackType
@@ -75,12 +77,14 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
                 .sendToPlayer(handler.player)
             SyncSocialMutePacket(SocialMuteStorage.read(handler.player)).sendToPlayer(handler.player)
             SyncMutedPlayersPacket(MutedPlayersStorage.read(handler.player).toList()).sendToPlayer(handler.player)
+            SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(handler.player)
         }
 
         // End any call a player was in when they disconnect, restoring the other side's voice group.
         ServerPlayConnectionEvents.DISCONNECT.register { handler, server ->
             CallManager.onLogout(server, handler.player)
         }
+        ServerTickEvents.END_SERVER_TICK.register(ServerTickEvents.EndTick(CallManager::tick))
     }
 
     override fun registerItems() {

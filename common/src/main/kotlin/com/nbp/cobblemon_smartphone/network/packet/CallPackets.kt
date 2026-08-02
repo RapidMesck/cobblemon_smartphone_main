@@ -54,3 +54,17 @@ class CallStatePacket(
         buffer.writeUtf(otherName)
     }
 }
+
+/** Server-authoritative feedback for a call target that is not currently online. */
+class CallOfflinePacket(val targetUuid: UUID) : CobblemonSmartphoneNetworkPacket<CallOfflinePacket> {
+    companion object {
+        val ID = smartphoneResource("call_offline")
+        fun decode(buffer: RegistryFriendlyByteBuf) = CallOfflinePacket(buffer.readUUID())
+    }
+
+    override val id = ID
+
+    override fun encode(buffer: RegistryFriendlyByteBuf) {
+        buffer.writeUUID(targetUuid)
+    }
+}

@@ -4,6 +4,8 @@ import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.network.packet.DeletePostPacket
 import com.nbp.cobblemon_smartphone.social.SocialData
+import com.nbp.cobblemon_smartphone.network.packet.FeedPostUpdatePacket
+import com.nbp.cobblemon_smartphone.social.SocialPhotoManager
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
@@ -29,7 +31,8 @@ object DeletePostHandler : ServerNetworkPacketHandler<DeletePostPacket> {
             }
 
             data.removePost(packet.postId)
-            RequestFeedPageHandler.sendPage(server, player, 0L)
+            post.photo?.let { SocialPhotoManager.delete(server, it.id) }
+            server.playerList.players.forEach { FeedPostUpdatePacket(packet.postId, null).sendToPlayer(it) }
         }
     }
 }

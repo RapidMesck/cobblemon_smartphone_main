@@ -62,11 +62,12 @@ class DmNewScreen(
         blitk(matrixStack = matrices, texture = frameTexture, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
         blitk(matrixStack = matrices, texture = SCREEN_TEXTURE, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
 
+        guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + LIST_START_Y - 2, SocialUi.NAVY)
         val back = lang("back")
         guiGraphics.drawString(
             font,
             back,
-            screenX + CONTENT_X,
+            screenX + CONTENT_X + 2,
             screenY + TITLE_Y,
             if (isInBack(mouseX, mouseY)) ACCENT_COLOR else MUTED_COLOR,
             false
@@ -75,7 +76,7 @@ class DmNewScreen(
         guiGraphics.drawString(
             font,
             title,
-            screenX + CONTENT_X + CONTENT_WIDTH - font.width(title),
+            screenX + CONTENT_X + CONTENT_WIDTH - font.width(title) - 3,
             screenY + TITLE_Y,
             NAME_COLOR,
             false
@@ -102,11 +103,12 @@ class DmNewScreen(
 
         if (players.isEmpty()) {
             val message = lang("nobody_online")
+            SocialUi.drawIcon(guiGraphics, SocialUi.Icon.USER, screenX + CONTENT_X + CONTENT_WIDTH / 2 - 4, screenY + 103, SocialUi.MUTED)
             guiGraphics.drawString(
                 font,
                 message,
                 screenX + CONTENT_X + (CONTENT_WIDTH - font.width(message)) / 2,
-                screenY + LIST_START_Y + (LIST_END_Y - LIST_START_Y) / 2 - font.lineHeight / 2,
+                screenY + LIST_START_Y + (LIST_END_Y - LIST_START_Y) / 2 + 7,
                 MUTED_COLOR,
                 false
             )
@@ -120,7 +122,7 @@ class DmNewScreen(
     private fun renderRow(guiGraphics: GuiGraphics, info: PlayerInfo, y: Int, mouseX: Int, mouseY: Int) {
         val x = screenX + CONTENT_X
         val hovered = isInRow(mouseX, mouseY, y)
-        guiGraphics.fill(x, y, x + CONTENT_WIDTH, y + ROW_HEIGHT, if (hovered) ROW_HOVER_COLOR else ROW_BG_COLOR)
+        SocialUi.surface(guiGraphics, x, y, CONTENT_WIDTH, ROW_HEIGHT, hovered)
         PlayerFaceRenderer.draw(guiGraphics, info.skin, x + ROW_PAD, y + ROW_PAD, HEAD_SIZE)
         guiGraphics.drawString(
             font,
@@ -130,6 +132,7 @@ class DmNewScreen(
             CONTENT_TEXT,
             false
         )
+        guiGraphics.fill(x + CONTENT_WIDTH - 8, y + 7, x + CONTENT_WIDTH - 4, y + 11, SocialUi.SUCCESS)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -170,7 +173,7 @@ class DmNewScreen(
                 mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
 
     private fun isInBack(mouseX: Int, mouseY: Int): Boolean =
-        mouseX in (screenX + CONTENT_X)..(screenX + CONTENT_X + font.width(lang("back"))) &&
+        mouseX in (screenX + CONTENT_X + 2)..(screenX + CONTENT_X + 2 + font.width(lang("back"))) &&
                 mouseY in (screenY + TITLE_Y)..(screenY + TITLE_Y + font.lineHeight)
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
