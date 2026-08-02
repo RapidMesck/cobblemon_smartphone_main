@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation
 
 object OpenRctTrainerCardAction : SmartphoneAction {
     override val id = "${CobblemonSmartphone.ID}:rct_trainer_card"
-    override val texture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/buttons/rct_trainer_card.png")
-    override val hoverTexture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/buttons/rct_trainer_card_hover.png")
+    override val texture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/buttons/trainer.png")
+    override val hoverTexture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/buttons/trainer_hover.png")
 
     override fun onClick() {
         val player = Minecraft.getInstance().player ?: return

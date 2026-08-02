@@ -15,8 +15,8 @@ object OpenCobblenavFishingnavAction : SmartphoneAction {
     private const val FISHINGNAV_ITEM = "fishingnav_item"
 
     override val id = "${CobblemonSmartphone.ID}:cobblenav_fishingnav"
-    override val texture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/buttons/fishingnav.png")
-    override val hoverTexture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/buttons/fishingnav_hover.png")
+    override val texture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/buttons/fishnav.png")
+    override val hoverTexture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/buttons/fishnav_hover.png")
 
     override fun onClick() {
         val player = Minecraft.getInstance().player ?: return
