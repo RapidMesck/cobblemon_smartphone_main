@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.actions.PokedexAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionOrder
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
+import com.nbp.cobblemon_smartphone.api.SmartphoneHiddenActions
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
@@ -19,6 +20,7 @@ class SmartphoneScreen(
     private val smartphoneStack: ItemStack? = null
 ) : Screen(Component.translatable("cobblemon_smartphone.screen.smartphone")) {
     private val actions get() = SmartphoneActionOrder.apply(SmartphoneActionRegistry.getEnabledActions())
+        .filter { !SmartphoneHiddenActions.isHidden(it.id) }
     private val frameTexture = ResourceLocation.fromNamespaceAndPath(
         "cobblemon_smartphone",
         "textures/gui/smartphone_${color.modelName}.png"

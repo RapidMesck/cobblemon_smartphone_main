@@ -6,9 +6,11 @@ import com.nbp.cobblemon_smartphone.api.QuickActionBindings
 import com.nbp.cobblemon_smartphone.api.SmartphoneAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionOrder
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
+import com.nbp.cobblemon_smartphone.api.SmartphoneHiddenActions
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveQuickActionsPacket
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
@@ -28,6 +30,8 @@ class SmartphoneSettingsScreen(
         .toMutableList()
 
     private val slotBindings = QuickActionBindings.currentBindings().toMutableMap()
+
+    private val hiddenIds = SmartphoneHiddenActions.currentHidden().toMutableSet()
 
     private val frameTexture = ResourceLocation.fromNamespaceAndPath(
         "cobblemon_smartphone",
@@ -59,6 +63,8 @@ class SmartphoneSettingsScreen(
         SaveActionOrderPacket(orderedIds).sendToServer()
         QuickActionBindings.setBindings(slotBindings)
         SaveQuickActionsPacket(slotBindings).sendToServer()
+        SmartphoneHiddenActions.setHidden(hiddenIds.toList())
+        SaveHiddenActionsPacket(hiddenIds.toList()).sendToServer()
         SmartphoneHelper.contextSmartphone = null
         super.removed()
     }
@@ -121,6 +127,11 @@ class SmartphoneSettingsScreen(
         }
 
         pagedIds().forEachIndexed { index, actionId ->
+            if (isInViewSelect(mx, my, index)) {
+                playClickSound()
+                toggleHidden(actionId)
+                return true
+            }
             val (gx, gy) = gridPosition(index)
             if (isInDragHandle(mx, my, index) || isInCell(mx, my, gx, gy)) {
                 playClickSound()
@@ -283,6 +294,7 @@ class SmartphoneSettingsScreen(
 
         renderSlotBadge(guiGraphics, action.id, gx, gy)
         renderDragHandle(guiGraphics, mouseX, mouseY, index, isDragging)
+        renderViewSelect(guiGraphics, action.id, index)
     }
 
     private fun renderSlotBadge(guiGraphics: GuiGraphics, actionId: String, gx: Int, gy: Int) {
@@ -331,6 +343,39 @@ class SmartphoneSettingsScreen(
         val (dx, dy) = dragHandlePosition(index)
         return mouseX >= screenX + dx && mouseX <= screenX + dx + DRAG_WIDTH &&
                 mouseY >= screenY + dy && mouseY <= screenY + dy + DRAG_HEIGHT
+    }
+
+    private fun viewSelectPosition(index: Int): Pair<Int, Int> {
+        val (gx, gy) = gridPosition(index)
+        return gx + BUTTON_WIDTH - VIEW_WIDTH - 4 to gy + BUTTON_HEIGHT - VIEW_HEIGHT - 4
+    }
+
+    private fun renderViewSelect(guiGraphics: GuiGraphics, actionId: String, index: Int) {
+        val (vx, vy) = viewSelectPosition(index)
+        val textureY = if (hiddenIds.contains(actionId)) VIEW_HEIGHT else 0
+        guiGraphics.blit(
+            VIEW_SELECT_TEXTURE,
+            screenX + vx,
+            screenY + vy,
+            0f,
+            textureY.toFloat(),
+            VIEW_WIDTH,
+            VIEW_HEIGHT,
+            VIEW_WIDTH,
+            VIEW_HEIGHT * 2
+        )
+    }
+
+    private fun isInViewSelect(mouseX: Int, mouseY: Int, index: Int): Boolean {
+        val (vx, vy) = viewSelectPosition(index)
+        return mouseX >= screenX + vx && mouseX <= screenX + vx + VIEW_WIDTH &&
+                mouseY >= screenY + vy && mouseY <= screenY + vy + VIEW_HEIGHT
+    }
+
+    private fun toggleHidden(actionId: String) {
+        if (!hiddenIds.add(actionId)) {
+            hiddenIds.remove(actionId)
+        }
     }
 
     private fun isInCell(mouseX: Int, mouseY: Int, gx: Int, gy: Int): Boolean {
@@ -439,6 +484,16 @@ class SmartphoneSettingsScreen(
         pagedIds().forEachIndexed { index, actionId ->
             val action = actionById(actionId) ?: return@forEachIndexed
             val (gx, gy) = gridPosition(index)
+            if (isInViewSelect(mouseX, mouseY, index)) {
+                val key = if (hiddenIds.contains(actionId)) "show_app" else "hide_app"
+                guiGraphics.renderTooltip(
+                    font,
+                    Component.translatable("cobblemon_smartphone.tooltip.$key"),
+                    mouseX,
+                    mouseY
+                )
+                return
+            }
             if (isInDragHandle(mouseX, mouseY, index)) {
                 guiGraphics.renderTooltip(
                     font,
@@ -547,6 +602,9 @@ class SmartphoneSettingsScreen(
         private const val DRAG_WIDTH = 8
         private const val DRAG_HEIGHT = 8
 
+        private const val VIEW_WIDTH = 8
+        private const val VIEW_HEIGHT = 8
+
         private const val HINT_Y = 30
         private const val HINT_SCALE = 0.5f
         private const val HINT_COLOR = 0xE6FFFF
@@ -624,6 +682,10 @@ class SmartphoneSettingsScreen(
         private val DRAG_HANDLE_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone",
             "textures/gui/elements/drag_handle.png"
+        )
+        private val VIEW_SELECT_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            "cobblemon_smartphone",
+            "textures/gui/elements/view_select.png"
         )
     }
 }

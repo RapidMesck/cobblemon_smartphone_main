@@ -166,6 +166,8 @@
   "cobblemon_smartphone.tooltip.next_page": "Next Page",
   "cobblemon_smartphone.tooltip.back_to_phone": "Back to Smartphone",
   "cobblemon_smartphone.tooltip.reorder_app": "Drag to Reorder App",
+  "cobblemon_smartphone.tooltip.hide_app": "Hide App",
+  "cobblemon_smartphone.tooltip.show_app": "Show App",
   "cobblemon_smartphone.tooltip.view_pokemon_details": "View Pokémon Details",
   "cobblemon_smartphone.tooltip.back_to_pokemon_list": "Back to Pokémon List",
   "cobblemon_smartphone.tooltip.previous_form": "Previous Form",

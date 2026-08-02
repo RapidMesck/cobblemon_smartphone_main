@@ -79,6 +79,8 @@
 
   "cobblemon_smartphone.quick_actions.hint": "Botão direito num app p/ vincular atalho",
   "cobblemon_smartphone.quick_actions.none": "Nenhum",
+  "cobblemon_smartphone.tooltip.hide_app": "Ocultar aplicativo",
+  "cobblemon_smartphone.tooltip.show_app": "Mostrar aplicativo",
 
   "cobblemon_smartphone.social.title": "Social",
   "cobblemon_smartphone.social.compose_title": "Novo Post",

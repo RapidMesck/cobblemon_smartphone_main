@@ -8,6 +8,7 @@ import com.nbp.cobblemon_smartphone.command.SocialCommands
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
@@ -16,6 +17,7 @@ import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
 import com.nbp.cobblemon_smartphone.util.ActionOrderStorage
+import com.nbp.cobblemon_smartphone.util.HiddenActionsStorage
 import com.nbp.cobblemon_smartphone.util.MutedPlayersStorage
 import com.nbp.cobblemon_smartphone.util.QuickActionBindingsStorage
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
@@ -69,6 +71,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
             }
             SyncDatapackActionsPacket(data).sendToPlayer(player)
             SyncActionOrderPacket(ActionOrderStorage.read(player)).sendToPlayer(player)
+            SyncHiddenActionsPacket(HiddenActionsStorage.read(player)).sendToPlayer(player)
             SyncQuickActionsPacket(QuickActionBindingsStorage.read(player)).sendToPlayer(player)
             // DMs received while offline are already persisted; this lights up the badge on login.
             player.server?.let { srv ->

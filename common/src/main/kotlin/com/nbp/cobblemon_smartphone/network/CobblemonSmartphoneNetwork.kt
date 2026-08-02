@@ -27,6 +27,7 @@ import com.nbp.cobblemon_smartphone.network.handler.OpenPokedexHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesDetailHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveActionOrderHandler
+import com.nbp.cobblemon_smartphone.network.handler.SaveHiddenActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveQuickActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.MutePlayerHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveSocialMuteHandler
@@ -35,6 +36,7 @@ import com.nbp.cobblemon_smartphone.network.handler.SyncSocialMuteHandler
 import com.nbp.cobblemon_smartphone.network.handler.SpeciesDetailResponseHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncActionOrderHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncDatapackActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncHiddenActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncQuickActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.server.OpenEnderChestHandler
 import com.nbp.cobblemon_smartphone.network.packet.CallActionPacket
@@ -64,6 +66,7 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenPokedexPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesDetailPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.MutePlayerPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveSocialMutePacket
@@ -72,6 +75,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.SpeciesDetailResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 
 object CobblemonSmartphoneNetwork {
@@ -89,6 +93,13 @@ object CobblemonSmartphoneNetwork {
             )
         )
         list.add(PacketRegisterInfo(SyncActionOrderPacket.ID, SyncActionOrderPacket::decode, SyncActionOrderHandler))
+        list.add(
+            PacketRegisterInfo(
+                SyncHiddenActionsPacket.ID,
+                SyncHiddenActionsPacket::decode,
+                SyncHiddenActionsHandler
+            )
+        )
         list.add(
             PacketRegisterInfo(
                 SpeciesDetailResponsePacket.ID,
@@ -164,6 +175,13 @@ object CobblemonSmartphoneNetwork {
             )
         )
         list.add(PacketRegisterInfo(SaveActionOrderPacket.ID, SaveActionOrderPacket::decode, SaveActionOrderHandler))
+        list.add(
+            PacketRegisterInfo(
+                SaveHiddenActionsPacket.ID,
+                SaveHiddenActionsPacket::decode,
+                SaveHiddenActionsHandler
+            )
+        )
         list.add(
             PacketRegisterInfo(
                 OpenCraftingTablePacket.ID,

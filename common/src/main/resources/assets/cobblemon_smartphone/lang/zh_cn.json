@@ -138,6 +138,8 @@
   "cobblemon_smartphone.tooltip.next_page": "下一页",
   "cobblemon_smartphone.tooltip.back_to_phone": "返回智能手机",
   "cobblemon_smartphone.tooltip.reorder_app": "拖动以调整应用顺序",
+  "cobblemon_smartphone.tooltip.hide_app": "隐藏应用",
+  "cobblemon_smartphone.tooltip.show_app": "显示应用",
   "cobblemon_smartphone.tooltip.view_pokemon_details": "查看宝可梦详情",
   "cobblemon_smartphone.tooltip.back_to_pokemon_list": "返回宝可梦列表",
   "cobblemon_smartphone.tooltip.previous_form": "上一个形态",
