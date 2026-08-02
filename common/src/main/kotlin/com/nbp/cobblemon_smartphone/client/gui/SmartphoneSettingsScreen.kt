@@ -90,6 +90,7 @@ class SmartphoneSettingsScreen(
         )
 
         renderHint(guiGraphics)
+        renderBackButton(guiGraphics, mouseX, mouseY)
 
         pagedIds().forEachIndexed { index, actionId ->
             renderGridItem(guiGraphics, mouseX, mouseY, index, actionId)
@@ -107,6 +108,12 @@ class SmartphoneSettingsScreen(
 
         if (selectorActionId != null) {
             handleSelectorClick(mx, my)
+            return true
+        }
+
+        if (isInBackButton(mx, my)) {
+            playClickSound()
+            Minecraft.getInstance().setScreen(SmartphoneScreen(color, smartphoneStack))
             return true
         }
 
@@ -472,6 +479,24 @@ class SmartphoneSettingsScreen(
         matrices.popPose()
     }
 
+    private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
+        return mouseX >= screenX + BACK_X && mouseX <= screenX + BACK_X + 30 &&
+                mouseY >= screenY + BACK_Y - 2 && mouseY <= screenY + BACK_Y + 10
+    }
+
+    private fun renderBackButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val backHover = isInBackButton(mouseX, mouseY)
+        val backColor = if (backHover) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
+        drawScaled(
+            guiGraphics,
+            Component.translatable("cobblemon_smartphone.pokeinfo.back").string,
+            screenX + BACK_X,
+            screenY + BACK_Y,
+            backColor,
+            BACK_SCALE
+        )
+    }
+
     private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         renderFooterButton(guiGraphics, PREV_BUTTON_TEXTURE, FOOTER_PREV_X, mouseX, mouseY)
         renderFooterButton(guiGraphics, HOME_BUTTON_TEXTURE, FOOTER_HOME_X, mouseX, mouseY)
@@ -480,6 +505,16 @@ class SmartphoneSettingsScreen(
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         if (selectorActionId != null || draggingIndex != -1) return
+
+        if (isInBackButton(mouseX, mouseY)) {
+            guiGraphics.renderTooltip(
+                font,
+                Component.translatable("cobblemon_smartphone.tooltip.back_to_phone"),
+                mouseX,
+                mouseY
+            )
+            return
+        }
 
         pagedIds().forEachIndexed { index, actionId ->
             val action = actionById(actionId) ?: return@forEachIndexed
@@ -588,6 +623,10 @@ class SmartphoneSettingsScreen(
 
         private const val GUI_WIDTH = 131
         private const val GUI_HEIGHT = 207
+
+        private const val BACK_X = 20
+        private const val BACK_Y = 20
+        private const val BACK_SCALE = 0.5f
 
         private const val GRID_COLUMNS = 2
         private const val GRID_ROWS = 3

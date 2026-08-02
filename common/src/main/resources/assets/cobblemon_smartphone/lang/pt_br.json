@@ -81,6 +81,7 @@
 
   "cobblemon_smartphone.quick_actions.hint": "Botão direito num app p/ vincular atalho",
   "cobblemon_smartphone.quick_actions.none": "Nenhum",
+  "cobblemon_smartphone.tooltip.back_to_phone": "Voltar para o Smartphone",
   "cobblemon_smartphone.tooltip.hide_app": "Ocultar aplicativo",
   "cobblemon_smartphone.tooltip.show_app": "Mostrar aplicativo",
 
