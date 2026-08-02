@@ -18,6 +18,7 @@ import com.nbp.cobblemon_smartphone.network.handler.SendDmHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncUnreadHandler
 import com.nbp.cobblemon_smartphone.network.handler.ThreadListHandler
 import com.nbp.cobblemon_smartphone.network.handler.ThreadPageHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavFishingnavHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavPokenavHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenCobbledollarsShopHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenCraftingTableHandler
@@ -53,6 +54,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SendDmPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
 import com.nbp.cobblemon_smartphone.network.packet.ThreadListPacket
 import com.nbp.cobblemon_smartphone.network.packet.ThreadPagePacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavFishingnavPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavPokenavPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenCobbledollarsShopPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenCraftingTablePacket
@@ -130,6 +132,13 @@ object CobblemonSmartphoneNetwork {
                 OpenCobblenavPokenavPacket.ID,
                 OpenCobblenavPokenavPacket::decode,
                 OpenCobblenavPokenavHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenCobblenavFishingnavPacket.ID,
+                OpenCobblenavFishingnavPacket::decode,
+                OpenCobblenavFishingnavHandler
             )
         )
         list.add(

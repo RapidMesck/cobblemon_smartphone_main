@@ -13,6 +13,10 @@
   "message.nbp.cobblenav.no_pokenav_item": "You need a CobbleNav PokeNav item in your inventory",
   "message.nbp.cobblenav.no_pokenav_upgrade": "Your smartphone needs a PokeNav upgrade via Smithing Table",
   "message.nbp.cobblenav.open_failed": "Could not open PokeNav from smartphone upgrade",
+  "message.nbp.fishingnav.unavailable": "CobbleNav is not installed on this server",
+  "message.nbp.fishingnav.disabled": "The FishingNav feature is disabled on this server",
+  "message.nbp.fishingnav.no_fishingnav_upgrade": "Your smartphone needs a FishingNav upgrade via Smithing Table",
+  "message.nbp.fishingnav.open_failed": "Could not open FishingNav from smartphone upgrade",
   "message.nbp.cobbledollars.unavailable": "CobbleDollars is not installed on this server",
   "message.nbp.cobbledollars.disabled": "The CobbleDollars feature is disabled on this server",
   "message.nbp.cobbledollars.open_failed": "Could not open CobbleDollars shop",
@@ -92,6 +96,7 @@
 
   "upgrade.cobblemon_smartphone.upgrade_crafting": "Upgrade: Crafting Table",
   "upgrade.cobblemon_smartphone.upgrade_pokenav": "Upgrade: PokeNav",
+  "upgrade.cobblemon_smartphone.upgrade_fishingnav": "Upgrade: FishingNav",
   "upgrade.cobblemon_smartphone.upgrade_waystone": "Upgrade: Waystone",
 
   "item.cobblemon_smartphone.smartphone.desc": "A versatile smart device with Pokédex, PC, and healing features.",
@@ -149,6 +154,7 @@
   "cobblemon_smartphone.action.pc": "Open Pokémon Storage",
   "cobblemon_smartphone.action.cloud": "Open Ender Chest",
   "cobblemon_smartphone.action.cobblenav_pokenav": "Open PokéNav",
+  "cobblemon_smartphone.action.cobblenav_fishingnav": "Open FishingNav",
   "cobblemon_smartphone.action.cobbledollars_shop": "Open CobbleDollars Shop",
   "cobblemon_smartphone.action.waystones_warp_stone": "Open Waystones",
   "cobblemon_smartphone.action.pokedex": "Open Pokédex",

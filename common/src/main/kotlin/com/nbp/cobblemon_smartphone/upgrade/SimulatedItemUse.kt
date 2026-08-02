@@ -83,6 +83,27 @@ object SimulatedItemUse {
     }
 
     /**
+     * Simulates using a CobbleNav FishingNav item via smartphone upgrade.
+     * Matches the cobblenav:fishingnav_item item.
+     *
+     * The FishingNav item refuses to open while a Poke Rod is in either hand slot,
+     * so the offhand is temporarily cleared during the use to allow the screen to open.
+     */
+    fun useFishingnav(player: ServerPlayer): Boolean {
+        return simulate(player, { id ->
+            id.namespace == "cobblenav" && id.path == "fishingnav_item"
+        }) { stack, p ->
+            val originalOffhand = p.offhandItem.copy()
+            p.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY)
+            try {
+                stack.item.use(p.level(), p, InteractionHand.MAIN_HAND)
+            } finally {
+                p.setItemInHand(InteractionHand.OFF_HAND, originalOffhand)
+            }
+        }
+    }
+
+    /**
      * Simulates using a Waystones Warp Stone item via smartphone upgrade.
      * Matches any waystones:*_warp_stone item.
      */

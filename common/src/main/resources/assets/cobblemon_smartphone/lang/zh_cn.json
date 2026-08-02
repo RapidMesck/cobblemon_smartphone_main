@@ -13,6 +13,10 @@
   "message.nbp.cobblenav.no_pokenav_item": "物品栏中需要有 CobbleNav 宝可导航器",
   "message.nbp.cobblenav.no_pokenav_upgrade": "需要先在锻造台为智能手机安装宝可导航升级",
   "message.nbp.cobblenav.open_failed": "无法通过智能手机升级打开宝可导航",
+  "message.nbp.fishingnav.unavailable": "此服务器未安装 CobbleNav",
+  "message.nbp.fishingnav.disabled": "此服务器已禁用钓鱼导航功能",
+  "message.nbp.fishingnav.no_fishingnav_upgrade": "需要先在锻造台为智能手机安装钓鱼导航升级",
+  "message.nbp.fishingnav.open_failed": "无法通过智能手机升级打开钓鱼导航",
   "message.nbp.cobbledollars.unavailable": "此服务器未安装 CobbleDollars",
   "message.nbp.cobbledollars.disabled": "此服务器已禁用 CobbleDollars 功能",
   "message.nbp.cobbledollars.open_failed": "无法打开 CobbleDollars 商店",
@@ -66,6 +70,7 @@
 
   "upgrade.cobblemon_smartphone.upgrade_crafting": "升级：工作台",
   "upgrade.cobblemon_smartphone.upgrade_pokenav": "升级：宝可导航",
+  "upgrade.cobblemon_smartphone.upgrade_fishingnav": "升级：钓鱼导航",
   "upgrade.cobblemon_smartphone.upgrade_waystone": "升级：传送石碑",
   "item.cobblemon_smartphone.smartphone.desc": "集宝可梦图鉴、宝可梦盒与治疗功能于一体的多用途智能设备。",
 
@@ -121,6 +126,7 @@
   "cobblemon_smartphone.action.pc": "打开宝可梦盒",
   "cobblemon_smartphone.action.cloud": "打开末影箱",
   "cobblemon_smartphone.action.cobblenav_pokenav": "打开宝可导航",
+  "cobblemon_smartphone.action.cobblenav_fishingnav": "打开钓鱼导航",
   "cobblemon_smartphone.action.cobbledollars_shop": "打开 CobbleDollars 商店",
   "cobblemon_smartphone.action.waystones_warp_stone": "打开传送石碑",
   "cobblemon_smartphone.action.pokedex": "打开宝可梦图鉴",

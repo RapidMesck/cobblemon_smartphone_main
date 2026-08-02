@@ -4,6 +4,7 @@ import com.nbp.cobblemon_smartphone.actions.CraftingAction
 import com.nbp.cobblemon_smartphone.actions.EnderAction
 import com.nbp.cobblemon_smartphone.actions.HealAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavAction
+import com.nbp.cobblemon_smartphone.actions.OpenCobblenavFishingnavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobbledollarsAction
 import com.nbp.cobblemon_smartphone.actions.OpenPcAction
 import com.nbp.cobblemon_smartphone.actions.OpenWaystonesAction
@@ -45,6 +46,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(OpenPcAction)
         SmartphoneActionRegistry.register(EnderAction)
         SmartphoneActionRegistry.register(OpenCobblenavAction)
+        SmartphoneActionRegistry.register(OpenCobblenavFishingnavAction)
         SmartphoneActionRegistry.register(OpenCobbledollarsAction)
         SmartphoneActionRegistry.register(OpenWaystonesAction)
         SmartphoneActionRegistry.register(PokedexAction)
@@ -63,6 +65,13 @@ object CobblemonSmartphone {
             SmartphoneUpgrade(
                 id = "upgrade_pokenav",
                 nbtKey = "upgrade_pokenav",
+                requiredModId = "cobblenav"
+            )
+        )
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = "upgrade_fishingnav",
+                nbtKey = "upgrade_fishingnav",
                 requiredModId = "cobblenav"
             )
         )

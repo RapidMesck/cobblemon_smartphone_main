@@ -45,6 +45,7 @@ class SmartphoneConfig {
         val enablePC: Boolean = true
         val enableCloud: Boolean = true
         val enablePokenav: Boolean = true
+        val enableFishingnav: Boolean = true
         val enableCobbleDollars: Boolean = true
         val enableWaystone: Boolean = true
         val enablePokedex: Boolean = true
