@@ -74,6 +74,13 @@ class SocialComposeScreen(
         guiGraphics.drawString(font, lang("compose_title"), screenX + CONTENT_X, screenY + TITLE_Y, TITLE_COLOR, false)
 
         // MultiLineEditBox exposes render() publicly; renderContents() is protected.
+        val ex = screenX + CONTENT_X
+        val ey = screenY + EDIT_Y
+        guiGraphics.fill(ex, ey, ex + CONTENT_WIDTH, ey + EDIT_HEIGHT, SECTION_CONTENT_BG)
+        guiGraphics.fill(ex, ey, ex + CONTENT_WIDTH, ey + 1, ACCENT_COLOR)
+        guiGraphics.fill(ex, ey + EDIT_HEIGHT - 1, ex + CONTENT_WIDTH, ey + EDIT_HEIGHT, ACCENT_COLOR)
+        guiGraphics.fill(ex, ey, ex + 1, ey + EDIT_HEIGHT, ACCENT_COLOR)
+        guiGraphics.fill(ex + CONTENT_WIDTH - 1, ey, ex + CONTENT_WIDTH, ey + EDIT_HEIGHT, ACCENT_COLOR)
         editBox.render(guiGraphics, mouseX, mouseY, delta)
 
         val counter = "${editBox.value.length}/$maxLength"
@@ -102,7 +109,7 @@ class SocialComposeScreen(
             val selected = selectedSlot == index
             val bg = when {
                 selected -> ACCENT_COLOR
-                hovered && pokemon != null -> ACCENT_DIM_COLOR
+                hovered && pokemon != null -> SLOT_HOVER_COLOR
                 else -> SLOT_BG_COLOR
             }
             guiGraphics.fill(x, y, x + SLOT_WIDTH, y + SLOT_HEIGHT, bg)
@@ -114,24 +121,29 @@ class SocialComposeScreen(
                 trimmed,
                 x + 2,
                 y + 2,
-                if (pokemon == null) MUTED_COLOR else TEXT_COLOR,
+                when {
+                    selected -> TITLE_COLOR
+                    pokemon == null -> CONTENT_DIM
+                    else -> CONTENT_TEXT
+                },
                 false
             )
             pokemon?.let {
-                guiGraphics.drawString(font, "Lv${it.level}", x + 2, y + 12, MUTED_COLOR, false)
+                guiGraphics.drawString(font, "Lv${it.level}", x + 2, y + 12, CONTENT_DIM, false)
             }
         }
     }
 
     private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         drawButton(guiGraphics, lang("cancel"), cancelX(), screenY + BUTTON_Y, isInCancel(mouseX, mouseY), false)
-        drawButton(guiGraphics, lang("post"), postX(), screenY + BUTTON_Y, isInPost(mouseX, mouseY), canPost())
+        val postLabel = if (isOnPostCooldown()) "${remainingPostCooldownSec()}s" else lang("post")
+        drawButton(guiGraphics, postLabel, postX(), screenY + BUTTON_Y, isInPost(mouseX, mouseY), canPost())
     }
 
     private fun drawButton(guiGraphics: GuiGraphics, label: String, x: Int, y: Int, hovered: Boolean, primary: Boolean) {
         val bg = when {
             primary && hovered -> ACCENT_COLOR
-            primary -> ACCENT_DIM_COLOR
+            primary -> ACCENT_COLOR
             hovered -> SLOT_HOVER_COLOR
             else -> SLOT_BG_COLOR
         }
@@ -141,7 +153,7 @@ class SocialComposeScreen(
             label,
             x + (BUTTON_WIDTH - font.width(label)) / 2,
             y + (BUTTON_HEIGHT - font.lineHeight) / 2 + 1,
-            TEXT_COLOR,
+            if (primary) TITLE_COLOR else CONTENT_TEXT,
             false
         )
     }
@@ -159,6 +171,7 @@ class SocialComposeScreen(
             if (!canPost()) return true
             playClickSound()
             CreatePostPacket(editBox.value.trim(), selectedSlot).sendToServer()
+            lastPostTime = System.currentTimeMillis()
             back()
             return true
         }
@@ -175,7 +188,7 @@ class SocialComposeScreen(
         return super.mouseClicked(mouseX, mouseY, button)
     }
 
-    private fun canPost(): Boolean = editBox.value.isNotBlank() || selectedSlot >= 0
+    private fun canPost(): Boolean = !isOnPostCooldown() && (editBox.value.isNotBlank() || selectedSlot >= 0)
 
     private fun back() {
         Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack))
@@ -225,6 +238,16 @@ class SocialComposeScreen(
     }
 
     companion object {
+        var lastPostTime = 0L
+        private val postCooldownSec get() = CobblemonSmartphone.config.cooldowns.socialPost
+
+        fun isOnPostCooldown(): Boolean = remainingPostCooldownMs() > 0
+
+        private fun remainingPostCooldownMs(): Long =
+            ((postCooldownSec * 1000L) - (System.currentTimeMillis() - lastPostTime)).coerceAtLeast(0)
+
+        fun remainingPostCooldownSec(): Int = ((remainingPostCooldownMs() + 999) / 1000).toInt()
+
         private const val GUI_WIDTH = 211
         private const val GUI_HEIGHT = 207
 
@@ -256,10 +279,12 @@ class SocialComposeScreen(
         private const val TITLE_COLOR = 0xFFFFFFFF.toInt()
         private const val TEXT_COLOR = 0xFFE6FFFF.toInt()
         private const val MUTED_COLOR = 0xFF8AA5AD.toInt()
-        private const val SLOT_BG_COLOR = 0x66000000
-        private const val SLOT_HOVER_COLOR = 0x99000000.toInt()
+        private const val CONTENT_TEXT = 0xFF1A1A2E.toInt()
+        private const val CONTENT_DIM = 0xFF555555.toInt()
+        private const val SECTION_CONTENT_BG = 0xFFEFFDFF.toInt()
+        private const val SLOT_BG_COLOR = 0xFFEFFDFF.toInt()
+        private const val SLOT_HOVER_COLOR = 0xFFD0E8F5.toInt()
         private const val ACCENT_COLOR = 0xFF3A96B6.toInt()
-        private const val ACCENT_DIM_COLOR = 0xAA3A96B6.toInt()
         private const val DANGER_COLOR = 0xFFFD0100.toInt()
 
         private val SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(

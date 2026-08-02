@@ -83,7 +83,6 @@ class SocialScreen(
         blitk(matrixStack = matrices, texture = SCREEN_TEXTURE, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
 
         renderHeader(guiGraphics, mouseX, mouseY)
-        renderTabs(guiGraphics, mouseX, mouseY)
 
         guiGraphics.enableScissor(
             screenX + CONTENT_X,
@@ -106,8 +105,12 @@ class SocialScreen(
     private fun renderFeed(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         var y = screenY + LIST_START_Y - scrollY
         val posts = SocialFeedCache.posts()
-        posts.forEach { post ->
+        posts.forEachIndexed { index, post ->
             val height = measureCard(post)
+            if (index > 0) {
+                val divY = y - 1
+                guiGraphics.fill(screenX + CONTENT_X + 4, divY, screenX + CONTENT_X + CONTENT_WIDTH - 4, divY + 1, DIVIDER_COLOR)
+            }
             // Skip cards entirely outside the viewport.
             if (y + height >= screenY + LIST_START_Y && y <= screenY + LIST_END_Y) {
                 renderCard(guiGraphics, post, screenX + CONTENT_X, y, mouseX, mouseY, height)
@@ -116,14 +119,14 @@ class SocialScreen(
         }
 
         if (posts.isEmpty()) {
-            renderEmptyState(guiGraphics, if (SocialFeedCache.loading) lang("loading") else lang("empty"))
+            renderEmptyState(guiGraphics, if (SocialFeedCache.loading) lang("loading") else lang("empty"), SocialFeedCache.loading)
         }
     }
 
     private fun renderThreadList(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val threads = SocialDmCache.threads()
         if (threads.isEmpty()) {
-            renderEmptyState(guiGraphics, if (SocialDmCache.loading) lang("loading") else lang("no_threads"))
+            renderEmptyState(guiGraphics, if (SocialDmCache.loading) lang("loading") else lang("no_threads"), SocialDmCache.loading)
             return
         }
 
@@ -139,7 +142,7 @@ class SocialScreen(
     private fun renderThreadRow(guiGraphics: GuiGraphics, thread: DmThreadSummary, y: Int, mouseX: Int, mouseY: Int) {
         val x = screenX + CONTENT_X
         val hovered = isInThreadRow(mouseX, mouseY, y)
-        guiGraphics.fill(x, y, x + CONTENT_WIDTH, y + THREAD_ROW_HEIGHT, if (hovered) CARD_HOVER_COLOR else CARD_BG_COLOR)
+        guiGraphics.fill(x, y, x + CONTENT_WIDTH, y + THREAD_ROW_HEIGHT, if (hovered) ROW_HOVER_BG else SECTION_CONTENT_BG)
 
         PlayerFaceRenderer.draw(
             guiGraphics,
@@ -150,9 +153,9 @@ class SocialScreen(
         )
 
         val textX = x + CARD_PAD + HEAD_SIZE + 4
-        guiGraphics.drawString(font, thread.otherName, textX, y + CARD_PAD, NAME_COLOR, false)
+        guiGraphics.drawString(font, thread.otherName, textX, y + CARD_PAD, CONTENT_TEXT, false)
         val preview = font.plainSubstrByWidth(thread.preview, CONTENT_WIDTH - (textX - x) - CARD_PAD - 24)
-        guiGraphics.drawString(font, preview, textX, y + CARD_PAD + 11, MUTED_COLOR, false)
+        guiGraphics.drawString(font, preview, textX, y + CARD_PAD + 11, CONTENT_DIM, false)
 
         if (thread.unreadCount > 0) {
             val label = thread.unreadCount.toString()
@@ -163,41 +166,16 @@ class SocialScreen(
         }
     }
 
-    private fun renderEmptyState(guiGraphics: GuiGraphics, message: String) {
+    private fun renderEmptyState(guiGraphics: GuiGraphics, message: String, loading: Boolean = false) {
+        val color = if (loading) LOADING_COLOR else MUTED_COLOR
         guiGraphics.drawString(
             font,
             message,
             screenX + CONTENT_X + (CONTENT_WIDTH - font.width(message)) / 2,
-            screenY + LIST_START_Y + 30,
-            MUTED_COLOR,
+            screenY + LIST_START_Y + (LIST_END_Y - LIST_START_Y) / 2 - font.lineHeight / 2,
+            color,
             false
         )
-    }
-
-    private fun renderTabs(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        Tab.entries.forEachIndexed { index, entry ->
-            val x = tabX(index)
-            val active = tab == entry
-            val hovered = isInTab(mouseX, mouseY, index)
-            val bg = when {
-                active -> ACCENT_COLOR
-                hovered -> ACCENT_DIM_COLOR
-                else -> CARD_BG_COLOR
-            }
-            guiGraphics.fill(x, screenY + TAB_Y, x + TAB_WIDTH, screenY + TAB_Y + TAB_HEIGHT, bg)
-
-            val label = lang(if (entry == Tab.FEED) "tab_feed" else "tab_dms")
-            val unread = if (entry == Tab.DMS && SocialDmCache.unreadTotal > 0) " (${SocialDmCache.unreadTotal})" else ""
-            val text = "$label$unread"
-            guiGraphics.drawString(
-                font,
-                text,
-                x + (TAB_WIDTH - font.width(text)) / 2,
-                screenY + TAB_Y + (TAB_HEIGHT - font.lineHeight) / 2 + 1,
-                if (active) NAME_COLOR else MUTED_COLOR,
-                false
-            )
-        }
     }
 
     // --- Layout ---
@@ -208,13 +186,14 @@ class SocialScreen(
     }
 
     private fun measureCard(post: SocialPostView): Int {
-        var height = CARD_PAD + HEADER_HEIGHT
+        var height = CARD_PAD + HEADER_HEIGHT + TEXT_GAP + 1
         if (post.text.isNotBlank()) {
             height += wrappedLines(post.text).size * font.lineHeight + TEXT_GAP
         }
         if (post.attachment != null) {
             height += ATTACHMENT_HEIGHT + TEXT_GAP
         }
+        height += TEXT_GAP + 1
         height += FOOTER_HEIGHT + CARD_PAD
         return height
     }
@@ -225,20 +204,45 @@ class SocialScreen(
     // --- Rendering ---
 
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        guiGraphics.drawString(font, lang("title"), screenX + CONTENT_X, screenY + TITLE_Y, TITLE_COLOR, false)
+        var tx = screenX + CONTENT_X
+        val btnY = screenY + TITLE_Y - TAB_BUTTON_PAD_Y
+        val btnH = font.lineHeight + TAB_BUTTON_PAD_Y * 2
+
+        Tab.entries.forEachIndexed { index, entry ->
+            val active = tab == entry
+            val hovered = isInTab(mouseX, mouseY, index)
+            val label = lang(if (entry == Tab.FEED) "tab_feed" else "tab_dms")
+            val text = if (entry == Tab.DMS && SocialDmCache.unreadTotal > 0) "$label (${SocialDmCache.unreadTotal})" else label
+            val textW = font.width(text)
+            val btnW = textW + TAB_PAD * 2
+            val bg = when {
+                active -> SECTION_TITLE_BG
+                hovered -> 0xFF4AA6C2.toInt()
+                else -> 0xFF5BA8C8.toInt()
+            }
+            val tc = when {
+                active -> NAME_COLOR
+                hovered -> NAME_COLOR
+                else -> 0xFFD5E8EF.toInt()
+            }
+            guiGraphics.fill(tx, btnY, tx + btnW, btnY + btnH, bg)
+            guiGraphics.drawString(font, text, tx + TAB_PAD, screenY + TITLE_Y, tc, false)
+            tx += btnW + TAB_GAP
+        }
 
         renderMuteButton(guiGraphics, mouseX, mouseY)
 
         val hovered = isInComposeButton(mouseX, mouseY)
         val (bx, by) = composeButtonPos()
-        guiGraphics.fill(bx, by, bx + COMPOSE_SIZE, by + COMPOSE_SIZE, if (hovered) ACCENT_COLOR else ACCENT_DIM_COLOR)
+        guiGraphics.fill(bx, by, bx + COMPOSE_SIZE, by + COMPOSE_SIZE, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(bx + 1, by + 1, bx + COMPOSE_SIZE - 1, by + COMPOSE_SIZE - 1, if (hovered) ACCENT_COLOR else SECTION_CONTENT_BG)
         val plus = "+"
         guiGraphics.drawString(
             font,
             plus,
             bx + (COMPOSE_SIZE - font.width(plus)) / 2,
             by + (COMPOSE_SIZE - font.lineHeight) / 2 + 1,
-            0xFFFFFFFF.toInt(),
+            if (hovered) 0xFFFFFFFF.toInt() else CONTENT_TEXT,
             false
         )
     }
@@ -250,11 +254,12 @@ class SocialScreen(
         val bg = when {
             SocialMute.muted -> MUTE_ACTIVE_COLOR
             hovered -> ACCENT_COLOR
-            else -> ACCENT_DIM_COLOR
+            else -> SECTION_CONTENT_BG
         }
-        guiGraphics.fill(x, y, x + COMPOSE_SIZE, y + COMPOSE_SIZE, bg)
+        guiGraphics.fill(x, y, x + COMPOSE_SIZE, y + COMPOSE_SIZE, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(x + 1, y + 1, x + COMPOSE_SIZE - 1, y + COMPOSE_SIZE - 1, bg)
 
-        val c = 0xFFFFFFFF.toInt()
+        val c = CONTENT_TEXT
         guiGraphics.fill(x + 5, y + 2, x + 7, y + 3, c)   // top nub
         guiGraphics.fill(x + 4, y + 3, x + 8, y + 4, c)   // shoulders
         guiGraphics.fill(x + 3, y + 4, x + 9, y + 7, c)   // body
@@ -274,13 +279,13 @@ class SocialScreen(
         mouseY: Int,
         height: Int
     ) {
-        guiGraphics.fill(x, y, x + CONTENT_WIDTH, y + height, CARD_BG_COLOR)
+        val headerH = CARD_PAD + HEADER_HEIGHT
+        guiGraphics.fill(x, y, x + CONTENT_WIDTH, y + headerH, SECTION_TITLE_BG)
+        guiGraphics.fill(x, y + headerH, x + CONTENT_WIDTH, y + height, SECTION_CONTENT_BG)
 
         var cursorY = y + CARD_PAD
         val textX = x + CARD_PAD
 
-        // Author head + name. PlayerHeads falls back to the cached/default skin, so authors who
-        // are offline still get a face rather than a blank square.
         PlayerFaceRenderer.draw(
             guiGraphics,
             PlayerHeads.skinFor(post.authorUuid, post.authorName),
@@ -296,36 +301,45 @@ class SocialScreen(
             age,
             x + CONTENT_WIDTH - CARD_PAD - font.width(age),
             cursorY + 2,
-            MUTED_COLOR,
+            NAME_COLOR,
             false
         )
         cursorY += HEADER_HEIGHT
 
-        // Body
+        guiGraphics.fill(textX, cursorY, x + CONTENT_WIDTH - CARD_PAD, cursorY + 1, SEPARATOR_COLOR)
+        cursorY += TEXT_GAP + 1
+
         if (post.text.isNotBlank()) {
             wrappedLines(post.text).forEach { line ->
-                guiGraphics.drawString(font, line, textX, cursorY, TEXT_COLOR, false)
+                guiGraphics.drawString(font, line, textX, cursorY, CONTENT_TEXT, false)
                 cursorY += font.lineHeight
             }
             cursorY += TEXT_GAP
         }
 
-        // Attachment
         post.attachment?.let { attachment ->
-            guiGraphics.fill(textX, cursorY, x + CONTENT_WIDTH - CARD_PAD, cursorY + ATTACHMENT_HEIGHT, ATTACHMENT_BG_COLOR)
+            val attW = CONTENT_WIDTH - CARD_PAD * 2
+            val attH = ATTACHMENT_HEIGHT
+            guiGraphics.fill(textX, cursorY, textX + attW, cursorY + attH, ATTACHMENT_BG_COLOR)
+            guiGraphics.fill(textX, cursorY, textX + attW, cursorY + 1, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(textX, cursorY + attH - 1, textX + attW, cursorY + attH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(textX, cursorY, textX + 1, cursorY + attH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(textX + attW - 1, cursorY, textX + attW, cursorY + attH, BUTTON_BORDER_COLOR)
             renderAttachment(guiGraphics, post, attachment, textX, cursorY)
             cursorY += ATTACHMENT_HEIGHT + TEXT_GAP
         }
 
-        // Footer: like + delete
+        val footerY = y + height - CARD_PAD - FOOTER_HEIGHT
+        guiGraphics.fill(textX, footerY - TEXT_GAP - 1, x + CONTENT_WIDTH - CARD_PAD, footerY - TEXT_GAP, SEPARATOR_COLOR)
+
         val heart = if (post.likedByMe) "♥" else "♡"
         val heartHovered = isInLikeButton(mouseX, mouseY, x, y, height)
         val heartColor = when {
             post.likedByMe -> LIKED_COLOR
             heartHovered -> ACCENT_COLOR
-            else -> MUTED_COLOR
+            else -> CONTENT_DIM
         }
-        guiGraphics.drawString(font, "$heart ${post.likeCount}", textX, cursorY, heartColor, false)
+        guiGraphics.drawString(font, "$heart ${post.likeCount}", textX, footerY, heartColor, false)
 
         if (canDelete(post)) {
             val label = lang("delete")
@@ -334,8 +348,8 @@ class SocialScreen(
                 font,
                 label,
                 x + CONTENT_WIDTH - CARD_PAD - font.width(label),
-                cursorY,
-                if (hovered) DANGER_COLOR else MUTED_COLOR,
+                footerY,
+                if (hovered) DANGER_COLOR else CONTENT_DIM,
                 false
             )
         }
@@ -366,8 +380,8 @@ class SocialScreen(
 
         val label = attachment.nickname ?: speciesName(attachment.species)
         val infoX = x + ATTACHMENT_TEXT_X
-        guiGraphics.drawString(font, label, infoX, y + 8, NAME_COLOR, false)
-        guiGraphics.drawString(font, "Lv. ${attachment.level}", infoX, y + 20, MUTED_COLOR, false)
+        guiGraphics.drawString(font, label, infoX, y + 8, CONTENT_TEXT, false)
+        guiGraphics.drawString(font, "Lv. ${attachment.level}", infoX, y + 20, CONTENT_DIM, false)
         if (attachment.aspects.contains(SHINY_ASPECT)) {
             guiGraphics.drawString(font, lang("shiny"), infoX, y + 32, LIKED_COLOR, false)
         }
@@ -511,12 +525,21 @@ class SocialScreen(
         if (next == Tab.DMS) SocialDmCache.refreshThreads()
     }
 
-    private fun tabX(index: Int): Int = screenX + CONTENT_X + index * (TAB_WIDTH + TAB_GAP)
-
     private fun isInTab(mouseX: Int, mouseY: Int, index: Int): Boolean {
-        val x = tabX(index)
-        return mouseX in x..(x + TAB_WIDTH) &&
-                mouseY in (screenY + TAB_Y)..(screenY + TAB_Y + TAB_HEIGHT)
+        val baseX = screenX + CONTENT_X
+        val btnY = screenY + TITLE_Y - TAB_BUTTON_PAD_Y
+        val btnH = font.lineHeight + TAB_BUTTON_PAD_Y * 2
+        if (mouseY !in btnY..(btnY + btnH)) return false
+
+        var tx = baseX
+        for (i in 0..index) {
+            val label = lang(if (Tab.entries[i] == Tab.FEED) "tab_feed" else "tab_dms")
+            val text = if (Tab.entries[i] == Tab.DMS && SocialDmCache.unreadTotal > 0) "$label (${SocialDmCache.unreadTotal})" else label
+            val btnW = font.width(text) + TAB_PAD * 2
+            if (i == index) return mouseX in tx..(tx + btnW)
+            tx += btnW + TAB_GAP
+        }
+        return false
     }
 
     private fun isInThreadRow(mouseX: Int, mouseY: Int, rowY: Int): Boolean =
@@ -645,7 +668,7 @@ class SocialScreen(
         // Leaves SCROLLBAR_GAP + SCROLLBAR_WIDTH to the right, landing flush on SCREEN_RIGHT.
         private const val CONTENT_WIDTH = 165
         private const val TITLE_Y = 27
-        private const val LIST_START_Y = 56
+        private const val LIST_START_Y = 42
         private const val LIST_END_Y = SCREEN_BOTTOM - 2
 
         private const val COMPOSE_Y = 25
@@ -654,10 +677,8 @@ class SocialScreen(
         private const val MUTE_ACTIVE_COLOR = 0xFFAA3333.toInt()
         private const val MUTE_SLASH_COLOR = 0xFFFF3030.toInt()
 
-        // 2 * TAB_WIDTH + TAB_GAP == CONTENT_WIDTH
-        private const val TAB_Y = 40
-        private const val TAB_HEIGHT = 12
-        private const val TAB_WIDTH = 81
+        private const val TAB_PAD = 4
+        private const val TAB_BUTTON_PAD_Y = 2
         private const val TAB_GAP = 3
 
         private const val THREAD_ROW_HEIGHT = 28
@@ -684,12 +705,19 @@ class SocialScreen(
         private const val NAME_COLOR = 0xFFFFFFFF.toInt()
         private const val TEXT_COLOR = 0xFFE6FFFF.toInt()
         private const val MUTED_COLOR = 0xFF8AA5AD.toInt()
-        private const val CARD_BG_COLOR = 0x66000000
-        private const val CARD_HOVER_COLOR = 0x99000000.toInt()
+        private const val SECTION_TITLE_BG = 0xFF3A96B6.toInt()
+        private const val SECTION_CONTENT_BG = 0xFFEFFDFF.toInt()
+        private const val CONTENT_TEXT = 0xFF1A1A2E.toInt()
+        private const val CONTENT_DIM = 0xFF555555.toInt()
+        private const val ROW_HOVER_BG = 0xFFD0E8F5.toInt()
+        private const val LOADING_COLOR = 0xFFAAAAAA.toInt()
+        private const val SEPARATOR_COLOR = 0x30FFFFFF.toInt()
+        private const val DIVIDER_COLOR = 0x15FFFFFF.toInt()
+        private const val BUTTON_BORDER_COLOR = 0xFF3A96B6.toInt()
+        private const val BUTTON_DISABLED_BG = 0xFFCCCCCC.toInt()
         private const val UNREAD_BADGE_COLOR = 0xFFD03030.toInt()
         private const val ATTACHMENT_BG_COLOR = 0x553A96B6
         private const val ACCENT_COLOR = 0xFF3A96B6.toInt()
-        private const val ACCENT_DIM_COLOR = 0xAA3A96B6.toInt()
         private const val LIKED_COLOR = 0xFFFFD700.toInt()
         private const val DANGER_COLOR = 0xFFFD0100.toInt()
 

@@ -106,7 +106,7 @@ class DmNewScreen(
                 font,
                 message,
                 screenX + CONTENT_X + (CONTENT_WIDTH - font.width(message)) / 2,
-                screenY + LIST_START_Y + 30,
+                screenY + LIST_START_Y + (LIST_END_Y - LIST_START_Y) / 2 - font.lineHeight / 2,
                 MUTED_COLOR,
                 false
             )
@@ -127,7 +127,7 @@ class DmNewScreen(
             info.profile.name,
             x + ROW_PAD + HEAD_SIZE + 5,
             y + ROW_PAD + 1,
-            NAME_COLOR,
+            CONTENT_TEXT,
             false
         )
     }
@@ -218,8 +218,9 @@ class DmNewScreen(
         private const val NAME_COLOR = 0xFFFFFFFF.toInt()
         private const val MUTED_COLOR = 0xFF8AA5AD.toInt()
         private const val ACCENT_COLOR = 0xFF3A96B6.toInt()
-        private const val ROW_BG_COLOR = 0x66000000
-        private const val ROW_HOVER_COLOR = 0x99000000.toInt()
+        private const val CONTENT_TEXT = 0xFF1A1A2E.toInt()
+        private const val ROW_BG_COLOR = 0xFFEFFDFF.toInt()
+        private const val ROW_HOVER_COLOR = 0xFFD0E8F5.toInt()
 
         private val SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone",

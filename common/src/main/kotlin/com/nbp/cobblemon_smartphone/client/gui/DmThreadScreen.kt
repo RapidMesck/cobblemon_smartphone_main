@@ -42,7 +42,10 @@ class DmThreadScreen(
     private var screenY = 0
     private var scrollY = 0
     private var maxScroll = 0
+    private var lastSendTime = 0L
     private lateinit var input: EditBox
+
+    private val messageCooldownSec get() = CobblemonSmartphone.config.cooldowns.socialMessage
 
     override fun isPauseScreen(): Boolean = false
 
@@ -59,6 +62,8 @@ class DmThreadScreen(
 
         input = EditBox(font, screenX + CONTENT_X, screenY + INPUT_Y, INPUT_WIDTH, INPUT_HEIGHT, Component.empty())
         input.setMaxLength(CobblemonSmartphone.config.social.maxMessageLength)
+        input.setBordered(false)
+        input.setTextColor(0xFF888888.toInt())
         addRenderableWidget(input)
         setInitialFocus(input)
     }
@@ -108,13 +113,21 @@ class DmThreadScreen(
                 font,
                 text,
                 screenX + CONTENT_X + (CONTENT_WIDTH - font.width(text)) / 2,
-                screenY + LIST_START_Y + 30,
+                screenY + LIST_START_Y + (LIST_END_Y - LIST_START_Y) / 2 - font.lineHeight / 2,
                 MUTED_COLOR,
                 false
             )
         }
 
         guiGraphics.disableScissor()
+
+        val ix = screenX + CONTENT_X
+        val iy = screenY + INPUT_Y
+        guiGraphics.fill(ix, iy, ix + INPUT_WIDTH, iy + INPUT_HEIGHT, SECTION_CONTENT_BG)
+        guiGraphics.fill(ix, iy, ix + INPUT_WIDTH, iy + 1, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(ix, iy + INPUT_HEIGHT - 1, ix + INPUT_WIDTH, iy + INPUT_HEIGHT, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(ix, iy, ix + 1, iy + INPUT_HEIGHT, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(ix + INPUT_WIDTH - 1, iy, ix + INPUT_WIDTH, iy + INPUT_HEIGHT, BUTTON_BORDER_COLOR)
 
         input.render(guiGraphics, mouseX, mouseY, delta)
         renderSendButton(guiGraphics, mouseX, mouseY)
@@ -154,7 +167,8 @@ class DmThreadScreen(
         val x = callButtonX()
         val y = screenY + TITLE_Y - 3
         val hovered = isInCallButton(mouseX, mouseY)
-        guiGraphics.fill(x, y, x + CALL_BUTTON_WIDTH, y + CALL_BUTTON_HEIGHT, if (hovered) color else dimColor(color))
+        guiGraphics.fill(x, y, x + CALL_BUTTON_WIDTH, y + CALL_BUTTON_HEIGHT, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(x + 1, y + 1, x + CALL_BUTTON_WIDTH - 1, y + CALL_BUTTON_HEIGHT - 1, if (hovered) color else SECTION_CONTENT_BG)
         guiGraphics.drawString(
             font,
             label,
@@ -205,11 +219,12 @@ class DmThreadScreen(
         val bg = when {
             muted -> MUTE_ACTIVE_COLOR
             hovered -> ACCENT_COLOR
-            else -> ACCENT_DIM_COLOR
+            else -> SECTION_CONTENT_BG
         }
-        guiGraphics.fill(x, y, x + BELL_WIDTH, y + BELL_HEIGHT, bg)
+        guiGraphics.fill(x, y, x + BELL_WIDTH, y + BELL_HEIGHT, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(x + 1, y + 1, x + BELL_WIDTH - 1, y + BELL_HEIGHT - 1, bg)
 
-        val c = 0xFFFFFFFF.toInt()
+        val c = CONTENT_TEXT
         guiGraphics.fill(x + 5, y + 2, x + 7, y + 3, c)   // top nub
         guiGraphics.fill(x + 4, y + 3, x + 8, y + 4, c)   // shoulders
         guiGraphics.fill(x + 3, y + 4, x + 9, y + 6, c)   // body
@@ -227,8 +242,6 @@ class DmThreadScreen(
         val y = screenY + TITLE_Y - 3
         return mouseX in x..(x + BELL_WIDTH) && mouseY in y..(y + BELL_HEIGHT)
     }
-
-    private fun dimColor(color: Int): Int = (color and 0x00FFFFFF) or (0xBB shl 24)
 
     private fun isOwn(message: DmMessage): Boolean =
         message.senderUuid == Minecraft.getInstance().player?.uuid
@@ -256,29 +269,34 @@ class DmThreadScreen(
         guiGraphics.fill(x, y, x + bubbleWidth, y + height, if (own) OWN_BUBBLE_COLOR else OTHER_BUBBLE_COLOR)
 
         var lineY = y + BUBBLE_PAD
+        val textColor = if (own) TEXT_COLOR else CONTENT_TEXT
         lines.forEach { line ->
-            guiGraphics.drawString(font, line, x + BUBBLE_PAD, lineY, TEXT_COLOR, false)
+            guiGraphics.drawString(font, line, x + BUBBLE_PAD, lineY, textColor, false)
             lineY += font.lineHeight
         }
     }
 
     private fun renderSendButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val hovered = isInSend(mouseX, mouseY)
-        val enabled = input.value.isNotBlank()
+        val onCooldown = isOnCooldown()
+        val enabled = input.value.isNotBlank() && !onCooldown
         val bg = when {
+            onCooldown -> DISABLED_COLOR
             enabled && hovered -> ACCENT_COLOR
-            enabled -> ACCENT_DIM_COLOR
+            enabled -> SECTION_CONTENT_BG
             else -> DISABLED_COLOR
         }
         val x = sendX()
-        guiGraphics.fill(x, screenY + INPUT_Y, x + SEND_WIDTH, screenY + INPUT_Y + INPUT_HEIGHT, bg)
-        val label = lang("send")
+        guiGraphics.fill(x, screenY + INPUT_Y, x + SEND_WIDTH, screenY + INPUT_Y + INPUT_HEIGHT, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(x + 1, screenY + INPUT_Y + 1, x + SEND_WIDTH - 1, screenY + INPUT_Y + INPUT_HEIGHT - 1, bg)
+        val label = if (onCooldown) "${remainingCooldownSec()}s" else lang("send")
+        val textColor = if (onCooldown) MUTED_COLOR else TEXT_COLOR
         guiGraphics.drawString(
             font,
             label,
             x + (SEND_WIDTH - font.width(label)) / 2,
             screenY + INPUT_Y + (INPUT_HEIGHT - font.lineHeight) / 2 + 1,
-            TEXT_COLOR,
+            textColor,
             false
         )
     }
@@ -328,13 +346,22 @@ class DmThreadScreen(
     }
 
     private fun send() {
+        if (isOnCooldown()) return
         val text = input.value.trim()
         if (text.isEmpty()) return
         playClickSound()
         SendDmPacket(otherUuid, text).sendToServer()
+        lastSendTime = System.currentTimeMillis()
         input.value = ""
         scrollY = 0
     }
+
+    private fun isOnCooldown(): Boolean = remainingCooldownMs() > 0
+
+    private fun remainingCooldownMs(): Long =
+        ((messageCooldownSec * 1000L) - (System.currentTimeMillis() - lastSendTime)).coerceAtLeast(0)
+
+    private fun remainingCooldownSec(): Int = ((remainingCooldownMs() + 999) / 1000).toInt()
 
     private fun sendX() = screenX + CONTENT_X + CONTENT_WIDTH - SEND_WIDTH
 
@@ -399,12 +426,14 @@ class DmThreadScreen(
         private const val NAME_COLOR = 0xFFFFFFFF.toInt()
         private const val TEXT_COLOR = 0xFFE6FFFF.toInt()
         private const val MUTED_COLOR = 0xFF8AA5AD.toInt()
-        private const val OWN_BUBBLE_COLOR = 0xAA3A96B6.toInt()
-        private const val OTHER_BUBBLE_COLOR = 0x88000000.toInt()
+        private const val CONTENT_TEXT = 0xFF1A1A2E.toInt()
+        private const val SECTION_CONTENT_BG = 0xFFEFFDFF.toInt()
+        private const val OWN_BUBBLE_COLOR = 0xFF3A96B6.toInt()
+        private const val OTHER_BUBBLE_COLOR = 0xFFE0E8EC.toInt()
         private const val ACCENT_COLOR = 0xFF3A96B6.toInt()
-        private const val ACCENT_DIM_COLOR = 0xAA3A96B6.toInt()
-        private const val DISABLED_COLOR = 0x55000000
+        private const val DISABLED_COLOR = 0xFFCCCCCC.toInt()
         private const val DANGER_BUTTON_COLOR = 0xFFCC3333.toInt()
+        private const val BUTTON_BORDER_COLOR = 0xFF3A96B6.toInt()
 
         private const val CALL_BUTTON_WIDTH = 34
         private const val CALL_BUTTON_HEIGHT = 11
