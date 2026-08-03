@@ -1,7 +1,12 @@
 package com.nbp.cobblemon_smartphone.compat
 
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.actions.OpenRefinedStorageAction
+import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
 import com.nbp.cobblemon_smartphone.compat.accessories.AccessoriesCompat
+import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessHolder
+import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessImpl
+import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageLink
 import com.nbp.cobblemon_smartphone.compat.trinkets.TrinketsCompat
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
 import net.fabricmc.loader.api.FabricLoader
@@ -37,6 +42,16 @@ object SmartphoneCompatManager {
         // Accessories is fully data-driven (slot + item tag), so no code registration is needed.
         if (accessoriesLoaded) {
             CobblemonSmartphone.LOGGER.info("Accessories compatibility initialized successfully")
+        }
+
+        if (FabricLoader.getInstance().isModLoaded(OpenRefinedStorageAction.MOD_ID)) {
+            try {
+                SmartphoneStorageLinkRegistry.register(RefinedStorageLink)
+                RefinedStorageAccessHolder.instance = RefinedStorageAccessImpl
+                CobblemonSmartphone.LOGGER.info("Refined Storage compatibility initialized successfully")
+            } catch (e: Exception) {
+                CobblemonSmartphone.LOGGER.error("Failed to initialize Refined Storage compatibility", e)
+            }
         }
     }
 

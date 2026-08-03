@@ -10,6 +10,13 @@
   "message.nbp.toms_storage.invalid_block": "O bloco vinculado não é mais um Storage Terminal válido",
   "message.nbp.toms_storage.not_loaded": "O chunk do terminal vinculado não está carregado no momento",
   "message.nbp.toms_storage.cooldown": "Você precisa esperar %d segundos antes de usar o Tom's Storage novamente",
+  "message.nbp.refinedstorage.disabled": "A função do Refined Storage está desativada neste servidor",
+  "message.nbp.refinedstorage.unavailable": "O Refined Storage não está instalado neste servidor",
+  "message.nbp.refinedstorage.no_refinedstorage_upgrade": "Seu smartphone precisa do upgrade do Refined Storage via Mesa de Ferraria",
+  "message.nbp.refinedstorage.not_linked": "Seu smartphone ainda não está vinculado a uma rede — agache e clique com o botão direito em um bloco de rede do Refined Storage para vincular",
+  "message.nbp.refinedstorage.bound": "Smartphone vinculado a esta rede",
+  "message.nbp.refinedstorage.not_reachable": "A rede vinculada está fora de alcance — você precisa estar perto de um Wireless Transmitter",
+  "message.nbp.refinedstorage.cooldown": "Você precisa esperar %d segundos antes de usar o Refined Storage novamente",
   "message.nbp.social.disabled": "O recurso social está desabilitado neste servidor",
   "message.nbp.social.post_banned": "Você está banido de postar",
   "message.nbp.social.cooldown": "Você precisa esperar %d segundos para postar de novo",
@@ -44,6 +51,7 @@
 
   "upgrade.cobblemon_smartphone.upgrade_crafting": "Upgrade: Crafting Table",
   "upgrade.cobblemon_smartphone.upgrade_toms_storage": "Upgrade: Tom's Storage",
+  "upgrade.cobblemon_smartphone.upgrade_refinedstorage": "Upgrade: Refined Storage",
 
   "key.cobblemon_smartphone.quick_action_1": "Atalho Rápido 1",
   "key.cobblemon_smartphone.quick_action_2": "Atalho Rápido 2",
@@ -156,6 +164,7 @@
 
   "cobblemon_smartphone.action.rct_trainer_card": "Abrir Trainer Card",
   "cobblemon_smartphone.action.toms_storage_terminal": "Abrir Storage Terminal",
+  "cobblemon_smartphone.action.refinedstorage_grid": "Abrir Grid do Refined Storage",
 
   "cobblemon_smartphone.social.title": "Social",
   "cobblemon_smartphone.social.compose_title": "Novo Post",

@@ -8,6 +8,7 @@ import com.nbp.cobblemon_smartphone.actions.OpenCobblenavFishingnavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobbledollarsAction
 import com.nbp.cobblemon_smartphone.actions.OpenPcAction
 import com.nbp.cobblemon_smartphone.actions.OpenRctTrainerCardAction
+import com.nbp.cobblemon_smartphone.actions.OpenRefinedStorageAction
 import com.nbp.cobblemon_smartphone.actions.OpenTomsStorageAction
 import com.nbp.cobblemon_smartphone.actions.OpenWaystonesAction
 import com.nbp.cobblemon_smartphone.actions.PokeInfoAction
@@ -54,6 +55,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(OpenCobbledollarsAction)
         SmartphoneActionRegistry.register(OpenWaystonesAction)
         SmartphoneActionRegistry.register(OpenTomsStorageAction)
+        SmartphoneActionRegistry.register(OpenRefinedStorageAction)
         SmartphoneActionRegistry.register(OpenRctTrainerCardAction)
         SmartphoneActionRegistry.register(PokedexAction)
         SmartphoneActionRegistry.register(PokeInfoAction)
@@ -93,6 +95,13 @@ object CobblemonSmartphone {
                 id = TomsStorageLink.UPGRADE_NBT_KEY,
                 nbtKey = TomsStorageLink.UPGRADE_NBT_KEY,
                 requiredModId = TomsStorageLink.MOD_ID
+            )
+        )
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = OpenRefinedStorageAction.UPGRADE_NBT_KEY,
+                nbtKey = OpenRefinedStorageAction.UPGRADE_NBT_KEY,
+                requiredModId = OpenRefinedStorageAction.MOD_ID
             )
         )
     }

@@ -1,9 +1,14 @@
 package com.nbp.neoforge.compat
 
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.actions.OpenRefinedStorageAction
+import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
+import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessHolder
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
 import com.nbp.neoforge.compat.accessories.AccessoriesCompat
 import com.nbp.neoforge.compat.curios.CuriosCompat
+import com.nbp.neoforge.compat.refinedstorage.RefinedStorageAccessImpl
+import com.nbp.neoforge.compat.refinedstorage.RefinedStorageLink
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.neoforged.fml.ModList
@@ -37,6 +42,16 @@ object SmartphoneCompatManager {
         // Accessories is fully data-driven (slot + item tag), so no code registration is needed.
         if (accessoriesLoaded) {
             CobblemonSmartphone.LOGGER.info("Accessories compatibility initialized successfully")
+        }
+
+        if (ModList.get().isLoaded(OpenRefinedStorageAction.MOD_ID)) {
+            try {
+                SmartphoneStorageLinkRegistry.register(RefinedStorageLink)
+                RefinedStorageAccessHolder.instance = RefinedStorageAccessImpl
+                CobblemonSmartphone.LOGGER.info("Refined Storage compatibility initialized successfully")
+            } catch (e: Exception) {
+                CobblemonSmartphone.LOGGER.error("Failed to initialize Refined Storage compatibility", e)
+            }
         }
     }
 

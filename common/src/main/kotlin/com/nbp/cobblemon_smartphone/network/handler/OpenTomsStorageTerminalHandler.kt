@@ -97,7 +97,7 @@ object OpenTomsStorageTerminalHandler : ServerNetworkPacketHandler<OpenTomsStora
         val hitResult = BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, true)
         val previousMenu = player.containerMenu
 
-        TomsStorageRemoteSession.begin(player)
+        TomsStorageRemoteSession.begin(player, dimension)
         state.useWithoutItem(targetLevel, player, hitResult)
 
         // Opening failed (menu unchanged) - nothing left to keep the session open for.

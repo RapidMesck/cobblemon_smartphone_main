@@ -27,6 +27,7 @@ import com.nbp.cobblemon_smartphone.network.handler.OpenPCHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenPokedexHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenRctTrainerCardHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenRctTrainerCardScreenHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenRefinedStorageGridHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenTomsStorageTerminalHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesDetailHandler
@@ -80,6 +81,7 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenPCPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokedexPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenRctTrainerCardPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenRctTrainerCardScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenRefinedStorageGridPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenTomsStorageTerminalPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesDetailPacket
@@ -214,6 +216,13 @@ object CobblemonSmartphoneNetwork {
                 OpenTomsStorageTerminalPacket.ID,
                 OpenTomsStorageTerminalPacket::decode,
                 OpenTomsStorageTerminalHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                OpenRefinedStorageGridPacket.ID,
+                OpenRefinedStorageGridPacket::decode,
+                OpenRefinedStorageGridHandler
             )
         )
         list.add(

@@ -45,6 +45,10 @@ repositories {
         name = 'Su5eD'
         url = 'https://maven.su5ed.dev/releases'
     }
+    maven {
+        name = 'Shedaniel'
+        url = 'https://maven.shedaniel.me/'
+    }
 }
 
 dependencies {
@@ -67,6 +71,16 @@ dependencies {
     // dev-instance testing; nothing from the mod's own classes is referenced or bundled.
     compileOnly "maven.modrinth:toms-storage:${rootProject.toms_storage_version}"
     runtimeOnly "maven.modrinth:toms-storage:${rootProject.toms_storage_version}"
+    // Cloth Config - Toms Storage's own config system (com.tom.storagemod.Config implements
+    // ConfigData) is jar-in-jar bundled inside its mod jar for runtime, but that doesn't make
+    // the classes resolvable to our compiler; needed only so MixinStorageTerminalBlockEntity's
+    // beacon-tier reads compile. Version matches what Toms Storage 1.21.1/NeoForge itself builds against.
+    compileOnly "me.shedaniel.cloth:cloth-config-neoforge:15.0.140"
+
+    // Refined Storage 2 (optional) - the smartphone integration calls its real API classes
+    // directly (see compat/refinedstorage), so this is a genuine compile-time requirement.
+    compileOnly "maven.modrinth:refined-storage:${rootProject.refinedstorage_neoforge_version}"
+    runtimeOnly "maven.modrinth:refined-storage:${rootProject.refinedstorage_neoforge_version}"
 
     // Curios API (optional) - compile against API only, full jar at runtime
     compileOnly "top.theillusivec4.curios:curios-neoforge:${rootProject.curios_version}:api"

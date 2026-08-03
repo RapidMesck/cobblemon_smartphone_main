@@ -41,6 +41,10 @@ repositories {
         name = "Su5eD"
         url = "https://maven.su5ed.dev/releases"
     }
+    maven {
+        name = "Shedaniel"
+        url = "https://maven.shedaniel.me/"
+    }
 }
 
 dependencies {
@@ -81,6 +85,21 @@ dependencies {
         exclude group: "net.fabricmc.fabric-api"
     }
     modLocalRuntime("maven.modrinth:toms-storage:${rootProject.toms_storage_version}-fabric") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+    // Cloth Config - Toms Storage's own config system (com.tom.storagemod.Config implements
+    // ConfigData) is jar-in-jar bundled inside its mod jar for runtime, but that doesn't make
+    // the classes resolvable to our compiler; needed only so MixinStorageTerminalBlockEntity's
+    // beacon-tier reads compile. Version matches what Toms Storage 1.21.1/Fabric itself builds against.
+    modCompileOnly "me.shedaniel.cloth:cloth-config-fabric:15.0.127"
+
+    // Refined Storage 2 - Optional dependency. Unlike Toms Storage, the smartphone integration
+    // calls its real API classes directly (see compat/refinedstorage), so this is a genuine
+    // compile-time requirement, not just for IDE completion.
+    modCompileOnly("maven.modrinth:refined-storage:${rootProject.refinedstorage_fabric_version}") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
+    modLocalRuntime("maven.modrinth:refined-storage:${rootProject.refinedstorage_fabric_version}") {
         exclude group: "net.fabricmc.fabric-api"
     }
 
