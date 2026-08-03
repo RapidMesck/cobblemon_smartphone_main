@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.client
 
 import com.nbp.cobblemon_smartphone.CobblemonSmartphoneFabricNetworkManager
 import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
+import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
 import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.client.social.CallClientTicker
@@ -55,14 +56,19 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             FabricSmartphoneKeybindHandler.onClientTick(client)
             CallClientTicker.tick()
             SocialPhotoClient.tick()
+            GpsClientState.tick()
         })
 
         HudRenderCallback.EVENT.register(HudRenderCallback { guiGraphics, _ ->
             CallOverlay.render(guiGraphics)
+            GpsCompassOverlay.render(guiGraphics)
             SocialPhotoClient.renderCameraOverlay(guiGraphics)
         })
 
-        ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> SocialClientSession.clear() }
+        ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
+            SocialClientSession.clear()
+            GpsClientState.reset()
+        }
 
         CobblemonSmartphoneFabricNetworkManager.registerClientHandlers()
     }

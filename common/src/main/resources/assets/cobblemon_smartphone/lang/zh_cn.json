@@ -65,6 +65,8 @@
   "message.nbp.quick_action.unassigned": "此快捷操作栏位尚未绑定应用",
   "message.nbp.quick_action.unavailable": "此快捷操作绑定的应用当前不可用",
 
+  "item.cobblemon_smartphone.gps_arrow": "GPS 指针",
+
   "item.cobblemon_smartphone.white_smartphone": "白色智能手机",
   "item.cobblemon_smartphone.orange_smartphone": "橙色智能手机",
   "item.cobblemon_smartphone.magenta_smartphone": "品红色智能手机",
@@ -105,6 +107,7 @@
   "upgrade.cobblemon_smartphone.upgrade_toms_storage": "升级：Tom's Storage",
   "upgrade.cobblemon_smartphone.upgrade_refinedstorage": "升级：Refined Storage",
   "upgrade.cobblemon_smartphone.upgrade_ae2": "升级：Applied Energistics 2",
+  "upgrade.cobblemon_smartphone.upgrade_gps": "升级：GPS",
   "item.cobblemon_smartphone.smartphone.desc": "集宝可梦图鉴、宝可梦盒与治疗功能于一体的多用途智能设备。",
 
   "cobblemon_smartphone.pokeinfo.search": "搜索宝可梦……",
@@ -163,6 +166,20 @@
   "cobblemon_smartphone.screen.settings": "智能手机设置",
   "cobblemon_smartphone.screen.pokeinfo": "宝可梦资料",
   "cobblemon_smartphone.screen.pokeinfo_detail": "宝可梦详情",
+  "cobblemon_smartphone.screen.gps": "GPS",
+
+  "cobblemon_smartphone.gps.search": "搜索生物群系……",
+  "cobblemon_smartphone.gps.back": "返回",
+  "cobblemon_smartphone.gps.stop_tracking": "停止",
+  "cobblemon_smartphone.gps.loading_biomes": "正在加载生物群系……",
+  "cobblemon_smartphone.gps.error.rate_limited": "请求过于频繁，请稍候再试",
+  "cobblemon_smartphone.gps.error.server": "无法加载生物群系列表",
+  "cobblemon_smartphone.gps.error.timeout": "请求超时",
+  "cobblemon_smartphone.gps.other_dimension": "仅可在当前维度使用",
+  "cobblemon_smartphone.gps.select": "点击以追踪",
+  "cobblemon_smartphone.gps.any_dimension": "所有维度",
+  "cobblemon_smartphone.gps.searching": "正在搜索……",
+  "cobblemon_smartphone.gps.not_found": "在搜索范围内未找到",
 
   "cobblemon_smartphone.action.crafting": "打开工作台",
   "cobblemon_smartphone.action.heal": "治疗宝可梦队伍",
@@ -178,6 +195,7 @@
   "cobblemon_smartphone.action.rct_trainer_card": "打开训练师卡片",
   "cobblemon_smartphone.action.pokedex": "打开宝可梦图鉴",
   "cobblemon_smartphone.action.pokeinfo": "查看宝可梦资料",
+  "cobblemon_smartphone.action.gps": "追踪生物群系",
 
   "cobblemon_smartphone.tooltip.settings": "打开设置",
   "cobblemon_smartphone.tooltip.previous_page": "上一页",

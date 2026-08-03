@@ -14,6 +14,7 @@ class SmartphoneConfig {
     val cooldowns = Cooldowns()
     val features = Features()
     val pokeInfo = PokeInfo()
+    val gps = Gps()
     val social = Social()
 
     class Cooldowns {
@@ -45,6 +46,10 @@ class SmartphoneConfig {
         val callRingTimeoutSeconds: Int = 30
     }
 
+    class Gps {
+        val maxSearchRadius: Int = 10000
+    }
+
     class Features {
         val enableHeal: Boolean = true
         val enablePC: Boolean = true
@@ -59,6 +64,7 @@ class SmartphoneConfig {
         val enableRctTrainerCard: Boolean = true
         val enablePokedex: Boolean = true
         val enablePokeInfo: Boolean = true
+        val enableGps: Boolean = true
         val enableScanner: Boolean = true
         val enableCrafting: Boolean = true
         val enableQuickActions: Boolean = true

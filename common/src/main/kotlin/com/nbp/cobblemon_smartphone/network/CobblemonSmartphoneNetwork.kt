@@ -31,6 +31,10 @@ import com.nbp.cobblemon_smartphone.network.handler.OpenAE2TerminalHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenRefinedStorageGridHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenTomsStorageTerminalHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestBiomeListHandler
+import com.nbp.cobblemon_smartphone.network.handler.BiomeListResponseHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestGpsSearchHandler
+import com.nbp.cobblemon_smartphone.network.handler.GpsSearchResultHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesDetailHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesListHandler
 import com.nbp.cobblemon_smartphone.network.handler.SpeciesListResponseHandler
@@ -86,6 +90,10 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenAE2TerminalPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenRefinedStorageGridPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenTomsStorageTerminalPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestBiomeListPacket
+import com.nbp.cobblemon_smartphone.network.packet.BiomeListResponsePacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestGpsSearchPacket
+import com.nbp.cobblemon_smartphone.network.packet.GpsSearchResultPacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesDetailPacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesListPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
@@ -140,6 +148,20 @@ object CobblemonSmartphoneNetwork {
             )
         )
         list.add(PacketRegisterInfo(SpeciesListResponsePacket.ID, SpeciesListResponsePacket::decode, SpeciesListResponseHandler))
+        list.add(
+            PacketRegisterInfo(
+                BiomeListResponsePacket.ID,
+                BiomeListResponsePacket::decode,
+                BiomeListResponseHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                GpsSearchResultPacket.ID,
+                GpsSearchResultPacket::decode,
+                GpsSearchResultHandler
+            )
+        )
         list.add(
             PacketRegisterInfo(
                 SyncQuickActionsPacket.ID,
@@ -272,6 +294,20 @@ object CobblemonSmartphoneNetwork {
             )
         )
         list.add(PacketRegisterInfo(RequestSpeciesListPacket.ID, RequestSpeciesListPacket::decode, RequestSpeciesListHandler))
+        list.add(
+            PacketRegisterInfo(
+                RequestBiomeListPacket.ID,
+                RequestBiomeListPacket::decode,
+                RequestBiomeListHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                RequestGpsSearchPacket.ID,
+                RequestGpsSearchPacket::decode,
+                RequestGpsSearchHandler
+            )
+        )
         list.add(
             PacketRegisterInfo(
                 SaveQuickActionsPacket.ID,

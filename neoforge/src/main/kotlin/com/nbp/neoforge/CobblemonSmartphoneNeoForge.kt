@@ -15,6 +15,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
+import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneGpsItems
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
@@ -118,6 +119,11 @@ class CobblemonSmartphoneNeoForge : Implementation {
             addListener<RegisterEvent> { event ->
                 event.register(CobblemonSmartphoneItems.resourceKey) { helper ->
                     CobblemonSmartphoneItems.register { resourceLocation, item -> helper.register(resourceLocation, item) }
+                }
+            }
+            addListener<RegisterEvent> { event ->
+                event.register(CobblemonSmartphoneGpsItems.resourceKey) { helper ->
+                    CobblemonSmartphoneGpsItems.register { resourceLocation, item -> helper.register(resourceLocation, item) }
                 }
             }
             addListener<RegisterEvent> { event ->

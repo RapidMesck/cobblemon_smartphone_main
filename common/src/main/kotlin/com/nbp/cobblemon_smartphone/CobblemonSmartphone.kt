@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone
 
 import com.nbp.cobblemon_smartphone.actions.CraftingAction
 import com.nbp.cobblemon_smartphone.actions.EnderAction
+import com.nbp.cobblemon_smartphone.actions.GpsAction
 import com.nbp.cobblemon_smartphone.actions.HealAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavFishingnavAction
@@ -61,6 +62,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(OpenRctTrainerCardAction)
         SmartphoneActionRegistry.register(PokedexAction)
         SmartphoneActionRegistry.register(PokeInfoAction)
+        SmartphoneActionRegistry.register(GpsAction)
         SmartphoneActionRegistry.register(SocialAction)
     }
 
@@ -83,6 +85,12 @@ object CobblemonSmartphone {
                 id = "upgrade_fishingnav",
                 nbtKey = "upgrade_fishingnav",
                 requiredModId = "cobblenav"
+            )
+        )
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = GpsAction.UPGRADE_NBT_KEY,
+                nbtKey = GpsAction.UPGRADE_NBT_KEY
             )
         )
         SmartphoneUpgradeRegistry.register(

@@ -1,6 +1,8 @@
 package com.nbp.neoforge
 
+import com.nbp.cobblemon_smartphone.client.GpsClientState
 import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
+import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
 import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.client.social.CallClientTicker
@@ -41,16 +43,19 @@ object CobblemonSmartphoneNeoForgeTickHandler {
         NeoForgeSmartphoneKeybindHandler.onClientTick(net.minecraft.client.Minecraft.getInstance())
         CallClientTicker.tick()
         SocialPhotoClient.tick()
+        GpsClientState.tick()
     }
 
     @SubscribeEvent
     fun onRenderGui(event: RenderGuiEvent.Post) {
         CallOverlay.render(event.guiGraphics)
+        GpsCompassOverlay.render(event.guiGraphics)
         SocialPhotoClient.renderCameraOverlay(event.guiGraphics)
     }
 
     @SubscribeEvent
     fun onLogout(event: ClientPlayerNetworkEvent.LoggingOut) {
         SocialClientSession.clear()
+        GpsClientState.reset()
     }
 }

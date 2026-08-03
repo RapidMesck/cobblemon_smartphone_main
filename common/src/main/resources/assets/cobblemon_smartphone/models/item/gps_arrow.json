@@ -1,0 +1,59 @@
+{
+  "credit": "Cobblemon Smartphone",
+  "gui_light": "front",
+  "texture_size": [16, 16],
+  "textures": {
+    "0": "cobblemon_smartphone:item/gps_arrow",
+    "particle": "cobblemon_smartphone:item/gps_arrow"
+  },
+  "elements": [
+    {
+      "name": "head_left",
+      "from": [7, 7.5, 2],
+      "to": [9, 8.5, 9],
+      "rotation": {"angle": -45, "axis": "y", "origin": [8, 8, 2]},
+      "faces": {
+        "north": {"uv": [0, 0, 8, 8], "texture": "#0"},
+        "south": {"uv": [0, 0, 8, 8], "texture": "#0"},
+        "east": {"uv": [0, 0, 8, 8], "texture": "#0"},
+        "west": {"uv": [0, 0, 8, 8], "texture": "#0"},
+        "up": {"uv": [0, 0, 8, 8], "texture": "#0"},
+        "down": {"uv": [0, 0, 8, 8], "texture": "#0"}
+      }
+    },
+    {
+      "name": "head_right",
+      "from": [7, 7.5, 2],
+      "to": [9, 8.5, 9],
+      "rotation": {"angle": 45, "axis": "y", "origin": [8, 8, 2]},
+      "faces": {
+        "north": {"uv": [0, 0, 8, 8], "texture": "#0"},
+        "south": {"uv": [0, 0, 8, 8], "texture": "#0"},
+        "east": {"uv": [0, 0, 8, 8], "texture": "#0"},
+        "west": {"uv": [0, 0, 8, 8], "texture": "#0"},
+        "up": {"uv": [0, 0, 8, 8], "texture": "#0"},
+        "down": {"uv": [0, 0, 8, 8], "texture": "#0"}
+      }
+    },
+    {
+      "name": "tail",
+      "from": [7.5, 7.5, 8],
+      "to": [8.5, 8.5, 15],
+      "faces": {
+        "north": {"uv": [0, 8, 8, 16], "texture": "#0"},
+        "south": {"uv": [0, 8, 8, 16], "texture": "#0"},
+        "east": {"uv": [0, 8, 8, 16], "texture": "#0"},
+        "west": {"uv": [0, 8, 8, 16], "texture": "#0"},
+        "up": {"uv": [0, 8, 8, 16], "texture": "#0"},
+        "down": {"uv": [0, 8, 8, 16], "texture": "#0"}
+      }
+    }
+  ],
+  "display": {
+    "ground": {
+      "rotation": [0, 0, 0],
+      "translation": [0, 0, 0],
+      "scale": [1, 1, 1]
+    }
+  }
+}

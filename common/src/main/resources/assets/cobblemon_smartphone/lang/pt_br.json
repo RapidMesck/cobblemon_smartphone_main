@@ -55,11 +55,13 @@
   "message.nbp.quick_action.unavailable": "O app deste atalho rápido está indisponível no momento",
 
   "item.cobblemon_smartphone.smartphone.desc": "Um dispositivo inteligente com Pokédex, PC e cura de Pokémon.",
+  "item.cobblemon_smartphone.gps_arrow": "Seta do GPS",
 
   "upgrade.cobblemon_smartphone.upgrade_crafting": "Upgrade: Crafting Table",
   "upgrade.cobblemon_smartphone.upgrade_toms_storage": "Upgrade: Tom's Storage",
   "upgrade.cobblemon_smartphone.upgrade_refinedstorage": "Upgrade: Refined Storage",
   "upgrade.cobblemon_smartphone.upgrade_ae2": "Upgrade: Applied Energistics 2",
+  "upgrade.cobblemon_smartphone.upgrade_gps": "Upgrade: GPS",
 
   "key.cobblemon_smartphone.quick_action_1": "Atalho Rápido 1",
   "key.cobblemon_smartphone.quick_action_2": "Atalho Rápido 2",
@@ -170,10 +172,26 @@
   "cobblemon_smartphone.tooltip.hide_app": "Ocultar aplicativo",
   "cobblemon_smartphone.tooltip.show_app": "Mostrar aplicativo",
 
+  "cobblemon_smartphone.screen.gps": "GPS",
+
+  "cobblemon_smartphone.gps.search": "Buscar biomas...",
+  "cobblemon_smartphone.gps.back": "Voltar",
+  "cobblemon_smartphone.gps.stop_tracking": "Parar",
+  "cobblemon_smartphone.gps.loading_biomes": "Carregando biomas...",
+  "cobblemon_smartphone.gps.error.rate_limited": "Muitas requisições, aguarde um instante",
+  "cobblemon_smartphone.gps.error.server": "Não foi possível carregar a lista de biomas",
+  "cobblemon_smartphone.gps.error.timeout": "A requisição demorou demais",
+  "cobblemon_smartphone.gps.other_dimension": "Disponível apenas na dimensão atual",
+  "cobblemon_smartphone.gps.select": "Clique para rastrear",
+  "cobblemon_smartphone.gps.any_dimension": "Todas as dimensões",
+  "cobblemon_smartphone.gps.searching": "Procurando...",
+  "cobblemon_smartphone.gps.not_found": "Não encontrado dentro do raio de busca",
+
   "cobblemon_smartphone.action.rct_trainer_card": "Abrir Trainer Card",
   "cobblemon_smartphone.action.toms_storage_terminal": "Abrir Storage Terminal",
   "cobblemon_smartphone.action.refinedstorage_grid": "Abrir Grid do Refined Storage",
   "cobblemon_smartphone.action.ae2_terminal": "Abrir Terminal ME",
+  "cobblemon_smartphone.action.gps": "Rastrear Biomas",
 
   "cobblemon_smartphone.social.title": "Social",
   "cobblemon_smartphone.social.compose_title": "Novo Post",

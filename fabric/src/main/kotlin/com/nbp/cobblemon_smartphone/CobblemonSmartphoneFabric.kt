@@ -14,6 +14,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
+import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneGpsItems
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
@@ -99,6 +100,7 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
 
     override fun registerItems() {
         CobblemonSmartphoneItems.register { resourceLocation, item -> Registry.register(CobblemonSmartphoneItems.registry, resourceLocation, item) }
+        CobblemonSmartphoneGpsItems.register { resourceLocation, item -> Registry.register(CobblemonSmartphoneGpsItems.registry, resourceLocation, item) }
         Registry.register(
             BuiltInRegistries.CREATIVE_MODE_TAB,
             ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "cobblemon_smartphone"),

@@ -85,6 +85,8 @@
   "message.nbp.quick_action.unassigned": "This quick action slot isn't assigned to an app",
   "message.nbp.quick_action.unavailable": "This quick action's app is currently unavailable",
 
+  "item.cobblemon_smartphone.gps_arrow": "GPS Arrow",
+
   "item.cobblemon_smartphone.white_smartphone": "White Smartphone",
   "item.cobblemon_smartphone.orange_smartphone": "Orange Smartphone",
   "item.cobblemon_smartphone.magenta_smartphone": "Magenta Smartphone",
@@ -131,6 +133,7 @@
   "upgrade.cobblemon_smartphone.upgrade_toms_storage": "Upgrade: Tom's Storage",
   "upgrade.cobblemon_smartphone.upgrade_refinedstorage": "Upgrade: Refined Storage",
   "upgrade.cobblemon_smartphone.upgrade_ae2": "Upgrade: Applied Energistics 2",
+  "upgrade.cobblemon_smartphone.upgrade_gps": "Upgrade: GPS",
 
   "item.cobblemon_smartphone.smartphone.desc": "A versatile smart device with Pokédex, PC, and healing features.",
 
@@ -191,6 +194,20 @@
   "cobblemon_smartphone.screen.settings": "Smartphone Settings",
   "cobblemon_smartphone.screen.pokeinfo": "Pokémon Information",
   "cobblemon_smartphone.screen.pokeinfo_detail": "Pokémon Details",
+  "cobblemon_smartphone.screen.gps": "GPS",
+
+  "cobblemon_smartphone.gps.search": "Search biomes…",
+  "cobblemon_smartphone.gps.back": "Back",
+  "cobblemon_smartphone.gps.stop_tracking": "Stop",
+  "cobblemon_smartphone.gps.loading_biomes": "Loading biomes…",
+  "cobblemon_smartphone.gps.error.rate_limited": "Too many requests, try again in a moment",
+  "cobblemon_smartphone.gps.error.server": "Could not load biome list",
+  "cobblemon_smartphone.gps.error.timeout": "Request timed out",
+  "cobblemon_smartphone.gps.other_dimension": "Only available in the current dimension",
+  "cobblemon_smartphone.gps.select": "Click to track",
+  "cobblemon_smartphone.gps.any_dimension": "All dimensions",
+  "cobblemon_smartphone.gps.searching": "Searching…",
+  "cobblemon_smartphone.gps.not_found": "Not found within the search radius",
 
   "cobblemon_smartphone.action.crafting": "Open Crafting Table",
   "cobblemon_smartphone.action.heal": "Heal Pokémon Party",
@@ -206,6 +223,7 @@
   "cobblemon_smartphone.action.rct_trainer_card": "Open Trainer Card",
   "cobblemon_smartphone.action.pokedex": "Open Pokédex",
   "cobblemon_smartphone.action.pokeinfo": "View Pokémon Information",
+  "cobblemon_smartphone.action.gps": "Track Biomes",
   "cobblemon_smartphone.action.social": "Open Social",
 
   "cobblemon_smartphone.tooltip.settings": "Open Settings",
