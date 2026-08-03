@@ -320,31 +320,51 @@ class StructureCompassScreen(
         val hovered = mouseX >= x1 && mouseX <= x2 && mouseY >= y1 && mouseY <= y2
         val trackable = isTrackable(structure)
 
-        // Card background
-        val bgColor = when {
-            !trackable -> 0x403A96B6.toInt()
-            hovered -> 0x4DFFFFFF.toInt()
-            else -> 0xBF3A96B6.toInt()
+        // Header strip (name + id) and content strip (organized fields below), same teal
+        // header / pale content look as the PokeInfo sections instead of a flat translucent tint.
+        val headerY = y1 + CARD_HEADER_HEIGHT
+        val headerBg = when {
+            !trackable -> CARD_HEADER_DISABLED_BG
+            hovered -> CARD_HEADER_HOVER_BG
+            else -> SECTION_TITLE_BG
         }
-        guiGraphics.fill(x1, y1, x2, y2, bgColor)
+        val contentBg = if (trackable) SECTION_CONTENT_BG else CARD_CONTENT_DISABLED_BG
+        guiGraphics.fill(x1, y1, x2, headerY, headerBg)
+        guiGraphics.fill(x1, headerY, x2, y2, contentBg)
 
-        // Divider line between cards
-        if (index > 0) {
-            guiGraphics.fill(x1 + 4, y1, x2 - 4, y1 + 1, 0x15FFFFFF.toInt())
-        }
+        val nameColor = if (trackable) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt()
+        val labelColor = if (trackable) CONTENT_DIM else CARD_TEXT_DISABLED
+        val valueColor = if (trackable) CONTENT_TEXT else CARD_TEXT_DISABLED
+        val goldColor = if (trackable) CONTENT_GOLD else CARD_TEXT_DISABLED
 
-        val nameColor = if (!trackable) 0x80808080.toInt() else if (hovered) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
-        val subColor = if (trackable) 0xA0FFFFFF.toInt() else 0x60808080.toInt()
-
-        // Line 1: prettified name + id
+        // Header: just the prettified name, nothing else
         val name = prettyName(structure)
-        guiGraphics.drawString(font, name, x1 + 8, y1 + 3, nameColor, false)
-        val idX = x1 + 8 + font.width(name) + 6
-        guiGraphics.drawString(font, structure.id, idX, y1 + 3, subColor, false)
+        guiGraphics.drawString(font, name, x1 + 6, y1 + 2, nameColor, false)
 
-        // Line 2: dimensions + source mod
+        // Content: id, dimensions and source mod as their own labelled fields
+        var ty = headerY + CARD_CONTENT_PAD_TOP
+        val idLabel = lang("id_label") + ": "
+        val id = truncateToWidth(structure.id, LIST_WIDTH - 12 - font.width(idLabel))
+        guiGraphics.drawString(font, idLabel, x1 + 6, ty, labelColor, false)
+        guiGraphics.drawString(font, id, x1 + 6 + font.width(idLabel), ty, valueColor, false)
+        ty += CARD_FIELD_LINE_HEIGHT
+
+        val dimsLabel = lang("dimensions_label") + ": "
         val dims = if (structure.dimensions.isEmpty()) lang("any_dimension") else structure.dimensions.joinToString(", ")
-        guiGraphics.drawString(font, "$dims • ${structure.sourceMod}", x1 + 8, y1 + 15, subColor, false)
+        guiGraphics.drawString(font, dimsLabel, x1 + 6, ty, labelColor, false)
+        guiGraphics.drawString(font, dims, x1 + 6 + font.width(dimsLabel), ty, valueColor, false)
+        ty += CARD_FIELD_LINE_HEIGHT
+
+        val modLabel = lang("mod_label") + ": "
+        guiGraphics.drawString(font, modLabel, x1 + 6, ty, labelColor, false)
+        guiGraphics.drawString(font, structure.sourceMod, x1 + 6 + font.width(modLabel), ty, goldColor, false)
+    }
+
+    private fun truncateToWidth(text: String, maxWidth: Int): String {
+        if (maxWidth <= 0 || font.width(text) <= maxWidth) return text
+        var result = text
+        while (result.isNotEmpty() && font.width("$result…") > maxWidth) result = result.dropLast(1)
+        return "$result…"
     }
 
     private fun playClickSound() {
@@ -354,6 +374,7 @@ class StructureCompassScreen(
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val tooltip = when {
             isInBackButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.back_to_phone")
+            isInStopButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.stop_structure_tracking")
             else -> {
                 val startIndex = (scrollY / (CARD_HEIGHT + CARD_GAP)).coerceAtLeast(0)
                 val endIndex = ((scrollY + LIST_END_Y - LIST_START_Y) / (CARD_HEIGHT + CARD_GAP) + 1)
@@ -397,10 +418,20 @@ class StructureCompassScreen(
 
         private const val BACK_X = 20
         private const val BACK_Y = 14
-        private const val STOP_RIGHT_MARGIN = 20
+        private const val STOP_RIGHT_MARGIN = 43
 
         private const val SECTION_TITLE_BG = 0xFF3A96B6.toInt()
         private const val SECTION_CONTENT_BG = 0xFFEFFDFF.toInt()
+
+        // Same palette PokeInfoDetailScreen uses for its section boxes, reused here so the
+        // structure cards read as the same kind of "field" instead of a flat translucent tint.
+        private const val CONTENT_TEXT = 0xFF1A1A2E.toInt()
+        private const val CONTENT_DIM = 0xFF555555.toInt()
+        private const val CONTENT_GOLD = 0xFFB8860B.toInt()
+        private const val CARD_HEADER_HOVER_BG = 0xFF4FB4D6.toInt()
+        private const val CARD_HEADER_DISABLED_BG = 0xFF33474F.toInt()
+        private const val CARD_CONTENT_DISABLED_BG = 0xFFB9C4C6.toInt()
+        private const val CARD_TEXT_DISABLED = 0xFF7A8688.toInt()
 
         private const val SEARCH_X = 22
         private const val SEARCH_Y = 28
@@ -414,8 +445,11 @@ class StructureCompassScreen(
         private const val LIST_START_Y = 48
         private const val LIST_END_Y = 195
 
-        private const val CARD_HEIGHT = 28
-        private const val CARD_GAP = 2
+        private const val CARD_HEADER_HEIGHT = 11
+        private const val CARD_CONTENT_PAD_TOP = 3
+        private const val CARD_FIELD_LINE_HEIGHT = 9
+        private const val CARD_HEIGHT = CARD_HEADER_HEIGHT + CARD_CONTENT_PAD_TOP + 3 * CARD_FIELD_LINE_HEIGHT
+        private const val CARD_GAP = 3
         private const val SCROLL_SPEED = 15
 
         private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(

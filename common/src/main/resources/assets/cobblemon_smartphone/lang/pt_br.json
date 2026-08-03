@@ -170,6 +170,8 @@
   "cobblemon_smartphone.quick_actions.hint": "Botão direito num app p/ vincular atalho",
   "cobblemon_smartphone.quick_actions.none": "Nenhum",
   "cobblemon_smartphone.tooltip.back_to_phone": "Voltar para o Smartphone",
+  "cobblemon_smartphone.tooltip.stop_gps_tracking": "Parar Rastreamento",
+  "cobblemon_smartphone.tooltip.stop_structure_tracking": "Parar Rastreamento",
   "cobblemon_smartphone.tooltip.hide_app": "Ocultar aplicativo",
   "cobblemon_smartphone.tooltip.show_app": "Mostrar aplicativo",
 
@@ -177,7 +179,7 @@
   "cobblemon_smartphone.screen.structure_compass": "Bússola de Estruturas",
 
   "cobblemon_smartphone.gps.search": "Buscar biomas...",
-  "cobblemon_smartphone.gps.back": "Voltar",
+  "cobblemon_smartphone.gps.back": "« Voltar",
   "cobblemon_smartphone.gps.stop_tracking": "Parar",
   "cobblemon_smartphone.gps.loading_biomes": "Carregando biomas...",
   "cobblemon_smartphone.gps.error.rate_limited": "Muitas requisições, aguarde um instante",
@@ -186,11 +188,14 @@
   "cobblemon_smartphone.gps.other_dimension": "Disponível apenas na dimensão atual",
   "cobblemon_smartphone.gps.select": "Clique para rastrear",
   "cobblemon_smartphone.gps.any_dimension": "Todas as dimensões",
+  "cobblemon_smartphone.gps.id_label": "ID",
+  "cobblemon_smartphone.gps.dimensions_label": "Dimensões",
+  "cobblemon_smartphone.gps.mod_label": "Mod",
   "cobblemon_smartphone.gps.searching": "Procurando...",
   "cobblemon_smartphone.gps.not_found": "Não encontrado dentro do raio de busca",
 
   "cobblemon_smartphone.structure_compass.search": "Buscar estruturas...",
-  "cobblemon_smartphone.structure_compass.back": "Voltar",
+  "cobblemon_smartphone.structure_compass.back": "« Voltar",
   "cobblemon_smartphone.structure_compass.stop_tracking": "Parar",
   "cobblemon_smartphone.structure_compass.loading_structures": "Carregando estruturas...",
   "cobblemon_smartphone.structure_compass.error.rate_limited": "Muitas requisições, aguarde um instante",
@@ -199,6 +204,9 @@
   "cobblemon_smartphone.structure_compass.other_dimension": "Disponível apenas na dimensão atual",
   "cobblemon_smartphone.structure_compass.select": "Clique para rastrear",
   "cobblemon_smartphone.structure_compass.any_dimension": "Todas as dimensões",
+  "cobblemon_smartphone.structure_compass.id_label": "ID",
+  "cobblemon_smartphone.structure_compass.dimensions_label": "Dimensões",
+  "cobblemon_smartphone.structure_compass.mod_label": "Mod",
   "cobblemon_smartphone.structure_compass.searching": "Procurando...",
   "cobblemon_smartphone.structure_compass.not_found": "Não encontrado dentro do raio de busca",
 
