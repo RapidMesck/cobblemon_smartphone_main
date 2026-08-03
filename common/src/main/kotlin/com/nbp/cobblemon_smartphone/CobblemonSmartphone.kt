@@ -6,6 +6,7 @@ import com.nbp.cobblemon_smartphone.actions.HealAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavFishingnavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobbledollarsAction
+import com.nbp.cobblemon_smartphone.actions.OpenAE2Action
 import com.nbp.cobblemon_smartphone.actions.OpenPcAction
 import com.nbp.cobblemon_smartphone.actions.OpenRctTrainerCardAction
 import com.nbp.cobblemon_smartphone.actions.OpenRefinedStorageAction
@@ -56,6 +57,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(OpenWaystonesAction)
         SmartphoneActionRegistry.register(OpenTomsStorageAction)
         SmartphoneActionRegistry.register(OpenRefinedStorageAction)
+        SmartphoneActionRegistry.register(OpenAE2Action)
         SmartphoneActionRegistry.register(OpenRctTrainerCardAction)
         SmartphoneActionRegistry.register(PokedexAction)
         SmartphoneActionRegistry.register(PokeInfoAction)
@@ -102,6 +104,13 @@ object CobblemonSmartphone {
                 id = OpenRefinedStorageAction.UPGRADE_NBT_KEY,
                 nbtKey = OpenRefinedStorageAction.UPGRADE_NBT_KEY,
                 requiredModId = OpenRefinedStorageAction.MOD_ID
+            )
+        )
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = OpenAE2Action.UPGRADE_NBT_KEY,
+                nbtKey = OpenAE2Action.UPGRADE_NBT_KEY,
+                requiredModId = OpenAE2Action.MOD_ID
             )
         )
     }

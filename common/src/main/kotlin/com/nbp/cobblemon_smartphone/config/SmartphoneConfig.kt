@@ -23,6 +23,7 @@ class SmartphoneConfig {
         val waystoneButton: Int = 5 // 5 segundos
         val tomsStorageButton: Int = 5 // 5 segundos
         val refinedStorageButton: Int = 5 // 5 segundos
+        val ae2Button: Int = 5 // 5 segundos
         val pokedexButton: Int = 1 // 1 segundo
         val socialPost: Int = 30  // 30 segundos entre posts
         val socialMessage: Int = 1 // 1 segundo entre mensagens privadas
@@ -54,6 +55,7 @@ class SmartphoneConfig {
         val enableWaystone: Boolean = true
         val enableTomsStorage: Boolean = true
         val enableRefinedStorage: Boolean = true
+        val enableAE2: Boolean = true
         val enableRctTrainerCard: Boolean = true
         val enablePokedex: Boolean = true
         val enablePokeInfo: Boolean = true

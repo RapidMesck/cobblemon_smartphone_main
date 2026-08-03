@@ -82,6 +82,11 @@ dependencies {
     compileOnly "maven.modrinth:refined-storage:${rootProject.refinedstorage_neoforge_version}"
     runtimeOnly "maven.modrinth:refined-storage:${rootProject.refinedstorage_neoforge_version}"
 
+    // Applied Energistics 2 (optional, NeoForge only - AE2 has no Fabric build for 1.21.1).
+    // The smartphone integration calls its real appeng.* classes directly (see compat/ae2).
+    compileOnly "maven.modrinth:ae2:${rootProject.ae2_version}"
+    runtimeOnly "maven.modrinth:ae2:${rootProject.ae2_version}"
+
     // Curios API (optional) - compile against API only, full jar at runtime
     compileOnly "top.theillusivec4.curios:curios-neoforge:${rootProject.curios_version}:api"
     runtimeOnly "top.theillusivec4.curios:curios-neoforge:${rootProject.curios_version}"

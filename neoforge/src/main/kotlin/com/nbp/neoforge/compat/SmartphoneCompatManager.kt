@@ -1,11 +1,15 @@
 package com.nbp.neoforge.compat
 
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.actions.OpenAE2Action
 import com.nbp.cobblemon_smartphone.actions.OpenRefinedStorageAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
+import com.nbp.cobblemon_smartphone.compat.ae2.AE2AccessHolder
 import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessHolder
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
 import com.nbp.neoforge.compat.accessories.AccessoriesCompat
+import com.nbp.neoforge.compat.ae2.AE2AccessImpl
+import com.nbp.neoforge.compat.ae2.AE2Link
 import com.nbp.neoforge.compat.curios.CuriosCompat
 import com.nbp.neoforge.compat.refinedstorage.RefinedStorageAccessImpl
 import com.nbp.neoforge.compat.refinedstorage.RefinedStorageLink
@@ -51,6 +55,16 @@ object SmartphoneCompatManager {
                 CobblemonSmartphone.LOGGER.info("Refined Storage compatibility initialized successfully")
             } catch (e: Exception) {
                 CobblemonSmartphone.LOGGER.error("Failed to initialize Refined Storage compatibility", e)
+            }
+        }
+
+        if (ModList.get().isLoaded(OpenAE2Action.MOD_ID)) {
+            try {
+                SmartphoneStorageLinkRegistry.register(AE2Link)
+                AE2AccessHolder.instance = AE2AccessImpl
+                CobblemonSmartphone.LOGGER.info("Applied Energistics 2 compatibility initialized successfully")
+            } catch (e: Exception) {
+                CobblemonSmartphone.LOGGER.error("Failed to initialize Applied Energistics 2 compatibility", e)
             }
         }
     }
