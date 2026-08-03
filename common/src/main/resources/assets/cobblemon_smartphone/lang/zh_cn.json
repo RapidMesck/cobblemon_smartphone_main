@@ -108,6 +108,7 @@
   "upgrade.cobblemon_smartphone.upgrade_refinedstorage": "升级：Refined Storage",
   "upgrade.cobblemon_smartphone.upgrade_ae2": "升级：Applied Energistics 2",
   "upgrade.cobblemon_smartphone.upgrade_gps": "升级：GPS",
+  "upgrade.cobblemon_smartphone.upgrade_structure_compass": "升级：结构罗盘",
   "item.cobblemon_smartphone.smartphone.desc": "集宝可梦图鉴、宝可梦盒与治疗功能于一体的多用途智能设备。",
 
   "cobblemon_smartphone.pokeinfo.search": "搜索宝可梦……",
@@ -167,6 +168,7 @@
   "cobblemon_smartphone.screen.pokeinfo": "宝可梦资料",
   "cobblemon_smartphone.screen.pokeinfo_detail": "宝可梦详情",
   "cobblemon_smartphone.screen.gps": "GPS",
+  "cobblemon_smartphone.screen.structure_compass": "结构罗盘",
 
   "cobblemon_smartphone.gps.search": "搜索生物群系……",
   "cobblemon_smartphone.gps.back": "返回",
@@ -180,6 +182,19 @@
   "cobblemon_smartphone.gps.any_dimension": "所有维度",
   "cobblemon_smartphone.gps.searching": "正在搜索……",
   "cobblemon_smartphone.gps.not_found": "在搜索范围内未找到",
+
+  "cobblemon_smartphone.structure_compass.search": "搜索结构……",
+  "cobblemon_smartphone.structure_compass.back": "返回",
+  "cobblemon_smartphone.structure_compass.stop_tracking": "停止",
+  "cobblemon_smartphone.structure_compass.loading_structures": "正在加载结构……",
+  "cobblemon_smartphone.structure_compass.error.rate_limited": "请求过于频繁，请稍候再试",
+  "cobblemon_smartphone.structure_compass.error.server": "无法加载结构列表",
+  "cobblemon_smartphone.structure_compass.error.timeout": "请求超时",
+  "cobblemon_smartphone.structure_compass.other_dimension": "仅可在当前维度使用",
+  "cobblemon_smartphone.structure_compass.select": "点击以追踪",
+  "cobblemon_smartphone.structure_compass.any_dimension": "所有维度",
+  "cobblemon_smartphone.structure_compass.searching": "正在搜索……",
+  "cobblemon_smartphone.structure_compass.not_found": "在搜索范围内未找到",
 
   "cobblemon_smartphone.action.crafting": "打开工作台",
   "cobblemon_smartphone.action.heal": "治疗宝可梦队伍",
@@ -196,6 +211,7 @@
   "cobblemon_smartphone.action.pokedex": "打开宝可梦图鉴",
   "cobblemon_smartphone.action.pokeinfo": "查看宝可梦资料",
   "cobblemon_smartphone.action.gps": "追踪生物群系",
+  "cobblemon_smartphone.action.structure_compass": "追踪结构",
 
   "cobblemon_smartphone.tooltip.settings": "打开设置",
   "cobblemon_smartphone.tooltip.previous_page": "上一页",

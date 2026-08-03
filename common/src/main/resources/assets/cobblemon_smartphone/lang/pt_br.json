@@ -62,6 +62,7 @@
   "upgrade.cobblemon_smartphone.upgrade_refinedstorage": "Upgrade: Refined Storage",
   "upgrade.cobblemon_smartphone.upgrade_ae2": "Upgrade: Applied Energistics 2",
   "upgrade.cobblemon_smartphone.upgrade_gps": "Upgrade: GPS",
+  "upgrade.cobblemon_smartphone.upgrade_structure_compass": "Upgrade: Bússola de Estruturas",
 
   "key.cobblemon_smartphone.quick_action_1": "Atalho Rápido 1",
   "key.cobblemon_smartphone.quick_action_2": "Atalho Rápido 2",
@@ -173,6 +174,7 @@
   "cobblemon_smartphone.tooltip.show_app": "Mostrar aplicativo",
 
   "cobblemon_smartphone.screen.gps": "GPS",
+  "cobblemon_smartphone.screen.structure_compass": "Bússola de Estruturas",
 
   "cobblemon_smartphone.gps.search": "Buscar biomas...",
   "cobblemon_smartphone.gps.back": "Voltar",
@@ -187,11 +189,25 @@
   "cobblemon_smartphone.gps.searching": "Procurando...",
   "cobblemon_smartphone.gps.not_found": "Não encontrado dentro do raio de busca",
 
+  "cobblemon_smartphone.structure_compass.search": "Buscar estruturas...",
+  "cobblemon_smartphone.structure_compass.back": "Voltar",
+  "cobblemon_smartphone.structure_compass.stop_tracking": "Parar",
+  "cobblemon_smartphone.structure_compass.loading_structures": "Carregando estruturas...",
+  "cobblemon_smartphone.structure_compass.error.rate_limited": "Muitas requisições, aguarde um instante",
+  "cobblemon_smartphone.structure_compass.error.server": "Não foi possível carregar a lista de estruturas",
+  "cobblemon_smartphone.structure_compass.error.timeout": "A requisição demorou demais",
+  "cobblemon_smartphone.structure_compass.other_dimension": "Disponível apenas na dimensão atual",
+  "cobblemon_smartphone.structure_compass.select": "Clique para rastrear",
+  "cobblemon_smartphone.structure_compass.any_dimension": "Todas as dimensões",
+  "cobblemon_smartphone.structure_compass.searching": "Procurando...",
+  "cobblemon_smartphone.structure_compass.not_found": "Não encontrado dentro do raio de busca",
+
   "cobblemon_smartphone.action.rct_trainer_card": "Abrir Trainer Card",
   "cobblemon_smartphone.action.toms_storage_terminal": "Abrir Storage Terminal",
   "cobblemon_smartphone.action.refinedstorage_grid": "Abrir Grid do Refined Storage",
   "cobblemon_smartphone.action.ae2_terminal": "Abrir Terminal ME",
   "cobblemon_smartphone.action.gps": "Rastrear Biomas",
+  "cobblemon_smartphone.action.structure_compass": "Rastrear Estruturas",
 
   "cobblemon_smartphone.social.title": "Social",
   "cobblemon_smartphone.social.compose_title": "Novo Post",

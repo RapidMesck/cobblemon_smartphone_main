@@ -35,6 +35,10 @@ import com.nbp.cobblemon_smartphone.network.handler.RequestBiomeListHandler
 import com.nbp.cobblemon_smartphone.network.handler.BiomeListResponseHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestGpsSearchHandler
 import com.nbp.cobblemon_smartphone.network.handler.GpsSearchResultHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestStructureListHandler
+import com.nbp.cobblemon_smartphone.network.handler.StructureListResponseHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestStructureSearchHandler
+import com.nbp.cobblemon_smartphone.network.handler.StructureSearchResultHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesDetailHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSpeciesListHandler
 import com.nbp.cobblemon_smartphone.network.handler.SpeciesListResponseHandler
@@ -94,6 +98,10 @@ import com.nbp.cobblemon_smartphone.network.packet.RequestBiomeListPacket
 import com.nbp.cobblemon_smartphone.network.packet.BiomeListResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestGpsSearchPacket
 import com.nbp.cobblemon_smartphone.network.packet.GpsSearchResultPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestStructureListPacket
+import com.nbp.cobblemon_smartphone.network.packet.StructureListResponsePacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestStructureSearchPacket
+import com.nbp.cobblemon_smartphone.network.packet.StructureSearchResultPacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesDetailPacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesListPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
@@ -160,6 +168,20 @@ object CobblemonSmartphoneNetwork {
                 GpsSearchResultPacket.ID,
                 GpsSearchResultPacket::decode,
                 GpsSearchResultHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                StructureListResponsePacket.ID,
+                StructureListResponsePacket::decode,
+                StructureListResponseHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                StructureSearchResultPacket.ID,
+                StructureSearchResultPacket::decode,
+                StructureSearchResultHandler
             )
         )
         list.add(
@@ -306,6 +328,20 @@ object CobblemonSmartphoneNetwork {
                 RequestGpsSearchPacket.ID,
                 RequestGpsSearchPacket::decode,
                 RequestGpsSearchHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                RequestStructureListPacket.ID,
+                RequestStructureListPacket::decode,
+                RequestStructureListHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                RequestStructureSearchPacket.ID,
+                RequestStructureSearchPacket::decode,
+                RequestStructureSearchHandler
             )
         )
         list.add(

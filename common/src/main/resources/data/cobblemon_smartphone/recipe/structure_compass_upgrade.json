@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:smithing_transform",
+  "template": {
+    "item": "cobblemon:upgrade"
+  },
+  "base": {
+    "tag": "cobblemon_smartphone:smartphones"
+  },
+  "addition": {
+    "item": "minecraft:recovery_compass"
+  },
+  "result": {
+    "id": "cobblemon_smartphone:red_smartphone",
+    "count": 1,
+    "components": {
+      "minecraft:custom_data": {
+        "cobblemon_smartphone:upgrades": {
+          "upgrade_structure_compass": true
+        }
+      }
+    }
+  }
+}

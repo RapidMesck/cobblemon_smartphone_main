@@ -15,6 +15,7 @@ class SmartphoneConfig {
     val features = Features()
     val pokeInfo = PokeInfo()
     val gps = Gps()
+    val structureCompass = StructureCompass()
     val social = Social()
 
     class Cooldowns {
@@ -50,6 +51,14 @@ class SmartphoneConfig {
         val maxSearchRadius: Int = 10000
     }
 
+    /** Same lookup /locate structure uses. [searchRadiusChunks] matches vanilla's default search
+     *  radius; [skipKnownStructures] mirrors the "skip known structures" argument — leave it false
+     *  so a re-search after the world has been explored still finds the nearest instance. */
+    class StructureCompass {
+        val searchRadiusChunks: Int = 100
+        val skipKnownStructures: Boolean = false
+    }
+
     class Features {
         val enableHeal: Boolean = true
         val enablePC: Boolean = true
@@ -65,6 +74,7 @@ class SmartphoneConfig {
         val enablePokedex: Boolean = true
         val enablePokeInfo: Boolean = true
         val enableGps: Boolean = true
+        val enableStructureCompass: Boolean = true
         val enableScanner: Boolean = true
         val enableCrafting: Boolean = true
         val enableQuickActions: Boolean = true
