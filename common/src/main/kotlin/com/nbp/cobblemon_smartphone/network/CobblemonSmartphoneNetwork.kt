@@ -35,6 +35,7 @@ import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandle
 import com.nbp.cobblemon_smartphone.network.handler.RequestBiomeListHandler
 import com.nbp.cobblemon_smartphone.network.handler.BiomeListResponseHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestGpsSearchHandler
+import com.nbp.cobblemon_smartphone.network.handler.GpsSearchProgressHandler
 import com.nbp.cobblemon_smartphone.network.handler.GpsSearchResultHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestStructureListHandler
 import com.nbp.cobblemon_smartphone.network.handler.StructureListResponseHandler
@@ -99,6 +100,7 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenWaystonesWarpStonePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestBiomeListPacket
 import com.nbp.cobblemon_smartphone.network.packet.BiomeListResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestGpsSearchPacket
+import com.nbp.cobblemon_smartphone.network.packet.GpsSearchProgressPacket
 import com.nbp.cobblemon_smartphone.network.packet.GpsSearchResultPacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestStructureListPacket
 import com.nbp.cobblemon_smartphone.network.packet.StructureListResponsePacket
@@ -170,6 +172,13 @@ object CobblemonSmartphoneNetwork {
                 GpsSearchResultPacket.ID,
                 GpsSearchResultPacket::decode,
                 GpsSearchResultHandler
+            )
+        )
+        list.add(
+            PacketRegisterInfo(
+                GpsSearchProgressPacket.ID,
+                GpsSearchProgressPacket::decode,
+                GpsSearchProgressHandler
             )
         )
         list.add(

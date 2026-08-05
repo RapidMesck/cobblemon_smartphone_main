@@ -21,14 +21,15 @@ class GpsBiomeSearchTask(
     private val targetKey: ResourceKey<Biome>,
     private val maxRadius: Int,
     private val onFound: (BlockPos) -> Unit,
-    private val onFinished: (Boolean) -> Unit
+    private val onFinished: (Boolean) -> Unit,
+    private val onProgress: ((currentRing: Int, maxRing: Int) -> Unit)? = null
 ) : Thread("cobblemon-smartphone-gps-search") {
 
     @Volatile private var active = true
 
     init {
         isDaemon = true
-        priority = Thread.MIN_PRIORITY
+        priority = Thread.NORM_PRIORITY
     }
 
     fun cancel() {
@@ -50,6 +51,7 @@ class GpsBiomeSearchTask(
 
         for (ring in 1..maxRing) {
             if (!active) return
+            onProgress?.invoke(ring, maxRing)
 
             var x = -ring
             var z = -ring

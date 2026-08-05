@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.gps.GpsBiomeSearchTask
 import com.nbp.cobblemon_smartphone.network.PokeInfoRequestLimiter
+import com.nbp.cobblemon_smartphone.network.packet.GpsSearchProgressPacket
 import com.nbp.cobblemon_smartphone.network.packet.GpsSearchResultPacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestGpsSearchPacket
 import net.minecraft.core.BlockPos
@@ -73,6 +74,11 @@ object RequestGpsSearchHandler : ServerNetworkPacketHandler<RequestGpsSearchPack
                         completeSearch(player.uuid, task)
                         sendResult(player, requestId, GpsSearchResultPacket.Status.NOT_FOUND, level)
                     }
+                }
+            },
+            onProgress = { currentRing, maxRing ->
+                server.execute {
+                    GpsSearchProgressPacket(requestId, currentRing, maxRing).sendToPlayer(player)
                 }
             }
         )

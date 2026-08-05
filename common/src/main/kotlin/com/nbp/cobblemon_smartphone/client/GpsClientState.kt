@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.client
 
 import com.nbp.cobblemon_smartphone.network.packet.BiomeListResponsePacket
+import com.nbp.cobblemon_smartphone.network.packet.GpsSearchProgressPacket
 import com.nbp.cobblemon_smartphone.network.packet.GpsSearchResultPacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestGpsSearchPacket
 import com.nbp.cobblemon_smartphone.util.GpsDataProvider.BiomeInfo
@@ -40,6 +41,11 @@ object GpsClientState {
     @Volatile private var expectedSearchRequestId = -1L
     @Volatile private var searchRequestedAt = 0L
     @Volatile private var searchRetryAt = 0L
+
+    @Volatile var searchProgressCurrent = 0
+        private set
+    @Volatile var searchProgressMax = 0
+        private set
 
     // --- Biome list handshake (mirrors PokeInfoClientState) ---
 
@@ -105,7 +111,16 @@ object GpsClientState {
         expectedSearchRequestId = id
         searchRequestedAt = System.currentTimeMillis()
         searchRetryAt = 0L
+        searchProgressCurrent = 0
+        searchProgressMax = 0
         RequestGpsSearchPacket(id, biome.id).sendToServer()
+    }
+
+    fun acceptSearchProgress(packet: GpsSearchProgressPacket) {
+        if (packet.requestId != expectedSearchRequestId) return
+        searchProgressCurrent = packet.currentRing
+        searchProgressMax = packet.maxRing
+        searchRequestedAt = System.currentTimeMillis()
     }
 
     fun acceptSearchResult(packet: GpsSearchResultPacket) {
@@ -162,6 +177,6 @@ object GpsClientState {
         requestSearch(biome)
     }
 
-    private const val SEARCH_TIMEOUT_MS = 15_000L
+    private const val SEARCH_TIMEOUT_MS = 60_000L
     private const val RATE_LIMIT_RETRY_DELAY_MS = 750L
 }

@@ -130,7 +130,15 @@ object GpsCompassOverlay {
         val target = GpsClientState.target
         val name = target?.let(::localizedBiomeName) ?: ""
         return when (GpsClientState.searchStatus) {
-            SearchStatus.SEARCHING -> lang("searching")
+            SearchStatus.SEARCHING -> {
+                val current = GpsClientState.searchProgressCurrent
+                val max = GpsClientState.searchProgressMax
+                if (current > 0 && max > 0) {
+                    "${lang("searching")} $current/$max"
+                } else {
+                    lang("searching")
+                }
+            }
             SearchStatus.NOT_FOUND -> lang("not_found")
             SearchStatus.FOUND, SearchStatus.IDLE -> {
                 val pos = GpsClientState.targetPos
