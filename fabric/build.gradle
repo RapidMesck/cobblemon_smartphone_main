@@ -28,6 +28,9 @@ repositories {
     maven {
         name = "TerraformersMC"
         url = "https://maven.terraformersmc.com/"
+        content {
+            excludeGroup "org.ladysnake.cardinal-components-api"
+        }
     }
     maven {
         name = "Ladysnake Libs"
@@ -71,6 +74,11 @@ dependencies {
     modLocalRuntime("io.wispforest:accessories-fabric:${rootProject.accessories_version}") {
         exclude group: "net.fabricmc.fabric-api"
     }
+    // owo-lib (Accessories' own dependency) jar-in-jars Cardinal Components API, but only the
+    // base/entity modules - some loaded mod's component-initializer class implements both
+    // EntityComponentInitializer and BlockComponentInitializer, so the block module's class must
+    // also be resolvable at runtime or CCA's entity-plugin init throws NoClassDefFoundError.
+    modLocalRuntime "org.ladysnake.cardinal-components-api:cardinal-components-block:6.1.0"
 
     // Simple Voice Chat - Optional dependency. Compile against the loader-agnostic API only; nothing
     // is bundled. To exercise voice in dev, drop the SVC jar into fabric/run/mods manually — it is
@@ -91,7 +99,10 @@ dependencies {
     // ConfigData) is jar-in-jar bundled inside its mod jar for runtime, but that doesn't make
     // the classes resolvable to our compiler; needed only so MixinStorageTerminalBlockEntity's
     // beacon-tier reads compile. Version matches what Toms Storage 1.21.1/Fabric itself builds against.
-    modCompileOnly "me.shedaniel.cloth:cloth-config-fabric:15.0.127"
+    // Also needed at runtime: Refined Storage's fabric.mod.json hard-requires "cloth-config2" (see
+    // below), so it must be present as a real mod in the dev instance, not just on the compiler classpath.
+    modCompileOnly "me.shedaniel.cloth:cloth-config-fabric:${rootProject.cloth_config_version}"
+    modLocalRuntime "me.shedaniel.cloth:cloth-config-fabric:${rootProject.cloth_config_version}"
 
     // Refined Storage 2 - Optional dependency. Unlike Toms Storage, the smartphone integration
     // calls its real API classes directly (see compat/refinedstorage), so this is a genuine
@@ -102,6 +113,11 @@ dependencies {
     modLocalRuntime("maven.modrinth:refined-storage:${rootProject.refinedstorage_fabric_version}") {
         exclude group: "net.fabricmc.fabric-api"
     }
+    // Refined Storage's fabric.mod.json lists "team_reborn_energy" as a hard `depends` (not
+    // `suggests`) even though RS2 jar-in-jars its own copy at build time - the Modrinth-published
+    // jar's jar-in-jar metadata isn't reliably picked up via the modrinth-maven coordinate, so
+    // Fabric Loader reports it "missing" unless it's also resolvable as its own mod here.
+    modLocalRuntime "teamreborn:energy:${rootProject.teamreborn_energy_version}"
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')

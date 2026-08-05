@@ -7,6 +7,7 @@ import com.nbp.cobblemon_smartphone.network.packet.CallStatePacket
 import com.nbp.cobblemon_smartphone.network.packet.CallOfflinePacket
 import com.nbp.cobblemon_smartphone.network.SocialRequestLimiter
 import com.nbp.cobblemon_smartphone.util.MutedPlayersStorage
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.util.SocialMuteStorage
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -43,6 +44,10 @@ object CallManager {
         }
         if (calleeUuid == caller.uuid) return
         if (!SocialRequestLimiter.allow(caller.uuid, SocialRequestLimiter.Action.CALL_START)) return
+        if (SmartphoneHelper.getSmartphone(caller) == null) {
+            caller.err("message.nbp.social.call_no_phone")
+            return
+        }
         if (sessions.containsKey(caller.uuid)) {
             caller.err("message.nbp.social.call_in_progress")
             return
@@ -50,6 +55,10 @@ object CallManager {
         val callee = server.playerList.getPlayer(calleeUuid)
         if (callee == null) {
             CallOfflinePacket(calleeUuid).sendToPlayer(caller)
+            return
+        }
+        if (SmartphoneHelper.getSmartphone(callee) == null) {
+            caller.err("message.nbp.social.call_no_phone_target")
             return
         }
         // Do Not Disturb (global) or the callee having muted this caller specifically: block the

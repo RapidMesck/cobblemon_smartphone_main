@@ -257,8 +257,11 @@ class DmThreadScreen(
     }
 
     /** Only offered when this client actually has Simple Voice Chat and the server allows calls. */
-    private fun callAvailable(): Boolean =
-        VoiceChatBridge.isModPresent && SocialClientSession.capabilities.callsEnabled
+    private fun callAvailable(): Boolean {
+        if (!VoiceChatBridge.isModPresent || !SocialClientSession.capabilities.callsEnabled) return false
+        val player = Minecraft.getInstance().player ?: return false
+        return SmartphoneHelper.getSmartphone(player) != null
+    }
 
     // Sits just left of the always-present mute bell at the right edge.
     private fun callButtonX(): Int = bellX() - CALL_BELL_GAP - CALL_BUTTON_WIDTH

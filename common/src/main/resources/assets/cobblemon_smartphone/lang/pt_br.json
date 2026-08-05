@@ -37,6 +37,8 @@
   "message.nbp.social.call_muted": "Esse jogador não está aceitando chamadas",
   "message.nbp.social.call_in_progress": "Você já está em uma chamada",
   "message.nbp.social.call_not_connected": "Os dois jogadores precisam estar conectados ao voice chat",
+  "message.nbp.social.call_no_phone": "Você precisa de um smartphone para fazer ligações",
+  "message.nbp.social.call_no_phone_target": "Esse jogador não possui um smartphone",
   "message.nbp.social.call_connected": "Em chamada com %s",
   "message.nbp.social.call_ended": "Chamada com %s encerrada",
   "message.nbp.social.result.disabled": "O Social está desabilitado no servidor",

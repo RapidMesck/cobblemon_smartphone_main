@@ -68,6 +68,8 @@
   "message.nbp.social.call_muted": "That player isn't accepting calls",
   "message.nbp.social.call_in_progress": "You are already in a call",
   "message.nbp.social.call_not_connected": "Both players must be connected to voice chat",
+  "message.nbp.social.call_no_phone": "You need a smartphone to make calls",
+  "message.nbp.social.call_no_phone_target": "That player doesn't have a smartphone",
   "message.nbp.social.call_connected": "In call with %s",
   "message.nbp.social.call_ended": "Call with %s ended",
   "message.nbp.social.result.disabled": "Social is disabled on this server",
