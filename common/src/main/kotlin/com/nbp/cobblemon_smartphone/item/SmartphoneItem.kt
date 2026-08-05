@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.item
 
 import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
+import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.cobblemon_smartphone.client.gui.SmartphoneScreen
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
 import net.minecraft.ChatFormatting
@@ -47,6 +48,11 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
     ): InteractionResultHolder<ItemStack> {
         if (level.isClientSide()) {
             val stack = player.getItemInHand(interactionHand)
+            // While Social is using the world as a camera view, right-click is the
+            // shutter button. Do not reopen the smartphone screen from the held item.
+            if (SocialPhotoClient.isCameraActive()) {
+                return InteractionResultHolder.success(stack)
+            }
             Minecraft.getInstance().setScreen(SmartphoneScreen(model, stack))
             player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.5f, 1f)
         }

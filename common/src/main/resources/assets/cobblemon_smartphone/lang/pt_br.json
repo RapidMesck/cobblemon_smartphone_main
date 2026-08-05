@@ -61,6 +61,7 @@
   "upgrade.cobblemon_smartphone.upgrade_toms_storage": "Upgrade: Tom's Storage",
   "upgrade.cobblemon_smartphone.upgrade_refinedstorage": "Upgrade: Refined Storage",
   "upgrade.cobblemon_smartphone.upgrade_ae2": "Upgrade: Applied Energistics 2",
+  "upgrade.cobblemon_smartphone.upgrade_ae2_crafting": "Upgrade: Crafting Wireless do Applied Energistics 2",
   "upgrade.cobblemon_smartphone.upgrade_gps": "Upgrade: GPS",
   "upgrade.cobblemon_smartphone.upgrade_structure_compass": "Upgrade: Bússola de Estruturas",
 
@@ -214,6 +215,7 @@
   "cobblemon_smartphone.action.toms_storage_terminal": "Abrir Storage Terminal",
   "cobblemon_smartphone.action.refinedstorage_grid": "Abrir Grid do Refined Storage",
   "cobblemon_smartphone.action.ae2_terminal": "Abrir Terminal ME",
+  "cobblemon_smartphone.action.ae2_crafting_terminal": "Abrir Terminal ME com Crafting",
   "cobblemon_smartphone.action.gps": "Rastrear Biomas",
   "cobblemon_smartphone.action.structure_compass": "Rastrear Estruturas",
 

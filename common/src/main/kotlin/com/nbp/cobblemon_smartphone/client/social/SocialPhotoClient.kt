@@ -51,6 +51,8 @@ object SocialPhotoClient {
     private val textures = linkedMapOf<UUID, TextureEntry>()
     private val dimensions = mutableMapOf<UUID, Pair<Int, Int>>()
 
+    fun isCameraActive(): Boolean = cameraActive
+
     fun beginCapture(
         color: SmartphoneColor,
         stack: ItemStack?,

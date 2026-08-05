@@ -1,6 +1,5 @@
 package com.nbp.neoforge.mixin.tomsstorage;
 
-import net.neoforged.fml.ModList;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -29,7 +28,13 @@ public class TomsStorageMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        return ModList.get().isLoaded(MOD_ID);
+        // Mixin evaluates this plugin before NeoForge has created ModList (the
+        // dedicated-client log shows ModList.get() == null at this point). Check
+        // for the target bytecode without loading the class instead. This keeps
+        // the optional mixin disabled when Toms Storage is absent and works during
+        // the early transformation phase when it is present.
+        String resource = targetClassName.replace('.', '/') + ".class";
+        return TomsStorageMixinPlugin.class.getClassLoader().getResource(resource) != null;
     }
 
     @Override

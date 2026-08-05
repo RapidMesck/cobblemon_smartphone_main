@@ -39,7 +39,7 @@ object OpenAE2TerminalHandler : ServerNetworkPacketHandler<OpenAE2TerminalPacket
         }
 
         if (isNativeAction) {
-            val cooldown = CobblemonSmartphone.config.cooldowns.ae2Button
+            val cooldown = CobblemonSmartphone.config.cooldowns.ae2Button.coerceAtMost(3)
             val currentTime = System.currentTimeMillis()
             val lastUse = buttonCooldowns[player.uuid] ?: 0
             val elapsedSeconds = (currentTime - lastUse) / 1000

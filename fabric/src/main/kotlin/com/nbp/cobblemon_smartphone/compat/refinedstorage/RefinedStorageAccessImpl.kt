@@ -46,6 +46,10 @@ import java.util.Optional
  * reference to a real stack.
  */
 object RefinedStorageAccessImpl : RefinedStorageAccess {
+    override fun initializeClient() {
+        SyntheticSlotReferenceFactory.registerIfAbsent()
+    }
+
     // NOT done eagerly at object-init: this compat object is touched during
     // SmartphoneCompatManager's own mod-init phase, which on Fabric can run before Refined
     // Storage's *own* init has populated its RefinedStorageApiProxy delegate ("API not loaded

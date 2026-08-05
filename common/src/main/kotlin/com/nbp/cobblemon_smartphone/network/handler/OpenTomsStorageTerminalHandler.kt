@@ -42,7 +42,7 @@ object OpenTomsStorageTerminalHandler : ServerNetworkPacketHandler<OpenTomsStora
         }
 
         if (isNativeAction) {
-            val cooldown = CobblemonSmartphone.config.cooldowns.tomsStorageButton
+            val cooldown = CobblemonSmartphone.config.cooldowns.tomsStorageButton.coerceAtMost(3)
             val currentTime = System.currentTimeMillis()
             val lastUse = buttonCooldowns[player.uuid] ?: 0
             val elapsedSeconds = (currentTime - lastUse) / 1000

@@ -39,7 +39,7 @@ object OpenRefinedStorageGridHandler : ServerNetworkPacketHandler<OpenRefinedSto
         }
 
         if (isNativeAction) {
-            val cooldown = CobblemonSmartphone.config.cooldowns.refinedStorageButton
+            val cooldown = CobblemonSmartphone.config.cooldowns.refinedStorageButton.coerceAtMost(3)
             val currentTime = System.currentTimeMillis()
             val lastUse = buttonCooldowns[player.uuid] ?: 0
             val elapsedSeconds = (currentTime - lastUse) / 1000

@@ -10,6 +10,9 @@ import com.nbp.cobblemon_smartphone.client.social.CallClientTicker
 import com.nbp.cobblemon_smartphone.client.social.SocialClientSession
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.cobblemon_smartphone.compat.voicechat.VoiceChatBridge
+import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessHolder
+import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessImpl
+import net.fabricmc.loader.api.FabricLoader
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -21,6 +24,14 @@ import net.minecraft.client.Minecraft
 
 class CobblemonSmartphoneFabricClient : ClientModInitializer {
     override fun onInitializeClient() {
+        // Refined Storage serializes its slot reference in the menu-open packet.
+        // Register the smartphone's inert client-side decoder before the first grid opens.
+        if (FabricLoader.getInstance().isModLoaded("refinedstorage")) {
+            RefinedStorageAccessImpl.initializeClient()
+        } else {
+            RefinedStorageAccessHolder.instance?.initializeClient()
+        }
+
         ModelLoadingPlugin.register { context ->
             SmartphoneColor.entries.forEach { color ->
                 context.addModels(color.getHandModelPath())

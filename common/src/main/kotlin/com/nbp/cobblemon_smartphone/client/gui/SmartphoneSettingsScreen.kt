@@ -597,18 +597,12 @@ class SmartphoneSettingsScreen(
 
         repeat(dotCount) { index ->
             val active = index == activeDot
-            val texture = if (active) PAGE_DOT_ON_TEXTURE else PAGE_DOT_OFF_TEXTURE
             val yOffset = if (active) 0 else DOT_INACTIVE_Y_OFFSET
-            guiGraphics.blit(
-                texture,
+            PageDotRenderer.draw(
+                guiGraphics,
                 screenX + startX + index * (DOT_SIZE + DOT_SPACING),
                 screenY + DOT_Y + yOffset,
-                0f,
-                0f,
-                DOT_SIZE,
-                DOT_SIZE,
-                DOT_SIZE,
-                DOT_SIZE
+                active
             )
         }
     }
@@ -709,14 +703,6 @@ class SmartphoneSettingsScreen(
         private val NEXT_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone",
             "textures/gui/elements/next_button.png"
-        )
-        private val PAGE_DOT_ON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/page_dot_on.png"
-        )
-        private val PAGE_DOT_OFF_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/page_dot_off.png"
         )
         private val DRAG_HANDLE_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone",

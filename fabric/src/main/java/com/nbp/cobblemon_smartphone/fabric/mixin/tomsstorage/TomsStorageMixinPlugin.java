@@ -1,6 +1,5 @@
 package com.nbp.cobblemon_smartphone.fabric.mixin.tomsstorage;
 
-import net.fabricmc.loader.api.FabricLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -29,7 +28,10 @@ public class TomsStorageMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        return FabricLoader.getInstance().isModLoaded(MOD_ID);
+        // Do not force the optional Toms Storage classes to load while Mixin is
+        // selecting configs. Looking up the class resource is safe at this phase.
+        String resource = targetClassName.replace('.', '/') + ".class";
+        return TomsStorageMixinPlugin.class.getClassLoader().getResource(resource) != null;
     }
 
     @Override

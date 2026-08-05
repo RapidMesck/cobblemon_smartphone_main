@@ -11,6 +11,9 @@ import net.minecraft.world.item.ItemStack
  * isn't installed - see [RefinedStorageAccessHolder].
  */
 interface RefinedStorageAccess {
+    /** Registers client-side menu serialization used by the synthetic wireless grid. */
+    fun initializeClient() {}
+
     fun isBound(stack: ItemStack): Boolean
     fun isReachable(player: ServerPlayer, stack: ItemStack): Boolean
     fun openGrid(player: ServerPlayer, stack: ItemStack)

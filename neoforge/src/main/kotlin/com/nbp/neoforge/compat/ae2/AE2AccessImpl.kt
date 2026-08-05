@@ -3,6 +3,7 @@ package com.nbp.neoforge.compat.ae2
 import appeng.api.config.Actionable
 import appeng.api.ids.AEComponents
 import appeng.items.tools.powered.WirelessTerminalItem
+import appeng.items.tools.powered.WirelessCraftingTerminalItem
 import appeng.menu.MenuOpener
 import appeng.menu.locator.ItemMenuHostLocator
 import appeng.menu.locator.MenuLocators
@@ -34,6 +35,10 @@ import net.minecraft.world.phys.BlockHitResult
  * tick by AE2's own `WirelessTerminalMenuHost`, exactly as it would for a physical terminal.
  */
 object AE2AccessImpl : AE2Access {
+    override fun initializeClient() {
+        SyntheticWirelessLocatorRegistration.registerIfAbsent()
+    }
+
     private fun wirelessTerminalItem(): WirelessTerminalItem? {
         val item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("ae2", "wireless_terminal"))
         return item as? WirelessTerminalItem
@@ -60,8 +65,33 @@ object AE2AccessImpl : AE2Access {
         MenuOpener.open(item.getMenuType(), player, SyntheticWirelessLocator(chargedStack))
     }
 
+    override fun openCraftingTerminal(player: ServerPlayer, stack: ItemStack) {
+        val item = wirelessCraftingTerminalItem() ?: return
+        SyntheticWirelessLocatorRegistration.registerIfAbsent()
+
+        val chargedStack = ItemStack(item)
+        item.injectAEPower(chargedStack, item.getAEMaxPower(chargedStack), Actionable.MODULATE)
+        stack.get(AEComponents.WIRELESS_LINK_TARGET)?.let {
+            chargedStack.set(AEComponents.WIRELESS_LINK_TARGET, it)
+        }
+
+        MenuOpener.open(item.getMenuType(), player, SyntheticWirelessCraftingLocator(chargedStack))
+    }
+
+    private fun wirelessCraftingTerminalItem(): WirelessCraftingTerminalItem? {
+        val item = BuiltInRegistries.ITEM.get(
+            ResourceLocation.fromNamespaceAndPath("ae2", "wireless_crafting_terminal")
+        )
+        return item as? WirelessCraftingTerminalItem
+    }
+
     /** Resolves to an in-memory-only stack, never a real inventory slot - see class doc. */
     class SyntheticWirelessLocator(private val stack: ItemStack) : ItemMenuHostLocator {
+        override fun locateItem(player: Player): ItemStack = stack
+        override fun hitResult(): BlockHitResult? = null
+    }
+
+    class SyntheticWirelessCraftingLocator(private val stack: ItemStack) : ItemMenuHostLocator {
         override fun locateItem(player: Player): ItemStack = stack
         override fun hitResult(): BlockHitResult? = null
     }
@@ -86,6 +116,14 @@ object AE2AccessImpl : AE2Access {
                     // charged or linked, only to be the right item type.
                     val item = AE2AccessImpl.wirelessTerminalItem()
                     SyntheticWirelessLocator(if (item != null) ItemStack(item) else ItemStack.EMPTY)
+                }
+            )
+            MenuLocators.register(
+                SyntheticWirelessCraftingLocator::class.java,
+                { _, _ -> },
+                { _ ->
+                    val item = AE2AccessImpl.wirelessCraftingTerminalItem()
+                    SyntheticWirelessCraftingLocator(if (item != null) ItemStack(item) else ItemStack.EMPTY)
                 }
             )
             registered = true

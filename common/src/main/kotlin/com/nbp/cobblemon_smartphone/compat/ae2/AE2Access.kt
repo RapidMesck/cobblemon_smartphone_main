@@ -9,9 +9,13 @@ import net.minecraft.world.item.ItemStack
  * `fabric/` counterpart at all. Left null when AE2 isn't installed - see [AE2AccessHolder].
  */
 interface AE2Access {
+    /** Registers the client-side decoder used by the synthetic wireless terminal locator. */
+    fun initializeClient() {}
+
     fun isBound(stack: ItemStack): Boolean
     fun isReachable(player: ServerPlayer, stack: ItemStack): Boolean
     fun openTerminal(player: ServerPlayer, stack: ItemStack)
+    fun openCraftingTerminal(player: ServerPlayer, stack: ItemStack)
 }
 
 object AE2AccessHolder {
