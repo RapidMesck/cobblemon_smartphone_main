@@ -24,6 +24,8 @@ object RequestStructureSearchHandler : ServerNetworkPacketHandler<RequestStructu
 
     override fun handle(packet: RequestStructureSearchPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
+            if (!CobblemonSmartphone.config.features.enableStructureCompass) return@execute
+
             synchronized(activeSearches) {
                 activeSearches.remove(player.uuid)?.cancel()
             }

@@ -5,6 +5,7 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.network.packet.DeletePostPacket
 import com.nbp.cobblemon_smartphone.social.SocialData
 import com.nbp.cobblemon_smartphone.network.packet.FeedPostUpdatePacket
+import com.nbp.cobblemon_smartphone.network.SocialRequestLimiter
 import com.nbp.cobblemon_smartphone.social.SocialPhotoManager
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
@@ -16,6 +17,7 @@ object DeletePostHandler : ServerNetworkPacketHandler<DeletePostPacket> {
     override fun handle(packet: DeletePostPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
             if (!CobblemonSmartphone.config.features.enableSocial) return@execute
+            if (!SocialRequestLimiter.allow(player.uuid, SocialRequestLimiter.Action.DELETE)) return@execute
 
             val data = SocialData.get(server)
             val post = data.postById(packet.postId) ?: return@execute

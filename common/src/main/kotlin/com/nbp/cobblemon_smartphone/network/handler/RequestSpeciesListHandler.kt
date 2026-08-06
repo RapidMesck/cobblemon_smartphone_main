@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.network.handler
 
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.network.PokeInfoRequestLimiter
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesListPacket
 import com.nbp.cobblemon_smartphone.network.packet.SpeciesListResponsePacket
@@ -13,6 +14,8 @@ object RequestSpeciesListHandler : ServerNetworkPacketHandler<RequestSpeciesList
 
     override fun handle(packet: RequestSpeciesListPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
+            if (!CobblemonSmartphone.config.features.enablePokeInfo) return@execute
+
             if (!limiter.tryAcquire(player.uuid)) {
                 SpeciesListResponsePacket(packet.requestId, SpeciesListResponsePacket.Status.RATE_LIMITED, emptyList())
                     .sendToPlayer(player)

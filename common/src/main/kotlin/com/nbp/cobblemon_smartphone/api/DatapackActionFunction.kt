@@ -2,12 +2,18 @@ package com.nbp.cobblemon_smartphone.api
 
 import com.cobblemon.mod.common.client.pokedex.PokedexType
 import com.nbp.cobblemon_smartphone.network.handler.HealPokemonHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavFishingnavHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavPokenavHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenCobbledollarsShopHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenCraftingTableHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenPCHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenPokedexHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenWaystonesWarpStoneHandler
 import com.nbp.cobblemon_smartphone.network.handler.server.OpenEnderChestHandler
+import com.nbp.cobblemon_smartphone.network.packet.OpenGpsScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenPokeInfoScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenStructureCompassScreenPacket
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 
@@ -45,6 +51,31 @@ enum class DatapackActionFunction(val id: String) {
     OPEN_COBBLEDOLLARS_SHOP("open_cobbledollars_shop") {
         override fun execute(server: MinecraftServer, player: ServerPlayer) {
             OpenCobbledollarsShopHandler.execute(player, isNativeAction = false)
+        }
+    },
+    OPEN_CRAFTING("open_crafting") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenCraftingTableHandler.execute(player, isNativeAction = false)
+        }
+    },
+    OPEN_FISHINGNAV("open_fishingnav") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenCobblenavFishingnavHandler.execute(server, player, isNativeAction = false)
+        }
+    },
+    OPEN_GPS("open_gps") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenGpsScreenPacket().sendToPlayer(player)
+        }
+    },
+    OPEN_STRUCTURE_COMPASS("open_structure_compass") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenStructureCompassScreenPacket().sendToPlayer(player)
+        }
+    },
+    OPEN_POKEINFO("open_pokeinfo") {
+        override fun execute(server: MinecraftServer, player: ServerPlayer) {
+            OpenPokeInfoScreenPacket().sendToPlayer(player)
         }
     };
 

@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.network.handler
 
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.network.PokeInfoRequestLimiter
 import com.nbp.cobblemon_smartphone.network.packet.RequestStructureListPacket
 import com.nbp.cobblemon_smartphone.network.packet.StructureListResponsePacket
@@ -13,6 +14,8 @@ object RequestStructureListHandler : ServerNetworkPacketHandler<RequestStructure
 
     override fun handle(packet: RequestStructureListPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
+            if (!CobblemonSmartphone.config.features.enableStructureCompass) return@execute
+
             if (!limiter.tryAcquire(player.uuid)) {
                 StructureListResponsePacket(packet.requestId, StructureListResponsePacket.Status.RATE_LIMITED, emptyList())
                     .sendToPlayer(player)

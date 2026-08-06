@@ -25,6 +25,8 @@ object RequestGpsSearchHandler : ServerNetworkPacketHandler<RequestGpsSearchPack
 
     override fun handle(packet: RequestGpsSearchPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
+            if (!CobblemonSmartphone.config.features.enableGps) return@execute
+
             synchronized(activeSearches) {
                 activeSearches.remove(player.uuid)?.cancel()
             }

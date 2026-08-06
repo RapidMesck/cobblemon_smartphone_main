@@ -10,6 +10,7 @@ object SocialRequestLimiter {
         THREAD_PAGE(200),
         MARK_READ(150),
         LIKE(150),
+        DELETE(500),
         MUTE(250),
         CALL_START(1_500),
         CALL_ACTION(150)

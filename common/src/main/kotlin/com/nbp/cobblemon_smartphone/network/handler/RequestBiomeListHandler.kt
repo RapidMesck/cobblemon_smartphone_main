@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.network.handler
 
 import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.network.PokeInfoRequestLimiter
 import com.nbp.cobblemon_smartphone.network.packet.BiomeListResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestBiomeListPacket
@@ -13,6 +14,8 @@ object RequestBiomeListHandler : ServerNetworkPacketHandler<RequestBiomeListPack
 
     override fun handle(packet: RequestBiomeListPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
+            if (!CobblemonSmartphone.config.features.enableGps) return@execute
+
             if (!limiter.tryAcquire(player.uuid)) {
                 BiomeListResponsePacket(packet.requestId, BiomeListResponsePacket.Status.RATE_LIMITED, emptyList())
                     .sendToPlayer(player)

@@ -1,5 +1,6 @@
 package com.nbp.cobblemon_smartphone.structure
 
+import com.nbp.cobblemon_smartphone.gps.SearchConcurrencyLimiter
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderSet
 import net.minecraft.resources.ResourceKey
@@ -35,6 +36,18 @@ class StructureSearchTask(
     }
 
     override fun run() {
+        if (!SearchConcurrencyLimiter.tryAcquire()) {
+            onFinished(false)
+            return
+        }
+        try {
+            runSearch()
+        } finally {
+            SearchConcurrencyLimiter.release()
+        }
+    }
+
+    private fun runSearch() {
         if (!active) return
 
         val holder = level.registryAccess()

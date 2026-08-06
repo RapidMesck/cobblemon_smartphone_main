@@ -13,29 +13,31 @@ import net.minecraft.world.inventory.CraftingMenu
 
 object OpenCraftingTableHandler : ServerNetworkPacketHandler<OpenCraftingTablePacket> {
     override fun handle(packet: OpenCraftingTablePacket, server: MinecraftServer, player: ServerPlayer) {
-        server.execute {
-            if (!CobblemonSmartphone.config.features.enableCrafting) {
-                player.displayClientMessage(
-                    Component.translatable("message.nbp.crafting.disabled").withColor(0xfd0100),
-                    true
-                )
-                return@execute
-            }
+        server.execute { execute(player, isNativeAction = true) }
+    }
 
-            player.openMenu(
-                SimpleMenuProvider(
-                    { containerId, inventory, _ ->
-                        object : CraftingMenu(
-                            containerId,
-                            inventory,
-                            ContainerLevelAccess.create(player.level(), player.blockPosition())
-                        ) {
-                            override fun stillValid(p: Player) = true
-                        }
-                    },
-                    Component.translatable("container.crafting")
-                )
+    fun execute(player: ServerPlayer, isNativeAction: Boolean) {
+        if (isNativeAction && !CobblemonSmartphone.config.features.enableCrafting) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.crafting.disabled").withColor(0xfd0100),
+                true
             )
+            return
         }
+
+        player.openMenu(
+            SimpleMenuProvider(
+                { containerId, inventory, _ ->
+                    object : CraftingMenu(
+                        containerId,
+                        inventory,
+                        ContainerLevelAccess.create(player.level(), player.blockPosition())
+                    ) {
+                        override fun stillValid(p: Player) = true
+                    }
+                },
+                Component.translatable("container.crafting")
+            )
+        )
     }
 }

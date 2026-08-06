@@ -37,6 +37,18 @@ class GpsBiomeSearchTask(
     }
 
     override fun run() {
+        if (!SearchConcurrencyLimiter.tryAcquire()) {
+            onFinished(false)
+            return
+        }
+        try {
+            runSearch()
+        } finally {
+            SearchConcurrencyLimiter.release()
+        }
+    }
+
+    private fun runSearch() {
         val maxRing = ((maxRadius.coerceAtLeast(16) + 15) / 16)
         val chunkX0 = origin.x shr 4
         val chunkZ0 = origin.z shr 4

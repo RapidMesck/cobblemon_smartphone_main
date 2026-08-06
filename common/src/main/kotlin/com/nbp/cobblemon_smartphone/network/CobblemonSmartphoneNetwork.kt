@@ -64,6 +64,9 @@ import com.nbp.cobblemon_smartphone.network.handler.UploadSocialPhotoHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSocialPhotoHandler
 import com.nbp.cobblemon_smartphone.network.handler.SocialPhotoUploadResultHandler
 import com.nbp.cobblemon_smartphone.network.handler.SocialPhotoChunkHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenGpsScreenHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenStructureCompassScreenHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenPokeInfoScreenHandler
 import com.nbp.cobblemon_smartphone.network.handler.server.OpenEnderChestHandler
 import com.nbp.cobblemon_smartphone.network.packet.CallActionPacket
 import com.nbp.cobblemon_smartphone.network.packet.CallOfflinePacket
@@ -129,6 +132,9 @@ import com.nbp.cobblemon_smartphone.network.packet.UploadSocialPhotoPacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSocialPhotoPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialPhotoUploadResultPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialPhotoChunkPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenGpsScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenStructureCompassScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenPokeInfoScreenPacket
 
 object CobblemonSmartphoneNetwork {
     val s2cPayloads = generateS2CPacketInfoList()
@@ -230,6 +236,9 @@ object CobblemonSmartphoneNetwork {
                 SyncMutedPlayersHandler
             )
         )
+        list.add(PacketRegisterInfo(OpenGpsScreenPacket.ID, OpenGpsScreenPacket::decode, OpenGpsScreenHandler))
+        list.add(PacketRegisterInfo(OpenStructureCompassScreenPacket.ID, OpenStructureCompassScreenPacket::decode, OpenStructureCompassScreenHandler))
+        list.add(PacketRegisterInfo(OpenPokeInfoScreenPacket.ID, OpenPokeInfoScreenPacket::decode, OpenPokeInfoScreenHandler))
 
         return list
     }

@@ -193,6 +193,7 @@ object SendDmHandler : ServerNetworkPacketHandler<SendDmPacket> {
 object MarkThreadReadHandler : ServerNetworkPacketHandler<MarkThreadReadPacket> {
     override fun handle(packet: MarkThreadReadPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
+            if (!CobblemonSmartphone.config.features.enableSocial) return@execute
             if (!SocialRequestLimiter.allow(player.uuid, SocialRequestLimiter.Action.MARK_READ)) return@execute
             if (SocialData.get(server).markThreadRead(player.uuid, packet.otherUuid)) {
                 syncUnread(server, player)
