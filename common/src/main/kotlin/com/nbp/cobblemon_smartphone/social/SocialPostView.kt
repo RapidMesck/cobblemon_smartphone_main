@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.social
 
 import net.minecraft.network.RegistryFriendlyByteBuf
+import net.minecraft.server.MinecraftServer
 import java.util.UUID
 
 /**
@@ -19,7 +20,8 @@ data class SocialPostView(
     val attachment: PokemonAttachment?,
     val photo: SocialPhotoRef?,
     val likeCount: Int,
-    val likedByMe: Boolean
+    val likedByMe: Boolean,
+    val skinUrl: String? = null
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeVarLong(id)
@@ -56,10 +58,12 @@ data class SocialPostView(
         }
         buffer.writeVarInt(likeCount)
         buffer.writeBoolean(likedByMe)
+        buffer.writeBoolean(skinUrl != null)
+        skinUrl?.let { buffer.writeUtf(it) }
     }
 
     companion object {
-        fun of(post: SocialPost, viewer: UUID): SocialPostView = SocialPostView(
+        fun of(post: SocialPost, viewer: UUID, server: MinecraftServer? = null): SocialPostView = SocialPostView(
             id = post.id,
             authorUuid = post.authorUuid,
             authorName = post.authorName,
@@ -68,7 +72,8 @@ data class SocialPostView(
             attachment = post.attachment,
             photo = post.photo,
             likeCount = post.likes.size,
-            likedByMe = post.isLikedBy(viewer)
+            likedByMe = post.isLikedBy(viewer),
+            skinUrl = server?.let { SkinUrlResolver.resolve(it, post.authorUuid) }
         )
 
         fun decode(buffer: RegistryFriendlyByteBuf): SocialPostView {
@@ -105,7 +110,8 @@ data class SocialPostView(
                 attachment = attachment,
                 photo = photo,
                 likeCount = buffer.readVarInt(),
-                likedByMe = buffer.readBoolean()
+                likedByMe = buffer.readBoolean(),
+                skinUrl = if (buffer.readBoolean()) buffer.readUtf() else null
             )
         }
     }

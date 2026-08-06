@@ -63,7 +63,7 @@ object CreatePostHandler : ServerNetworkPacketHandler<CreatePostPacket> {
             val post = data.addPost(player.uuid, player.gameProfile.name, text, attachment, photo)
             lastPost[player.uuid] = System.currentTimeMillis() / 1000
             server.playerList.players.forEach { viewer ->
-                FeedPostUpdatePacket(0L, SocialPostView.of(post, viewer.uuid)).sendToPlayer(viewer)
+                FeedPostUpdatePacket(0L, SocialPostView.of(post, viewer.uuid, server)).sendToPlayer(viewer)
             }
             result(player, packet, SocialMutationResultPacket.Status.SUCCESS)
         }

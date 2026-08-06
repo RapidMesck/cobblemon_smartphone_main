@@ -1,8 +1,11 @@
 package com.nbp.cobblemon_smartphone.client.gui
 
+import com.google.gson.JsonObject
 import com.mojang.authlib.GameProfile
+import com.mojang.authlib.properties.Property
 import net.minecraft.client.Minecraft
 import net.minecraft.client.resources.PlayerSkin
+import java.util.Base64
 import java.util.UUID
 
 /**
@@ -19,17 +22,47 @@ object PlayerHeads {
     /** GameProfiles are cached because the skin lookup is called every frame, per visible head. */
     private val profiles = mutableMapOf<UUID, GameProfile>()
 
-    fun skinFor(uuid: UUID, name: String): PlayerSkin {
+    /**
+     * Resolves a skin for the given [uuid].
+     *
+     * @param skinUrl optional skin texture URL resolved by the server. When provided, the
+     *   [GameProfile] is pre-populated with a `textures` property so vanilla's [SkinManager] can
+     *   download and cache it immediately instead of failing with a bare profile.
+     */
+    fun skinFor(uuid: UUID, name: String, skinUrl: String? = null): PlayerSkin {
         val minecraft = Minecraft.getInstance()
 
         // Online players are authoritative and already synced — no lookup needed.
         minecraft.connection?.getPlayerInfo(uuid)?.let { return it.skin }
 
-        val profile = profiles.getOrPut(uuid) { GameProfile(uuid, name) }
+        val profile = if (skinUrl != null) {
+            profilesWithSkin.getOrPut(uuid) {
+                GameProfile(uuid, name).also {
+                    it.properties.put("textures", Property("textures", encodeSkinTexture(skinUrl)))
+                }
+            }
+        } else {
+            profiles.getOrPut(uuid) { GameProfile(uuid, name) }
+        }
         return minecraft.skinManager.getInsecureSkin(profile)
     }
 
     fun clear() {
         profiles.clear()
+        profilesWithSkin.clear()
+    }
+
+    /** Separate cache for profiles that already carry a textures property. */
+    private val profilesWithSkin = mutableMapOf<UUID, GameProfile>()
+
+    private fun encodeSkinTexture(url: String): String {
+        val json = JsonObject().apply {
+            add("textures", JsonObject().apply {
+                add("SKIN", JsonObject().apply {
+                    addProperty("url", url)
+                })
+            })
+        }
+        return Base64.getEncoder().encodeToString(json.toString().toByteArray())
     }
 }

@@ -41,7 +41,7 @@ object RequestThreadListHandler : ServerNetworkPacketHandler<RequestThreadListPa
             if (!CobblemonSmartphone.config.features.enableSocial) return@execute
             if (!SocialRequestLimiter.allow(player.uuid, SocialRequestLimiter.Action.THREAD_LIST)) return@execute
             val pageSize = CobblemonSmartphone.config.social.threadPageSize.coerceIn(1, 100)
-            val all = SocialData.get(server).threadSummaries(player.uuid)
+            val all = SocialData.get(server).threadSummaries(player.uuid, server)
             val candidates = if (packet.beforeTimestamp <= 0L) all else {
                 all.filter { it.lastTimestamp < packet.beforeTimestamp }
             }
@@ -151,11 +151,11 @@ object SendDmHandler : ServerNetworkPacketHandler<SendDmPacket> {
                 NewDmPacket(player.uuid, player.gameProfile.name, message).sendToPlayer(it)
                 syncUnread(server, it)
             }
-            data.threadSummaries(player.uuid).firstOrNull { it.otherUuid == packet.targetUuid }?.let {
+            data.threadSummaries(player.uuid, server).firstOrNull { it.otherUuid == packet.targetUuid }?.let {
                 ThreadSummaryUpdatePacket(it).sendToPlayer(player)
             }
             target?.let { recipient ->
-                data.threadSummaries(recipient.uuid).firstOrNull { it.otherUuid == player.uuid }?.let {
+                data.threadSummaries(recipient.uuid, server).firstOrNull { it.otherUuid == player.uuid }?.let {
                     ThreadSummaryUpdatePacket(it).sendToPlayer(recipient)
                 }
             }

@@ -120,10 +120,10 @@ class SocialData : SavedData() {
     }
 
     /** Thread list for [viewer], most recently active first. Threads with no messages are skipped. */
-    fun threadSummaries(viewer: UUID): List<DmThreadSummary> =
+    fun threadSummaries(viewer: UUID, server: MinecraftServer? = null): List<DmThreadSummary> =
         threads.values
             .filter { it.key.involves(viewer) && it.messages.isNotEmpty() }
-            .map { DmThreadSummary.of(it, viewer) }
+            .map { DmThreadSummary.of(it, viewer, server) }
             .sortedByDescending { it.lastTimestamp }
 
     fun totalUnreadFor(viewer: UUID): Int =

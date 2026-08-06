@@ -36,7 +36,7 @@ object RequestFeedPageHandler : ServerNetworkPacketHandler<RequestFeedPagePacket
         val page = candidates.take(pageSize)
 
         FeedPagePacket(
-            posts = page.map { SocialPostView.of(it, player.uuid) },
+            posts = page.map { SocialPostView.of(it, player.uuid, server) },
             hasMore = candidates.size > page.size,
             append = beforeId > 0L
         ).sendToPlayer(player)

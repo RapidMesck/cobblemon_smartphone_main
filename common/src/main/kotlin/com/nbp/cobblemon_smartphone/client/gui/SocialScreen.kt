@@ -159,7 +159,7 @@ class SocialScreen(
 
         PlayerFaceRenderer.draw(
             guiGraphics,
-            PlayerHeads.skinFor(thread.otherUuid, thread.otherName),
+            PlayerHeads.skinFor(thread.otherUuid, thread.otherName, thread.skinUrl),
             x + CARD_PAD,
             y + CARD_PAD,
             HEAD_SIZE
@@ -311,7 +311,7 @@ class SocialScreen(
 
         PlayerFaceRenderer.draw(
             guiGraphics,
-            PlayerHeads.skinFor(post.authorUuid, post.authorName),
+            PlayerHeads.skinFor(post.authorUuid, post.authorName, post.skinUrl),
             textX,
             cursorY,
             HEAD_SIZE

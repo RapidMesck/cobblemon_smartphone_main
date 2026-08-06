@@ -23,7 +23,7 @@ object LikePostHandler : ServerNetworkPacketHandler<LikePostPacket> {
             if (data.setLike(packet.postId, player.uuid, packet.liked)) {
                 val post = data.postById(packet.postId) ?: return@execute
                 server.playerList.players.forEach { viewer ->
-                    FeedPostUpdatePacket(0L, SocialPostView.of(post, viewer.uuid)).sendToPlayer(viewer)
+                    FeedPostUpdatePacket(0L, SocialPostView.of(post, viewer.uuid, server)).sendToPlayer(viewer)
                 }
             }
         }
