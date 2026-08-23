@@ -139,9 +139,11 @@ object StructureCompassOverlay {
     }
 
     private fun formatDistance(player: net.minecraft.world.entity.player.Player, pos: net.minecraft.core.BlockPos): String {
-        val dx = pos.x - player.blockPosition().x
-        val dz = pos.z - player.blockPosition().z
-        val dist = sqrt((dx * dx + dz * dz).toDouble())
+        // Double math on purpose: past ~46k blocks `dx * dx` overflows an Int, the sum goes
+        // negative and sqrt returns NaN, which makes roundToInt throw and crashes the HUD render.
+        val dx = (pos.x - player.blockPosition().x).toDouble()
+        val dz = (pos.z - player.blockPosition().z).toDouble()
+        val dist = sqrt(dx * dx + dz * dz)
         val meters = dist.roundToInt()
         return if (meters < 1000) {
             "$meters m"
