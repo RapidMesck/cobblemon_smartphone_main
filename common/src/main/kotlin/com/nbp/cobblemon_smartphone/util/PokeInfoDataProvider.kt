@@ -9,6 +9,7 @@ import com.cobblemon.mod.common.pokemon.abilities.HiddenAbility
 import com.cobblemon.mod.common.pokemon.evolution.variants.ItemInteractionEvolution
 import com.cobblemon.mod.common.pokemon.evolution.variants.LevelUpEvolution
 import com.cobblemon.mod.common.pokemon.evolution.variants.TradeEvolution
+import com.cobblemon.mod.common.pokemon.evolution.variants.BlockClickEvolution
 import com.cobblemon.mod.common.api.spawning.CobblemonSpawnPools
 import com.cobblemon.mod.common.api.spawning.TimeRange
 import com.cobblemon.mod.common.api.spawning.condition.SpawningCondition
@@ -258,6 +259,7 @@ object PokeInfoDataProvider {
 
             is TradeEvolution -> localized("evolution.trade")
             is ItemInteractionEvolution -> extractItemName(evo)
+            is BlockClickEvolution -> localized("evolution.block_click", registryLikeToString(evo.requiredContext))
             else -> localized("evolution.special")
         }
 
@@ -300,6 +302,11 @@ object PokeInfoDataProvider {
                     req.biomeCondition?.let { conditions.add(localized("evolution.requirement.biome", registryLikeToString(it))) }
                     req.biomeAnticondition?.let { conditions.add(localized("evolution.requirement.not_biome", registryLikeToString(it))) }
                 }
+                is StructureRequirement -> {
+                    req.structureCondition?.let { conditions.add(localized("evolution.requirement.structure", registryLikeToString(it))) }
+                    req.structureAnticondition?.let { conditions.add(localized("evolution.requirement.not_structure", registryLikeToString(it))) }
+                }
+                is AdvancementRequirement -> conditions.add(localized("evolution.requirement.advancement", req.requiredAdvancement.path))
                 is PartyMemberRequirement -> conditions.add(describePartyRequirement(req))
                 is PokemonPropertiesRequirement -> conditions.add(describePropertiesRequirement(req))
                 is AttackDefenceRatioRequirement -> conditions.add(
@@ -498,7 +505,7 @@ object PokeInfoDataProvider {
         val time = conditions.flatMap { conditionTimeStrings(it) }.firstOrNull()
 
         return SpawnEntryData(
-            bucket = bucket.name,
+            bucket = bucket,
             weight = weight,
             biomes = validBiomes.map { it.toString() },
             minLevel = levelRange.first,
