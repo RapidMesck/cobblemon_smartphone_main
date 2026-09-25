@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.client.gui
 
 import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.api.gui.blitk
+import com.nbp.cobblemon_smartphone.client.social.FakePlayerFilter
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
@@ -34,11 +35,15 @@ class DmNewScreen(
 
     override fun isPauseScreen(): Boolean = false
 
+    private var lastCandidatesUpdate = 0L
+    private var cachedCandidates: List<PlayerInfo> = emptyList()
+
     override fun init() {
         screenX = (width - GUI_WIDTH) / 2
         screenY = (height - GUI_HEIGHT) / 2
         SmartphoneHelper.contextSmartphone = smartphoneStack
         SmartphoneHelper.contextColor = color
+        lastCandidatesUpdate = 0L
     }
 
     override fun removed() {
@@ -48,12 +53,34 @@ class DmNewScreen(
     }
 
     private fun candidates(): List<PlayerInfo> {
+        val now = System.currentTimeMillis()
+        if (now - lastCandidatesUpdate < 500L) {
+            return cachedCandidates
+        }
+        lastCandidatesUpdate = now
+
         val minecraft = Minecraft.getInstance()
         val selfId = minecraft.player?.uuid ?: return emptyList()
-        return minecraft.connection?.listedOnlinePlayers
-            ?.filter { it.profile.id != selfId }
-            ?.sortedBy { it.profile.name.lowercase() }
-            ?: emptyList()
+        val connection = minecraft.connection ?: return emptyList()
+
+        val allPlayers = connection.onlinePlayers
+        val hasTabFakePlayers = allPlayers.any { FakePlayerFilter.isFakePlayer(it) }
+
+        // When TAB's Layout feature is active, it fills the tablist with fake slots (marked listed=true)
+        // and hides real players by setting them to listed=false.
+        // When fake players are detected, we inspect onlinePlayers so real players remain visible
+        // in contacts even if the layout plugin unlisted them.
+        // On normal servers without fake layout players, we use listedOnlinePlayers to respect
+        // vanilla unlisted players (e.g. spectator or vanish).
+        val source = if (hasTabFakePlayers) allPlayers else connection.listedOnlinePlayers
+
+        val result = source
+            .filter { it.profile.id != selfId && !FakePlayerFilter.isFakePlayer(it) }
+            .distinctBy { it.profile.id }
+            .sortedBy { it.profile.name.lowercase() }
+
+        cachedCandidates = result
+        return result
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
@@ -116,7 +143,7 @@ class DmNewScreen(
 
         guiGraphics.disableScissor()
 
-        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
+        renderHoveredTooltip(guiGraphics, mouseX, mouseY, players)
     }
 
     private fun renderRow(guiGraphics: GuiGraphics, info: PlayerInfo, y: Int, mouseX: Int, mouseY: Int) {
@@ -176,19 +203,19 @@ class DmNewScreen(
         mouseX in (screenX + CONTENT_X + 2)..(screenX + CONTENT_X + 2 + font.width(lang("back"))) &&
                 mouseY in (screenY + TITLE_Y)..(screenY + TITLE_Y + font.lineHeight)
 
-    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, players: List<PlayerInfo>) {
         val tooltip = when {
             isInBack(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_back_to_social")
-            findHoveredPlayer(mouseX, mouseY) != null -> Component.translatable("cobblemon_smartphone.tooltip.social_start_conversation")
+            findHoveredPlayer(mouseX, mouseY, players) != null -> Component.translatable("cobblemon_smartphone.tooltip.social_start_conversation")
             else -> null
         } ?: return
         guiGraphics.renderTooltip(font, tooltip, mouseX, mouseY)
     }
 
-    private fun findHoveredPlayer(mouseX: Int, mouseY: Int): PlayerInfo? {
+    private fun findHoveredPlayer(mouseX: Int, mouseY: Int, players: List<PlayerInfo>): PlayerInfo? {
         if (mouseY !in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) return null
         var y = screenY + LIST_START_Y - scrollY
-        for (info in candidates()) {
+        for (info in players) {
             if (isInRow(mouseX, mouseY, y)) return info
             y += ROW_HEIGHT + ROW_GAP
         }
