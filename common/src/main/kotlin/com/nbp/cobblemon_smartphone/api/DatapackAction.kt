@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.api
 
 import com.cobblemon.mod.common.CobblemonSounds
+import com.nbp.cobblemon_smartphone.isModLoaded
 import com.nbp.cobblemon_smartphone.network.packet.ExecuteDatapackActionPacket
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
@@ -30,6 +31,9 @@ class DatapackAction(private val definition: DatapackActionDefinition) : Smartph
     }
 
     override fun isEnabled(): Boolean {
+        val requireMod = definition.requireMod
+        if (requireMod != null && !isModLoaded(requireMod)) return false
+        if (!definition.patchouliBook.isNullOrBlank() && !isModLoaded("patchouli")) return false
         val upgradeKey = definition.requireUpgrade ?: return true
         val player = Minecraft.getInstance().player ?: return false
         return SmartphoneHelper.satisfiesUpgradeRequirement(player, upgradeKey, id)

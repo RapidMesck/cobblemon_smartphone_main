@@ -33,6 +33,9 @@ object DatapackActionLoader : PreparableReloadListener {
             .filterNotNull()
             .filter { it.id.isNotBlank() }
 
+    fun getActionPatchouliBook(actionId: String): String? =
+        definitions.find { it.id == actionId }?.patchouliBook
+
     fun getActionCooldown(actionId: String): Int =
         definitions.find { it.id == actionId }?.cooldownSeconds ?: 0
 
@@ -74,6 +77,15 @@ object DatapackActionLoader : PreparableReloadListener {
                             val commands = definition.commands.orEmpty().filterNotNull()
                             val functions = definition.functions.orEmpty().filterNotNull()
                             val useItems = definition.useItems.orEmpty().filterNotNull().filter { it.id.isNotBlank() }
+                            val patchouliBook = definition.patchouliBook
+                            if (!patchouliBook.isNullOrBlank() && !isModLoaded("patchouli")) {
+                                CobblemonSmartphone.LOGGER.info(
+                                    "Skipping datapack action '{}': required mod 'patchouli' not loaded",
+                                    definition.id
+                                )
+                                continue
+                            }
+
                             val unknownFunctions = functions.filterNot(DatapackActionFunction::isKnown)
                             if (unknownFunctions.isNotEmpty()) {
                                 CobblemonSmartphone.LOGGER.warn(
@@ -84,9 +96,10 @@ object DatapackActionLoader : PreparableReloadListener {
                             }
 
                             val hasKnownFunction = functions.any(DatapackActionFunction::isKnown)
-                            if (commands.isEmpty() && !hasKnownFunction && useItems.isEmpty()) {
+                            val hasPatchouliBook = !patchouliBook.isNullOrBlank()
+                            if (commands.isEmpty() && !hasKnownFunction && useItems.isEmpty() && !hasPatchouliBook) {
                                 CobblemonSmartphone.LOGGER.warn(
-                                    "Skipping datapack action '{}': no commands, known functions, or use_items were defined",
+                                    "Skipping datapack action '{}': no commands, known functions, use_items, or patchouli_book were defined",
                                     definition.id
                                 )
                                 continue
