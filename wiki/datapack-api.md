@@ -33,7 +33,7 @@ Restart the server or run `/reload` — the button appears automatically.
 | `texture` | String | Texture for the button. Format: `<namespace>:textures/gui/buttons/<file>.png`. Size: 36×36 pixels. |
 | `hover_texture` | String | Texture shown on mouse hover. Same format as `texture`. |
 
-Every action must define at least one entry in `commands`, `functions`, or `use_items`.
+Every action must define at least one entry in `commands`, `functions`, `use_items`, or `patchouli_book`.
 
 ### Optional Fields
 
@@ -42,6 +42,7 @@ Every action must define at least one entry in `commands`, `functions`, or `use_
 | `commands` | String[] | `[]` | Commands executed as the player when the button is clicked. |
 | `functions` | String[] | `[]` | Built-in smartphone functions executed when the button is clicked. See [Built-in Functions](#built-in-functions). |
 | `use_items` | Object[] | `[]` | Items to simulate using when the button is clicked, as if right-clicked in the air. See [Simulated Item Use](#simulated-item-use). |
+| `patchouli_book` | String | `null` | Registry ID of a Patchouli guidebook to open (e.g. `"my-mod:guidebookid"`). Requires the Patchouli mod. Alternate names accepted: `patchouli_id`, `patchouliBook`, `patchouliId`. |
 | `order` | Integer | `0` | Sort order. Lower numbers appear first. |
 | `cooldown_seconds` | Integer | `0` | Cooldown in seconds between uses. `0` = no cooldown. |
 | `require_mod` | String | `null` | Mod ID required for this action. If the mod is not loaded, the action is completely hidden. |
@@ -91,6 +92,18 @@ Functions and commands can be combined. Functions execute first, followed by com
 ```
 
 Built-in functions use the same server-side checks, feature toggles, battle restrictions, mod requirements, and upgrade requirements as the original smartphone buttons. They do not consume or check the official button cooldown; datapack actions use only their own `cooldown_seconds`.
+
+Example — Patchouli guidebook button:
+
+```json
+{
+  "id": "mypack:guidebook",
+  "texture": "mypack:textures/gui/buttons/guide.png",
+  "hover_texture": "mypack:textures/gui/buttons/guide_hover.png",
+  "patchouli_book": "my_mod:guidebook_id",
+  "cooldown_seconds": 1
+}
+```
 
 ## Simulated Item Use
 

@@ -20,7 +20,8 @@ object ExecuteDatapackActionHandler : ServerNetworkPacketHandler<ExecuteDatapack
             val commands = DatapackActionLoader.getActionCommands(actionId)
             val functions = DatapackActionLoader.getActionFunctions(actionId)
             val useItems = DatapackActionLoader.getActionUseItems(actionId)
-            if (commands.isEmpty() && functions.isEmpty() && useItems.isEmpty()) {
+            val patchouliBook = DatapackActionLoader.getActionPatchouliBook(actionId)
+            if (commands.isEmpty() && functions.isEmpty() && useItems.isEmpty() && patchouliBook.isNullOrBlank()) {
                 CobblemonSmartphone.LOGGER.warn("Unknown datapack action requested: {}", actionId)
                 return@execute
             }
@@ -59,6 +60,10 @@ object ExecuteDatapackActionHandler : ServerNetworkPacketHandler<ExecuteDatapack
 
             for (useItem in useItems) {
                 SimulatedItemUse.useItemById(player, useItem.id, useItem.mode)
+            }
+
+            if (!patchouliBook.isNullOrBlank()) {
+                OpenPatchouliBookHandler.execute(player, patchouliBook)
             }
 
             if (commands.isNotEmpty()) {

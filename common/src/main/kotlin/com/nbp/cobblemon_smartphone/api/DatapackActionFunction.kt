@@ -13,7 +13,6 @@ import com.nbp.cobblemon_smartphone.network.handler.server.OpenEnderChestHandler
 import com.nbp.cobblemon_smartphone.network.packet.OpenGpsScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokeInfoScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenStructureCompassScreenPacket
-import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 

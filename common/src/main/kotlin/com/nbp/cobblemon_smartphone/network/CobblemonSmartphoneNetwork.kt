@@ -23,6 +23,7 @@ import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavFishingnavHandl
 import com.nbp.cobblemon_smartphone.network.handler.OpenCobblenavPokenavHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenCobbledollarsShopHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenCraftingTableHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenPatchouliBookHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenPCHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenPokedexHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenRctTrainerCardHandler
@@ -90,6 +91,7 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavFishingnavPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenCobblenavPokenavPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenCobbledollarsShopPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenCraftingTablePacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenPatchouliBookPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenEnderChestPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPCPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokedexPacket
@@ -313,6 +315,13 @@ object CobblemonSmartphoneNetwork {
             )
         )
         list.add(PacketRegisterInfo(OpenPokedexPacket.ID, OpenPokedexPacket::decode, OpenPokedexHandler))
+        list.add(
+            PacketRegisterInfo(
+                OpenPatchouliBookPacket.ID,
+                OpenPatchouliBookPacket::decode,
+                OpenPatchouliBookHandler
+            )
+        )
         list.add(
             PacketRegisterInfo(
                 ExecuteDatapackActionPacket.ID,

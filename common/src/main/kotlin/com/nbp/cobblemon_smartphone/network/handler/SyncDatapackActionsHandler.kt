@@ -18,7 +18,8 @@ object SyncDatapackActionsHandler : ClientNetworkPacketHandler<SyncDatapackActio
                 hoverTexture = actionData.hoverTexture,
                 requireUpgrade = actionData.requireUpgrade,
                 requireMod = actionData.requireMod,
-                cooldownSeconds = actionData.cooldownSeconds
+                cooldownSeconds = actionData.cooldownSeconds,
+                patchouliBook = actionData.patchouliBook
             )
             SmartphoneActionRegistry.registerDatapackAction(DatapackAction(definition))
         }
