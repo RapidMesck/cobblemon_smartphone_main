@@ -17,6 +17,7 @@ class SmartphoneConfig {
     val gps = Gps()
     val structureCompass = StructureCompass()
     val social = Social()
+    val energy = EnergyConfig()
 
     class Cooldowns {
         val healButton: Int = 60  // 1 minuto em segundos
@@ -92,6 +93,43 @@ class SmartphoneConfig {
         val showTypeDefenses: Boolean = true
         val showLevelMoves: Boolean = true
         val showLearnableMoves: Boolean = true
+    }
+
+    data class ActionCost(
+        val action: String = "",
+        val cost: Int = 0
+    )
+
+    class EnergyConfig {
+        var enableEnergy: Boolean = false
+        var baseCapacity: Int = 1000
+        var maxReceive: Int = 100
+        var defaultCost: Int = 0
+        var costs: List<ActionCost> = listOf(
+            ActionCost("cobblemon_smartphone:heal", 250),
+            ActionCost("cobblemon_smartphone:cloud", 100),
+            ActionCost("cobblemon_smartphone:pc", 50),
+            ActionCost("cobblemon_smartphone:gps", 50),
+            ActionCost("cobblemon_smartphone:structure_compass", 100)
+        )
+
+        // Passive Electric Pokémon Party Charging
+        var enableElectricPokemonCharging: Boolean = true
+        var electricPokemonChargeRate: Int = 10
+        var electricPokemonChargeInterval: Int = 20
+        var requireElectricPokemonConscious: Boolean = true
+        var scaleRateWithElectricPokemonCount: Boolean = false
+        var chargeAllSmartphones: Boolean = false
+
+        fun getCost(actionId: String): Int {
+            if (!enableEnergy) return 0
+            val match = costs.firstOrNull {
+                it.action.equals(actionId, ignoreCase = true) ||
+                actionId.endsWith(":${it.action}", ignoreCase = true)
+            }
+            if (match != null) return match.cost
+            return com.nbp.cobblemon_smartphone.api.DatapackActionLoader.getActionFeCost(actionId) ?: defaultCost
+        }
     }
 
     companion object {

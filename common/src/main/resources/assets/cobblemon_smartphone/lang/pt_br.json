@@ -444,5 +444,13 @@
   "trinkets.slot.legs.smartphone": "Smartphone",
   "upgrade.cobblemon_smartphone.upgrade_fishingnav": "Atualização: FishingNav",
   "upgrade.cobblemon_smartphone.upgrade_pokenav": "Atualização: PokeNav",
-  "upgrade.cobblemon_smartphone.upgrade_waystone": "Atualização: Waystone"
+  "upgrade.cobblemon_smartphone.upgrade_waystone": "Atualização: Waystone",
+  "message.cobblemon_smartphone.no_smartphone": "Você não possui um smartphone!",
+  "message.cobblemon_smartphone.insufficient_energy": "Bateria fraca! Necessário %d FE",
+  "tooltip.cobblemon_smartphone.energy": "⚡ Energia: %s / %s FE",
+  "tooltip.cobblemon_smartphone.energy_status": "⚡ %s / %s FE (%d%%)",
+  "tooltip.cobblemon_smartphone.energy_cost": "Energia: %d FE",
+  "upgrade.cobblemon_smartphone.upgrade_battery_tier1": "Upgrade de Bateria I (+1.000 FE)",
+  "upgrade.cobblemon_smartphone.upgrade_battery_tier2": "Upgrade de Bateria II (+5.000 FE)",
+  "upgrade.cobblemon_smartphone.upgrade_battery_tier3": "Upgrade de Bateria III (+15.000 FE)"
 }

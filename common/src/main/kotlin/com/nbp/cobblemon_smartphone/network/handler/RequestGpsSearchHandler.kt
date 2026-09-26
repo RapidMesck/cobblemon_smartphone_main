@@ -38,6 +38,10 @@ object RequestGpsSearchHandler : ServerNetworkPacketHandler<RequestGpsSearchPack
                 return@execute
             }
 
+            if (!com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:gps")) {
+                return@execute
+            }
+
             val key = runCatching { ResourceLocation.parse(packet.biomeId) }
                 .getOrNull()
                 ?.let { ResourceKey.create(Registries.BIOME, it) }

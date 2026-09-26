@@ -53,6 +53,10 @@ object OpenPCHandler : ServerNetworkPacketHandler<OpenPCPacket> {
             return
         }
 
+        if (isNativeAction && !com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:pc")) {
+            return
+        }
+
         if (isNativeAction) {
             PCCooldowns.lastPcUse[player.uuid] = System.currentTimeMillis() / 1000
         }

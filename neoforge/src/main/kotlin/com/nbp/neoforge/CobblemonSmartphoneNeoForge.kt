@@ -9,6 +9,8 @@ import com.nbp.cobblemon_smartphone.compat.tomsstorage.TomsStorageRemoteSession
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.energy.ElectricPokemonCharger
+import com.nbp.cobblemon_smartphone.network.packet.SyncEnergyConfigPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
@@ -44,7 +46,10 @@ import net.minecraft.world.item.ItemStack
 import net.neoforged.fml.common.Mod
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent
 import net.neoforged.fml.ModList
+import net.neoforged.neoforge.capabilities.Capabilities
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
 import net.neoforged.neoforge.common.NeoForge
+import com.nbp.neoforge.energy.SmartphoneNeoForgeEnergyStorage
 import net.neoforged.neoforge.event.AddPackFindersEvent
 import net.neoforged.neoforge.event.AddReloadListenerEvent
 import net.neoforged.neoforge.event.RegisterCommandsEvent
@@ -65,6 +70,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
             addListener(networkManager::registerMessages)
             addListener(::onCommonSetup)
             addListener(::onAddPackFinders)
+            addListener(::onRegisterCapabilities)
         }
 
         NeoForge.EVENT_BUS.addListener(::onAddReloadListener)
@@ -93,6 +99,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
             SyncSocialMutePacket(SocialMuteStorage.read(player)).sendToPlayer(player)
             SyncMutedPlayersPacket(MutedPlayersStorage.read(player).toList()).sendToPlayer(player)
             SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(player)
+            SyncEnergyConfigPacket.fromServerConfig().sendToPlayer(player)
         }
 
         // End any call a player was in when they disconnect, restoring the other side's voice group.
@@ -111,6 +118,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
         }
         NeoForge.EVENT_BUS.addListener<ServerTickEvent.Post> { event ->
             CallManager.tick(event.server)
+            ElectricPokemonCharger.tick(event.server)
         }
     }
     
@@ -194,5 +202,13 @@ class CobblemonSmartphoneNeoForge : Implementation {
 
                 event.addRepositorySource { consumer -> consumer.accept(pack) }
             }
+    }
+
+    private fun onRegisterCapabilities(event: RegisterCapabilitiesEvent) {
+        event.registerItem(
+            Capabilities.EnergyStorage.ITEM,
+            { stack, _ -> SmartphoneNeoForgeEnergyStorage(stack) },
+            *CobblemonSmartphoneItems.all().toTypedArray()
+        )
     }
 }

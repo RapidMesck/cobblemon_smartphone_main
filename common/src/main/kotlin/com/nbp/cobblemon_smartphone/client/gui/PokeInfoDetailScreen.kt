@@ -348,6 +348,7 @@ class PokeInfoDetailScreen(
         val backY = screenY + HEADER_Y + 6
         val color = if (hovered) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
         draw(guiGraphics, lang("back"), screenX + HEADER_BACK_X, backY, color)
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
     }
 
     private fun renderPageTabs(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -1238,6 +1239,8 @@ class PokeInfoDetailScreen(
     }
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
+
         val key = when {
             isInBackButton(mouseX, mouseY) -> "back_to_pokemon_list"
             !::detail.isInitialized -> null

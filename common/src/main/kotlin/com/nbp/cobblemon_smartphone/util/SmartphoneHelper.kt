@@ -19,6 +19,7 @@ object SmartphoneHelper {
         // Otherwise fall back to platform compat (Trinkets/Curios/inventory)
         return getSmartphoneImpl?.invoke(player)
             ?: player.inventory.items.firstOrNull { it.item is SmartphoneItem }
+            ?: (if (player.offhandItem.item is SmartphoneItem) player.offhandItem else null)
     }
 
     fun satisfiesUpgradeRequirement(player: Player, upgradeKey: String, actionId: String? = null): Boolean {

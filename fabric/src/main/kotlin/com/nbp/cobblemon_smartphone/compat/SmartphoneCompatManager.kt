@@ -53,6 +53,15 @@ object SmartphoneCompatManager {
                 CobblemonSmartphone.LOGGER.error("Failed to initialize Refined Storage compatibility", e)
             }
         }
+
+        if (FabricLoader.getInstance().isModLoaded("team_reborn_energy")) {
+            try {
+                com.nbp.cobblemon_smartphone.compat.energy.SmartphoneFabricEnergyStorage.register()
+                CobblemonSmartphone.LOGGER.info("TeamReborn Energy compatibility initialized successfully")
+            } catch (e: Exception) {
+                CobblemonSmartphone.LOGGER.error("Failed to initialize TeamReborn Energy compatibility", e)
+            }
+        }
     }
 
     /**

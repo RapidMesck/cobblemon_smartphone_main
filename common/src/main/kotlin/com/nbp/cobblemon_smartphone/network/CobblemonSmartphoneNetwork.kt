@@ -55,6 +55,7 @@ import com.nbp.cobblemon_smartphone.network.handler.SyncSocialMuteHandler
 import com.nbp.cobblemon_smartphone.network.handler.SpeciesDetailResponseHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncActionOrderHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncDatapackActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncEnergyConfigHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncHiddenActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncQuickActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.SocialCapabilitiesHandler
@@ -124,6 +125,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SpeciesDetailResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.SpeciesListResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncEnergyConfigPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
@@ -231,6 +233,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(SocialPhotoUploadResultPacket.ID, SocialPhotoUploadResultPacket::decode, SocialPhotoUploadResultHandler))
         list.add(PacketRegisterInfo(SocialPhotoChunkPacket.ID, SocialPhotoChunkPacket::decode, SocialPhotoChunkHandler))
         list.add(PacketRegisterInfo(SyncSocialMutePacket.ID, SyncSocialMutePacket::decode, SyncSocialMuteHandler))
+        list.add(PacketRegisterInfo(SyncEnergyConfigPacket.ID, SyncEnergyConfigPacket::decode, SyncEnergyConfigHandler))
         list.add(
             PacketRegisterInfo(
                 SyncMutedPlayersPacket.ID,

@@ -114,6 +114,8 @@ class GpsScreen(
         val backColor = if (backHover) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
         guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, backColor, false)
 
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
+
         // Stop tracking button, only shown while a search is active
         if (GpsClientState.tracking) {
             val stopText = lang("stop_tracking")
@@ -375,6 +377,8 @@ class GpsScreen(
     }
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
+
         val tooltip: List<Component> = when {
             isInBackButton(mouseX, mouseY) -> listOf(Component.translatable("cobblemon_smartphone.tooltip.back_to_phone"))
             isInStopButton(mouseX, mouseY) -> listOf(Component.translatable("cobblemon_smartphone.tooltip.stop_gps_tracking"))

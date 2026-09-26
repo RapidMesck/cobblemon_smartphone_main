@@ -34,6 +34,10 @@ object OpenRctTrainerCardHandler : ServerNetworkPacketHandler<OpenRctTrainerCard
             return
         }
 
+        if (!com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:rct_trainer_card")) {
+            return
+        }
+
         OpenRctTrainerCardScreenPacket().sendToPlayer(player)
     }
 }

@@ -114,6 +114,8 @@ class PokeInfoScreen(
         val backColor = if (backHover) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
         guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, backColor, false)
 
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
+
         // Search box background
         val sx = screenX + SEARCH_X
         val sy = screenY + SEARCH_Y
@@ -345,6 +347,8 @@ class PokeInfoScreen(
     }
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
+
         val tooltip = when {
             isInBackButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.back_to_phone")
             else -> {

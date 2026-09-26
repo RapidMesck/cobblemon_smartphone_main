@@ -37,6 +37,10 @@ object OpenCobbledollarsShopHandler : ServerNetworkPacketHandler<OpenCobbledolla
             return
         }
 
+        if (isNativeAction && !com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:cobbledollars_shop")) {
+            return
+        }
+
         try {
             val extensionsClass = Class.forName(PLAYER_EXTENSIONS_CLASS)
             val openShopMethod = resolveOpenShopMethod(extensionsClass, player)

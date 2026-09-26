@@ -52,6 +52,10 @@ object HealPokemonHandler : ServerNetworkPacketHandler<HealPokemonPacket> {
             return
         }
 
+        if (isNativeAction && !com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:heal")) {
+            return
+        }
+
         if (isNativeAction) {
             HealPokemonCooldowns.lastHealUse[player.uuid] = System.currentTimeMillis() / 1000
         }

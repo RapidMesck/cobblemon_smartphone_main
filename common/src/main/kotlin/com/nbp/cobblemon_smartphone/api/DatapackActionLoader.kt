@@ -42,6 +42,9 @@ object DatapackActionLoader : PreparableReloadListener {
     fun getActionRequiredUpgrade(actionId: String): String? =
         definitions.find { it.id == actionId }?.requireUpgrade
 
+    fun getActionFeCost(actionId: String): Int? =
+        definitions.find { it.id == actionId }?.feCost
+
     override fun reload(
         barrier: PreparableReloadListener.PreparationBarrier,
         resourceManager: ResourceManager,

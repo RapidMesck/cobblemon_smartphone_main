@@ -91,6 +91,7 @@ class SmartphoneSettingsScreen(
 
         renderHint(guiGraphics)
         renderBackButton(guiGraphics, mouseX, mouseY)
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = false, smartphoneStack)
 
         pagedIds().forEachIndexed { index, actionId ->
             renderGridItem(guiGraphics, mouseX, mouseY, index, actionId)
@@ -505,6 +506,10 @@ class SmartphoneSettingsScreen(
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         if (selectorActionId != null || draggingIndex != -1) return
+
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = false, smartphoneStack)) {
+            return
+        }
 
         if (isInBackButton(mouseX, mouseY)) {
             guiGraphics.renderTooltip(

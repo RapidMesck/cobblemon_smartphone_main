@@ -51,6 +51,10 @@ object OpenCobblenavFishingnavHandler : ServerNetworkPacketHandler<OpenCobblenav
             return
         }
 
+        if (isNativeAction && !com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, ACTION_ID)) {
+            return
+        }
+
         // Try to use fishingnav from inventory (backward compat)
         val fishingnavStack = findFishingnavStack(player)
         if (fishingnavStack != null) {

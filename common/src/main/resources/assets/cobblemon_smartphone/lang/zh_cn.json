@@ -444,5 +444,13 @@
   "message.nbp.social.new_dm": "来自 %s 的新消息",
   "message.nbp.social.photo_failed": "无法拍摄照片。",
   "message.nbp.social.photo_too_large": "照片太大了。",
-  "message.nbp.social.post_banned": "您被禁止发布。"
+  "message.nbp.social.post_banned": "您被禁止发布。",
+  "message.cobblemon_smartphone.no_smartphone": "你没有智能手机！",
+  "message.cobblemon_smartphone.insufficient_energy": "电量不足！需要 %d FE",
+  "tooltip.cobblemon_smartphone.energy": "⚡ 电量: %s / %s FE",
+  "tooltip.cobblemon_smartphone.energy_status": "⚡ %s / %s FE (%d%%)",
+  "tooltip.cobblemon_smartphone.energy_cost": "消耗: %d FE",
+  "upgrade.cobblemon_smartphone.upgrade_battery_tier1": "电池升级 I (+1,000 FE)",
+  "upgrade.cobblemon_smartphone.upgrade_battery_tier2": "电池升级 II (+5,000 FE)",
+  "upgrade.cobblemon_smartphone.upgrade_battery_tier3": "电池升级 III (+15,000 FE)"
 }

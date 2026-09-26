@@ -76,6 +76,10 @@ object OpenAE2TerminalHandler : ServerNetworkPacketHandler<OpenAE2TerminalPacket
             return
         }
 
+        if (isNativeAction && !com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, ACTION_ID)) {
+            return
+        }
+
         if (isNativeAction) {
             buttonCooldowns[player.uuid] = System.currentTimeMillis()
         }

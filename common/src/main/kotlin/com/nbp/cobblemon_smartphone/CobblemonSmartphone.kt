@@ -138,6 +138,24 @@ object CobblemonSmartphone {
                 requiredModId = OpenAE2CraftingAction.MOD_ID
             )
         )
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = "upgrade_battery_tier1",
+                nbtKey = "upgrade_battery_tier1"
+            )
+        )
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = "upgrade_battery_tier2",
+                nbtKey = "upgrade_battery_tier2"
+            )
+        )
+        SmartphoneUpgradeRegistry.register(
+            SmartphoneUpgrade(
+                id = "upgrade_battery_tier3",
+                nbtKey = "upgrade_battery_tier3"
+            )
+        )
     }
 
     fun registerDefaultStorageLinks() {

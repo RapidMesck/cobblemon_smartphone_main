@@ -46,6 +46,10 @@ object OpenEnderChestHandler : ServerNetworkPacketHandler<OpenEnderChestPacket> 
                 return
             }
 
+            if (!com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:cloud")) {
+                return
+            }
+
             EnderChestCooldowns.lastEnderChestUse[player.uuid] = currentTime
         }
 

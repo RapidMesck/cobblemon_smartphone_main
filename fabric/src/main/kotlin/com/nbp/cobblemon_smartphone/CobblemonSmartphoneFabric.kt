@@ -8,6 +8,8 @@ import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.energy.ElectricPokemonCharger
+import com.nbp.cobblemon_smartphone.network.packet.SyncEnergyConfigPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
@@ -91,6 +93,7 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
             SyncSocialMutePacket(SocialMuteStorage.read(handler.player)).sendToPlayer(handler.player)
             SyncMutedPlayersPacket(MutedPlayersStorage.read(handler.player).toList()).sendToPlayer(handler.player)
             SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(handler.player)
+            SyncEnergyConfigPacket.fromServerConfig().sendToPlayer(handler.player)
         }
 
         // End any call a player was in when they disconnect, restoring the other side's voice group.
@@ -102,7 +105,10 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
         // TomsStorageRemoteSession.tick) is what closes out the remote-access bypass once the
         // remotely-opened Toms Storage terminal closes. This poll itself needs no mixin; the
         // held-item range check bypass is a separate mixin, see MixinStorageTerminalBlockEntity.
-        ServerTickEvents.END_SERVER_TICK.register { server -> TomsStorageRemoteSession.tick(server) }
+        ServerTickEvents.END_SERVER_TICK.register { server ->
+            TomsStorageRemoteSession.tick(server)
+            ElectricPokemonCharger.tick(server)
+        }
         ServerTickEvents.END_SERVER_TICK.register(ServerTickEvents.EndTick(CallManager::tick))
     }
 

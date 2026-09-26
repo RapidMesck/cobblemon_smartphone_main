@@ -1,9 +1,12 @@
 package com.nbp.cobblemon_smartphone.item
 
 import com.cobblemon.mod.common.CobblemonSounds
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.cobblemon_smartphone.client.gui.SmartphoneScreen
+import com.nbp.cobblemon_smartphone.energy.getEnergy
+import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -74,6 +77,29 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         return "$TRANSLATION_KEY${model.modelName}_smartphone"
     }
 
+    override fun isBarVisible(stack: ItemStack): Boolean {
+        if (!CobblemonSmartphone.config.energy.enableEnergy) return false
+        val max = stack.getMaxEnergy()
+        return max > 0 && stack.getEnergy() < max
+    }
+
+    override fun getBarWidth(stack: ItemStack): Int {
+        val max = stack.getMaxEnergy()
+        if (max <= 0) return 0
+        return Math.round(13.0f * stack.getEnergy() / max).coerceIn(0, 13)
+    }
+
+    override fun getBarColor(stack: ItemStack): Int {
+        val max = stack.getMaxEnergy()
+        if (max <= 0) return 0x22C55E
+        val ratio = stack.getEnergy().toFloat() / max
+        return when {
+            ratio > 0.5f -> 0x22C55E
+            ratio > 0.2f -> 0xEAB308
+            else -> 0xEF4444
+        }
+    }
+
     override fun appendHoverText(
         itemStack: ItemStack,
         tooltipContext: TooltipContext,
@@ -81,6 +107,24 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         tooltipFlag: TooltipFlag
     ) {
         list.add(Component.translatable("item.cobblemon_smartphone.smartphone.desc").withStyle(ChatFormatting.GRAY))
+
+        if (CobblemonSmartphone.config.energy.enableEnergy) {
+            val current = itemStack.getEnergy()
+            val max = itemStack.getMaxEnergy()
+            val ratio = if (max > 0) current.toFloat() / max else 0f
+            val color = when {
+                ratio > 0.5f -> ChatFormatting.GREEN
+                ratio > 0.2f -> ChatFormatting.YELLOW
+                else -> ChatFormatting.RED
+            }
+            list.add(
+                Component.translatable(
+                    "tooltip.cobblemon_smartphone.energy",
+                    "%,d".format(current),
+                    "%,d".format(max)
+                ).withStyle(color)
+            )
+        }
 
         // Show installed upgrades
         val upgrades = SmartphoneUpgradeRegistry.getInstalledUpgrades(itemStack)

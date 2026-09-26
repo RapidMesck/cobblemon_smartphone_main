@@ -52,6 +52,10 @@ object OpenCobblenavPokenavHandler : ServerNetworkPacketHandler<OpenCobblenavPok
             return
         }
 
+        if (isNativeAction && !com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, ACTION_ID)) {
+            return
+        }
+
         // Try to use pokenav from inventory (backward compat)
         val pokenavStack = findPokenavStack(player)
         if (pokenavStack != null) {

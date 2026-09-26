@@ -37,6 +37,10 @@ object RequestStructureSearchHandler : ServerNetworkPacketHandler<RequestStructu
                 return@execute
             }
 
+            if (!com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:structure_compass")) {
+                return@execute
+            }
+
             val key = runCatching { ResourceLocation.parse(packet.structureId) }
                 .getOrNull()
                 ?.let { ResourceKey.create(Registries.STRUCTURE, it) }

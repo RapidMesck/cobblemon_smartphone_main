@@ -18,6 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class MixinSmithingTransformRecipe {
 
     private static final String UPGRADES_TAG = "cobblemon_smartphone:upgrades";
+    private static final String EXTRA_CAPACITY_TAG = "cobblemon_smartphone:extra_energy_capacity";
 
     @Shadow
     private ItemStack result;
@@ -32,56 +33,54 @@ public class MixinSmithingTransformRecipe {
             return;
         }
 
-        // Read upgrade keys from the recipe's result NBT (generic — works for any upgrade)
-        CompoundTag upgrades = getUpgradesFromResult();
-        if (upgrades == null || upgrades.isEmpty()) {
+        CompoundTag recipeData = getResultCustomData();
+        if (recipeData == null) {
             return;
         }
 
-        // Copy the base smartphone (preserves color) and add all upgrade keys
+        boolean hasUpgrades = recipeData.contains(UPGRADES_TAG, CompoundTag.TAG_COMPOUND);
+        boolean hasCapacity = recipeData.contains(EXTRA_CAPACITY_TAG, CompoundTag.TAG_INT);
+        if (!hasUpgrades && !hasCapacity) {
+            return;
+        }
+
+        // Copy the base smartphone (preserves color) and add upgrades/capacity
         ItemStack output = base.copy();
         output.setCount(1);
-        applyUpgrades(output, upgrades);
+        applyRecipeData(output, recipeData);
 
         cir.setReturnValue(output);
     }
 
-    /**
-     * Extracts the upgrade compound from the recipe's fixed result ItemStack.
-     * Reads {@code minecraft:custom_data -> cobblemon_smartphone:upgrades}.
-     * @return the upgrades compound tag, or null if not present
-     */
-    private CompoundTag getUpgradesFromResult() {
+    private CompoundTag getResultCustomData() {
         if (this.result == null || this.result.isEmpty()) return null;
         CustomData customData = this.result.get(DataComponents.CUSTOM_DATA);
         if (customData == null) return null;
-        CompoundTag tag = customData.copyTag();
-        if (!tag.contains(UPGRADES_TAG, CompoundTag.TAG_COMPOUND)) return null;
-        return tag.getCompound(UPGRADES_TAG);
+        return customData.copyTag();
     }
 
-    /**
-     * Copies all boolean upgrade entries from the recipe result into the output stack.
-     */
-    private void applyUpgrades(ItemStack stack, CompoundTag recipeUpgrades) {
+    private void applyRecipeData(ItemStack stack, CompoundTag recipeData) {
         CustomData existingData = stack.get(DataComponents.CUSTOM_DATA);
         CompoundTag tag = existingData != null ? existingData.copyTag() : new CompoundTag();
 
-        CompoundTag targetUpgrades;
-        if (tag.contains(UPGRADES_TAG, CompoundTag.TAG_COMPOUND)) {
-            targetUpgrades = tag.getCompound(UPGRADES_TAG);
-        } else {
-            targetUpgrades = new CompoundTag();
-        }
-
-        // Copy all upgrade keys from the recipe result
-        for (String key : recipeUpgrades.getAllKeys()) {
-            if (recipeUpgrades.getBoolean(key)) {
-                targetUpgrades.putBoolean(key, true);
+        if (recipeData.contains(UPGRADES_TAG, CompoundTag.TAG_COMPOUND)) {
+            CompoundTag recipeUpgrades = recipeData.getCompound(UPGRADES_TAG);
+            CompoundTag targetUpgrades = tag.contains(UPGRADES_TAG, CompoundTag.TAG_COMPOUND)
+                    ? tag.getCompound(UPGRADES_TAG) : new CompoundTag();
+            for (String key : recipeUpgrades.getAllKeys()) {
+                if (recipeUpgrades.getBoolean(key)) {
+                    targetUpgrades.putBoolean(key, true);
+                }
             }
+            tag.put(UPGRADES_TAG, targetUpgrades);
         }
 
-        tag.put(UPGRADES_TAG, targetUpgrades);
+        if (recipeData.contains(EXTRA_CAPACITY_TAG, CompoundTag.TAG_INT)) {
+            int extra = recipeData.getInt(EXTRA_CAPACITY_TAG);
+            int current = tag.getInt(EXTRA_CAPACITY_TAG);
+            tag.putInt(EXTRA_CAPACITY_TAG, current + extra);
+        }
+
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 }

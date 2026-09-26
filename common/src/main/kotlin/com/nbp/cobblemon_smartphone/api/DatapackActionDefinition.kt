@@ -20,7 +20,9 @@ data class DatapackActionDefinition(
     @SerializedName("cooldown_seconds")
     val cooldownSeconds: Int = 0,
     @SerializedName("require_upgrade")
-    val requireUpgrade: String? = null
+    val requireUpgrade: String? = null,
+    @SerializedName("fe_cost", alternate = ["energy_cost", "feCost", "energyCost"])
+    val feCost: Int? = null
 ) {
     companion object {
         val GSON = Gson()

@@ -117,6 +117,7 @@ dependencies {
     // `suggests`) even though RS2 jar-in-jars its own copy at build time - the Modrinth-published
     // jar's jar-in-jar metadata isn't reliably picked up via the modrinth-maven coordinate, so
     // Fabric Loader reports it "missing" unless it's also resolvable as its own mod here.
+    modCompileOnly "teamreborn:energy:${rootProject.teamreborn_energy_version}"
     modLocalRuntime "teamreborn:energy:${rootProject.teamreborn_energy_version}"
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive false }

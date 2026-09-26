@@ -6,8 +6,13 @@ import com.nbp.cobblemon_smartphone.actions.PokedexAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionOrder
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
 import com.nbp.cobblemon_smartphone.api.SmartphoneHiddenActions
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.energy.getEnergy
+import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
+import com.nbp.cobblemon_smartphone.energy.hasEnoughEnergy
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
@@ -19,6 +24,8 @@ class SmartphoneScreen(
     private val color: SmartphoneColor,
     private val smartphoneStack: ItemStack? = null
 ) : Screen(Component.translatable("cobblemon_smartphone.screen.smartphone")) {
+    private val currentSmartphone: ItemStack?
+        get() = SmartphoneBatteryRenderer.resolveSmartphone(smartphoneStack)
     private val actions get() = SmartphoneActionOrder.apply(SmartphoneActionRegistry.getEnabledActions())
         .filter { !SmartphoneHiddenActions.isHidden(it.id) }
     private val frameTexture = ResourceLocation.fromNamespaceAndPath(
@@ -74,6 +81,7 @@ class SmartphoneScreen(
 
         renderWorldTime(guiGraphics)
         renderHeaderSettingsButton(guiGraphics, mouseX, mouseY)
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = false, smartphoneStack)
 
         // Render actions as buttons
         pagedActions().forEachIndexed { index, action ->
@@ -106,6 +114,20 @@ class SmartphoneScreen(
         pagedActions().forEachIndexed { index, action ->
             val (x, y) = getButtonPosition(index)
             if (isHovered(mouseX.toInt(), mouseY.toInt(), x, y)) {
+                if (CobblemonSmartphone.config.energy.enableEnergy) {
+                    val cost = CobblemonSmartphone.config.energy.getCost(action.id)
+                    val phone = currentSmartphone
+                    if (cost > 0 && phone != null && !phone.hasEnoughEnergy(cost)) {
+                        Minecraft.getInstance().player?.let { p ->
+                            p.playSound(CobblemonSounds.GUI_CLICK, 0.5f, 0.5f)
+                            p.displayClientMessage(
+                                Component.translatable("message.cobblemon_smartphone.insufficient_energy", cost).withColor(0xfd0100),
+                                true
+                            )
+                        }
+                        return true
+                    }
+                }
                 action.onClick()
                 return true
             }
@@ -253,9 +275,22 @@ class SmartphoneScreen(
         pagedActions().forEachIndexed { index, action ->
             val (x, y) = getButtonPosition(index)
             if (isHovered(mouseX, mouseY, x, y)) {
-                guiGraphics.renderTooltip(font, action.displayName, mouseX, mouseY)
+                val lines = mutableListOf<Component>(action.displayName)
+                if (CobblemonSmartphone.config.energy.enableEnergy) {
+                    val cost = CobblemonSmartphone.config.energy.getCost(action.id)
+                    if (cost > 0) {
+                        val hasEnough = currentSmartphone?.hasEnoughEnergy(cost) ?: false
+                        val color = if (hasEnough) ChatFormatting.GREEN else ChatFormatting.RED
+                        lines.add(Component.translatable("tooltip.cobblemon_smartphone.energy_cost", cost).withStyle(color))
+                    }
+                }
+                guiGraphics.renderComponentTooltip(font, lines, mouseX, mouseY)
                 return
             }
+        }
+
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = false, smartphoneStack)) {
+            return
         }
 
         val key = when {

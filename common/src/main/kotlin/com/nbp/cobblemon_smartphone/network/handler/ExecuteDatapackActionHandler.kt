@@ -54,6 +54,10 @@ object ExecuteDatapackActionHandler : ServerNetworkPacketHandler<ExecuteDatapack
                 playerActions[actionId] = currentTime
             }
 
+            if (!com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, actionId)) {
+                return@execute
+            }
+
             for (function in functions) {
                 function.execute(server, player)
             }

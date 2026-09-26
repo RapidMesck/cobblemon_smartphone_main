@@ -89,6 +89,8 @@ class DmNewScreen(
         blitk(matrixStack = matrices, texture = frameTexture, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
         blitk(matrixStack = matrices, texture = SCREEN_TEXTURE, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
 
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
+
         guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + LIST_START_Y - 2, SocialUi.NAVY)
         val back = lang("back")
         guiGraphics.drawString(
@@ -204,6 +206,8 @@ class DmNewScreen(
                 mouseY in (screenY + TITLE_Y)..(screenY + TITLE_Y + font.lineHeight)
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, players: List<PlayerInfo>) {
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
+
         val tooltip = when {
             isInBack(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_back_to_social")
             findHoveredPlayer(mouseX, mouseY, players) != null -> Component.translatable("cobblemon_smartphone.tooltip.social_start_conversation")

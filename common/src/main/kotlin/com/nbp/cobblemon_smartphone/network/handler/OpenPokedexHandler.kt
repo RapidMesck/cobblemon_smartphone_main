@@ -44,6 +44,10 @@ object OpenPokedexHandler : ServerNetworkPacketHandler<OpenPokedexPacket> {
                 return
             }
 
+            if (!com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:pokedex")) {
+                return
+            }
+
             buttonCooldowns[player.uuid] = now
         }
 

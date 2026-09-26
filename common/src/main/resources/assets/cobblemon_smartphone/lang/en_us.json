@@ -470,5 +470,13 @@
   "cobblemon_smartphone.social.in_call": "In call",
   "cobblemon_smartphone.social.key_unbound": "No Key",
   "cobblemon_smartphone.social.accept": "Accept",
-  "cobblemon_smartphone.social.decline": "Decline"
+  "cobblemon_smartphone.social.decline": "Decline",
+  "message.cobblemon_smartphone.no_smartphone": "You don't have a smartphone!",
+  "message.cobblemon_smartphone.insufficient_energy": "Low battery! Requires %d FE",
+  "tooltip.cobblemon_smartphone.energy": "⚡ Energy: %s / %s FE",
+  "tooltip.cobblemon_smartphone.energy_status": "⚡ %s / %s FE (%d%%)",
+  "tooltip.cobblemon_smartphone.energy_cost": "Energy: %d FE",
+  "upgrade.cobblemon_smartphone.upgrade_battery_tier1": "Battery Upgrade I (+1,000 FE)",
+  "upgrade.cobblemon_smartphone.upgrade_battery_tier2": "Battery Upgrade II (+5,000 FE)",
+  "upgrade.cobblemon_smartphone.upgrade_battery_tier3": "Battery Upgrade III (+15,000 FE)"
 }

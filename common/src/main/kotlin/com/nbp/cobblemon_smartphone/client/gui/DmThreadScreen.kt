@@ -180,6 +180,7 @@ class DmThreadScreen(
     }
 
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
         guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + LIST_START_Y, SocialUi.NAVY)
         guiGraphics.drawString(
             font,
@@ -781,6 +782,8 @@ class DmThreadScreen(
                 mouseY in (screenY + TITLE_Y + 2)..(screenY + TITLE_Y + 2 + font.lineHeight)
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
+
         val tooltip = when {
             isInBack(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_back_to_social")
             isInBellButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_mute_player")

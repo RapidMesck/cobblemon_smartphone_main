@@ -112,6 +112,8 @@ class SocialComposeScreen(
         blitk(matrixStack = matrices, texture = frameTexture, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
         blitk(matrixStack = matrices, texture = SCREEN_TEXTURE, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
 
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
+
         guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + 38, SocialUi.NAVY)
         SocialUi.drawIcon(guiGraphics, if (isDmCompose) SocialUi.Icon.MESSAGE else SocialUi.Icon.FEED, screenX + CONTENT_X + 5, screenY + TITLE_Y - 1, SocialUi.GOLD)
         guiGraphics.drawString(font, lang(if (isDmCompose) "new_message" else "compose_title"), screenX + CONTENT_X + 15, screenY + TITLE_Y, TITLE_COLOR, false)
@@ -436,6 +438,8 @@ class SocialComposeScreen(
         mouseX in x..(x + BUTTON_WIDTH) && mouseY in (screenY + BUTTON_Y)..(screenY + BUTTON_Y + BUTTON_HEIGHT)
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
+
         val tooltip = when {
             isInCancel(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_cancel")
             isInPost(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_create_post")

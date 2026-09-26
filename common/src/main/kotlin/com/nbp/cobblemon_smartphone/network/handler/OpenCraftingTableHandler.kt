@@ -25,6 +25,10 @@ object OpenCraftingTableHandler : ServerNetworkPacketHandler<OpenCraftingTablePa
             return
         }
 
+        if (isNativeAction && !com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:crafting")) {
+            return
+        }
+
         player.openMenu(
             SimpleMenuProvider(
                 { containerId, inventory, _ ->
