@@ -31,8 +31,12 @@ import kotlin.math.sqrt
 class PokeInfoDetailScreen(
     private val color: SmartphoneColor,
     private val smartphoneStack: ItemStack?,
-    private val dexNumber: Int
+    private val speciesId: String,
+    private val dexNumber: Int = 0
 ) : Screen(Component.translatable("cobblemon_smartphone.screen.pokeinfo_detail")) {
+
+    constructor(color: SmartphoneColor, smartphoneStack: ItemStack?, dexNumber: Int) :
+            this(color, smartphoneStack, dexNumber.toString(), dexNumber)
 
     private val frameTexture get() = color.getLargeScreenTexture()
     private var screenX = 0
@@ -72,7 +76,8 @@ class PokeInfoDetailScreen(
         detailLoading = false
         detailErrorKey = null
         currentFormIndex = detail.availableForms.indexOfFirst { it.name == detail.selectedForm }.coerceAtLeast(0)
-        val species = PokemonSpecies.getByPokedexNumber(dexNumber)
+        val species = PokeInfoDataProvider.findSpecies(detail.speciesId)
+            ?: PokeInfoDataProvider.findSpecies(detail.name)
         if (species != null) {
             val form = species.forms.firstOrNull { it.name == detail.selectedForm } ?: species.standardForm
             modelPokemon = RenderablePokemon(species, (form?.aspects ?: emptyList()).toSet())
@@ -83,11 +88,11 @@ class PokeInfoDetailScreen(
 
     private fun requestDetail() {
         detailRequestId = PokeInfoClientState.nextRequestId()
-        PokeInfoClientState.beginDetailRequest(detailRequestId, dexNumber)
+        PokeInfoClientState.beginDetailRequest(detailRequestId, speciesId)
         detailRequestStartedAt = System.currentTimeMillis()
         detailLoading = true
         detailErrorKey = null
-        RequestSpeciesDetailPacket(detailRequestId, dexNumber).sendToServer()
+        RequestSpeciesDetailPacket(detailRequestId, speciesId).sendToServer()
     }
 
     override fun isPauseScreen(): Boolean = false
@@ -122,12 +127,9 @@ class PokeInfoDetailScreen(
         .filter(String::isNotEmpty)
         .joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
 
-    private fun pokemonName(rawName: String, dexNumber: Int? = null): String {
-        val species = dexNumber?.let(PokemonSpecies::getByPokedexNumber)
-            ?: PokemonSpecies.implemented.firstOrNull {
-                it.name.equals(rawName.substringAfter(':'), ignoreCase = true) ||
-                        it.resourceIdentifier.toString().equals(rawName, ignoreCase = true)
-            }
+    private fun pokemonName(rawName: String, speciesId: String? = null): String {
+        val species = speciesId?.let { PokeInfoDataProvider.findSpecies(it) }
+            ?: PokeInfoDataProvider.findSpecies(rawName)
         return species?.translatedName?.string ?: humanize(rawName)
     }
 
@@ -468,7 +470,7 @@ class PokeInfoDetailScreen(
         var y = sy + SECTION_PAD_TOP + topPad
         renderModel(guiGraphics, screenX + CONTENT_X, screenY + y, leftW)
 
-        val dexAndName = "#${String.format("%03d", detail.dexNumber)} ${pokemonName(detail.name, detail.dexNumber)}"
+        val dexAndName = "#${String.format("%03d", detail.dexNumber)} ${pokemonName(detail.name, detail.speciesId)}"
         draw(guiGraphics, dexAndName, screenX + rightX, screenY + y, CONTENT_GOLD)
 
         val types = listOfNotNull(detail.primaryType, detail.secondaryType)

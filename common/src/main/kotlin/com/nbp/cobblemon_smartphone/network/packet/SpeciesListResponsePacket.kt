@@ -19,6 +19,7 @@ class SpeciesListResponsePacket(
             val count = buffer.readVarInt().coerceIn(0, MAX_SPECIES)
             val species = (0 until count).map {
                 SpeciesInfo(
+                    speciesId = buffer.readUtf(128),
                     name = buffer.readUtf(128),
                     dexNumber = buffer.readVarInt(),
                     primaryType = buffer.readUtf(32),
@@ -38,6 +39,7 @@ class SpeciesListResponsePacket(
         val bounded = species.take(MAX_SPECIES)
         buffer.writeVarInt(bounded.size)
         bounded.forEach {
+            buffer.writeUtf(it.speciesId, 128)
             buffer.writeUtf(it.name, 128)
             buffer.writeVarInt(it.dexNumber)
             buffer.writeUtf(it.primaryType, 32)

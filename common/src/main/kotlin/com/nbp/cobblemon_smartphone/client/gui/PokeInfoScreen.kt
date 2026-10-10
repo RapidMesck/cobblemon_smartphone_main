@@ -43,7 +43,7 @@ class PokeInfoScreen(
     private var listRequestStartedAt = 0L
     private var listLoading = true
     private var listErrorKey: String? = null
-    private val modelCache = mutableMapOf<Int, RenderablePokemon?>()
+    private val modelCache = mutableMapOf<String, RenderablePokemon?>()
 
     override fun isPauseScreen(): Boolean = false
 
@@ -171,7 +171,9 @@ class PokeInfoScreen(
                 my >= cy && my <= cy + CARD_HEIGHT
             ) {
                 playClickSound()
-                Minecraft.getInstance().setScreen(PokeInfoDetailScreen(color, smartphoneStack, results[i].dexNumber))
+                Minecraft.getInstance().setScreen(
+                    PokeInfoDetailScreen(color, smartphoneStack, results[i].speciesId, results[i].dexNumber)
+                )
                 return true
             }
         }
@@ -223,6 +225,7 @@ class PokeInfoScreen(
             allSpecies.filter { species ->
                 localizedPokemonName(species).lowercase().contains(normalized) ||
                         species.name.lowercase().contains(normalized) ||
+                        species.speciesId.lowercase().contains(normalized) ||
                         species.dexNumber.toString().startsWith(normalized)
             }
         }
@@ -278,12 +281,13 @@ class PokeInfoScreen(
         maxScroll = maxOf(0, results.size * (CARD_HEIGHT + CARD_GAP) - (LIST_END_Y - LIST_START_Y))
     }
 
-    private fun getModel(dexNumber: Int): RenderablePokemon? {
-        modelCache[dexNumber]?.let { return it }
-        if (modelCache.containsKey(dexNumber)) return null
-        val species = PokemonSpecies.getByPokedexNumber(dexNumber)
-        val model = if (species != null) RenderablePokemon(species, emptySet()) else null
-        modelCache[dexNumber] = model
+    private fun getModel(species: PokeInfoDataProvider.SpeciesInfo): RenderablePokemon? {
+        val key = species.speciesId
+        modelCache[key]?.let { return it }
+        if (modelCache.containsKey(key)) return null
+        val sp = PokeInfoDataProvider.findSpecies(species.speciesId) ?: PokeInfoDataProvider.findSpecies(species.name)
+        val model = if (sp != null) RenderablePokemon(sp, emptySet()) else null
+        modelCache[key] = model
         return model
     }
 
@@ -321,7 +325,7 @@ class PokeInfoScreen(
         guiGraphics.drawString(font, typeText, x1 + 8, y1 + 15, 0xA0FFFFFF.toInt(), false)
 
         // Right: mini 3D model
-        val model = getModel(species.dexNumber)
+        val model = getModel(species)
         if (model != null) {
             val matrices = guiGraphics.pose()
             matrices.pushPose()
@@ -338,8 +342,10 @@ class PokeInfoScreen(
         Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
     }
 
-    private fun localizedPokemonName(species: PokeInfoDataProvider.SpeciesInfo): String =
-        PokemonSpecies.getByPokedexNumber(species.dexNumber)?.translatedName?.string ?: species.name
+    private fun localizedPokemonName(species: PokeInfoDataProvider.SpeciesInfo): String {
+        val sp = PokeInfoDataProvider.findSpecies(species.speciesId) ?: PokeInfoDataProvider.findSpecies(species.name)
+        return sp?.translatedName?.string ?: species.name
+    }
 
     private fun localizedTypeName(type: String): String {
         val key = "cobblemon.type.${type.lowercase()}"

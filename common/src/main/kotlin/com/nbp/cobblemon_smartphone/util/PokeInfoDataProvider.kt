@@ -15,16 +15,20 @@ import com.cobblemon.mod.common.api.spawning.TimeRange
 import com.cobblemon.mod.common.api.spawning.condition.SpawningCondition
 import com.cobblemon.mod.common.api.spawning.detail.PokemonSpawnDetail
 import com.cobblemon.mod.common.pokemon.requirements.*
-import com.cobblemon.mod.common.util.asIdentifierDefaultingNamespace
+import net.minecraft.resources.ResourceLocation
 
 object PokeInfoDataProvider {
 
     data class SpeciesInfo(
+        val speciesId: String,
         val name: String,
         val dexNumber: Int,
         val primaryType: String,
         val secondaryType: String?
-    )
+    ) {
+        constructor(name: String, dexNumber: Int, primaryType: String, secondaryType: String?) :
+                this(name.lowercase(), name, dexNumber, primaryType, secondaryType)
+    }
 
     data class StatsInfo(
         val hp: Int, val attack: Int, val defence: Int,
@@ -64,6 +68,7 @@ object PokeInfoDataProvider {
     )
 
     data class SpeciesDetail(
+        val speciesId: String,
         val name: String,
         val dexNumber: Int,
         val primaryType: String,
@@ -89,16 +94,83 @@ object PokeInfoDataProvider {
         val selectedForm: String
     )
 
+    private val CANONICAL_GEN_LABELS = setOf(
+        "gen1", "gen2", "gen3", "gen4", "gen5", "gen6", "gen7", "gen7b", "gen8", "gen8a", "gen9"
+    )
+
+    fun isCanonicalSpecies(labels: Collection<String>): Boolean {
+        val hasGen = labels.any { it in CANONICAL_GEN_LABELS }
+        val isBetaOrCustom = labels.any { it.contains("beta", ignoreCase = true) }
+        return hasGen && !isBetaOrCustom
+    }
+
+    fun isCanonicalSpecies(species: Species): Boolean = isCanonicalSpecies(species.labels)
+
+    fun findSpecies(speciesId: String): Species? {
+        val trimmed = speciesId.trim()
+        if (trimmed.isEmpty()) return null
+
+        val lower = trimmed.lowercase()
+
+        if (lower.contains(':')) {
+            val res = ResourceLocation.tryParse(lower)
+            if (res != null) {
+                val byId = PokemonSpecies.getByIdentifier(res)
+                if (byId != null) return byId
+            }
+        }
+
+        val stripped = lower.substringAfter(':')
+        val cobbleRes = ResourceLocation.tryParse("cobblemon:$stripped")
+        if (cobbleRes != null) {
+            val byCobble = PokemonSpecies.getByIdentifier(cobbleRes)
+            if (byCobble != null) return byCobble
+        }
+
+        PokemonSpecies.species.firstOrNull {
+            it.resourceIdentifier.toString().equals(trimmed, ignoreCase = true) ||
+                    it.resourceIdentifier.path.equals(stripped, ignoreCase = true) ||
+                    it.name.equals(trimmed, ignoreCase = true) ||
+                    it.name.equals(stripped, ignoreCase = true) ||
+                    it.showdownId().equals(trimmed, ignoreCase = true) ||
+                    it.showdownId().equals(stripped, ignoreCase = true)
+        }?.let { return it }
+
+        val dexNum = trimmed.toIntOrNull()
+        if (dexNum != null) {
+            val byDex = PokemonSpecies.getByPokedexNumber(dexNum)
+            if (byDex != null) return byDex
+        }
+
+        return null
+    }
+
     fun all(): List<SpeciesInfo> {
+        data class SortableSpecies(
+            val info: SpeciesInfo,
+            val isCanonical: Boolean
+        )
+
         return PokemonSpecies.implemented.map { species ->
-            SpeciesInfo(
+            val info = SpeciesInfo(
+                speciesId = species.resourceIdentifier.toString(),
                 name = species.name,
                 dexNumber = species.nationalPokedexNumber,
                 primaryType = species.primaryType.name,
                 secondaryType = species.secondaryType?.name
             )
-        }.sortedBy { it.dexNumber }
-
+            SortableSpecies(info, isCanonicalSpecies(species))
+        }.sortedWith(
+            compareBy<SortableSpecies> {
+                if (it.info.dexNumber > 0) it.info.dexNumber else Int.MAX_VALUE
+            }.thenBy {
+                !it.isCanonical
+            }.thenBy {
+                it.info.name.lowercase()
+            }.thenBy {
+                it.info.speciesId
+            }
+        ).map { it.info }
     }
 
     fun search(query: String): List<SpeciesInfo> {
@@ -106,12 +178,13 @@ object PokeInfoDataProvider {
         val q = query.lowercase()
         return all().filter {
             it.name.lowercase().contains(q) ||
+                    it.speciesId.lowercase().contains(q) ||
                     it.dexNumber.toString().startsWith(q)
         }
     }
 
-    fun getDetail(dexNumber: Int, formName: String? = null): SpeciesDetail? {
-        val species = PokemonSpecies.getByPokedexNumber(dexNumber) ?: return null
+    fun getDetail(speciesId: String, formName: String? = null): SpeciesDetail? {
+        val species = findSpecies(speciesId) ?: return null
         if (formName != null && species.forms.none {
                 it.name.equals(formName, ignoreCase = true) ||
                         it.formOnlyShowdownId().equals(formName, ignoreCase = true)
@@ -119,12 +192,22 @@ object PokeInfoDataProvider {
         return buildDetail(species, formName)
     }
 
+    fun getDetail(dexNumber: Int, formName: String? = null): SpeciesDetail? {
+        val species = PokemonSpecies.getByPokedexNumber(dexNumber) ?: return null
+        return getDetail(species.resourceIdentifier.toString(), formName)
+    }
+
     /** Builds every server-defined form in one response so form navigation needs no extra packets. */
-    fun getAllDetails(dexNumber: Int): List<SpeciesDetail> {
-        val species = PokemonSpecies.getByPokedexNumber(dexNumber) ?: return emptyList()
+    fun getAllDetails(speciesId: String): List<SpeciesDetail> {
+        val species = findSpecies(speciesId) ?: return emptyList()
         return (listOf(species.standardForm) + species.forms)
             .distinctBy { it.name.lowercase() }
             .map { buildDetail(species, it.name) }
+    }
+
+    fun getAllDetails(dexNumber: Int): List<SpeciesDetail> {
+        val species = PokemonSpecies.getByPokedexNumber(dexNumber) ?: return emptyList()
+        return getAllDetails(species.resourceIdentifier.toString())
     }
 
     private fun buildDetail(species: Species, formName: String? = null): SpeciesDetail {
@@ -206,6 +289,7 @@ object PokeInfoDataProvider {
         }
 
         return SpeciesDetail(
+            speciesId = species.resourceIdentifier.toString(),
             name = species.name,
             dexNumber = species.nationalPokedexNumber,
             primaryType = f.primaryType.name,
@@ -439,21 +523,16 @@ object PokeInfoDataProvider {
 
         val result = mutableListOf<EvoInfo>()
         for (evo in form.evolutions) {
-            val targetName = evo.result.species?.let { speciesId ->
-                try {
-                    PokemonSpecies.getByIdentifier(speciesId.asIdentifierDefaultingNamespace())?.name
-                } catch (_: Exception) {
-                    speciesId.split(":").last()
-                }
-            } ?: continue
-
-            result.add(EvoInfo(targetName = targetName, methods = buildEvoMethod(evo)))
-
+            val rawTarget = evo.result.species ?: continue
             val targetSpecies = try {
-                PokemonSpecies.getByIdentifier(evo.result.species!!.asIdentifierDefaultingNamespace())
+                findSpecies(rawTarget)
             } catch (_: Exception) {
                 null
             }
+            val targetName = targetSpecies?.name ?: rawTarget.split(":").last()
+
+            result.add(EvoInfo(targetName = targetName, methods = buildEvoMethod(evo)))
+
             if (targetSpecies != null) {
                 val targetForm = evo.result.form?.let(targetSpecies::getFormByShowdownId)
                     ?: targetSpecies.getForm(evo.result.aspects)

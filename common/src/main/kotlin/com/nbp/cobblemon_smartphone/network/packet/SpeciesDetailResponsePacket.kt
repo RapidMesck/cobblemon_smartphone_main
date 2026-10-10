@@ -13,26 +13,32 @@ import net.minecraft.network.RegistryFriendlyByteBuf
 
 class SpeciesDetailResponsePacket(
     val requestId: Long,
-    val dexNumber: Int,
+    val speciesId: String,
     val status: Status,
     val details: List<SpeciesDetail>
 ) :
     CobblemonSmartphoneNetworkPacket<SpeciesDetailResponsePacket> {
     enum class Status { SUCCESS, NOT_FOUND, RATE_LIMITED, ERROR }
 
+    val dexNumber: Int get() = details.firstOrNull()?.dexNumber ?: speciesId.toIntOrNull() ?: 0
+
+    constructor(requestId: Long, dexNumber: Int, status: Status, details: List<SpeciesDetail>) :
+            this(requestId, dexNumber.toString(), status, details)
+
     companion object {
         val ID = smartphoneResource("species_detail_response")
 
         fun decode(buffer: RegistryFriendlyByteBuf): SpeciesDetailResponsePacket {
             val requestId = buffer.readVarLong()
-            val dexNumber = buffer.readVarInt()
+            val speciesId = buffer.readUtf(128)
             val status = runCatching { Status.valueOf(buffer.readUtf(32)) }.getOrDefault(Status.ERROR)
             val details = readList(buffer) { readDetail(buffer) }
-            return SpeciesDetailResponsePacket(requestId, dexNumber, status, details)
+            return SpeciesDetailResponsePacket(requestId, speciesId, status, details)
         }
 
         private fun readDetail(buffer: RegistryFriendlyByteBuf): SpeciesDetail {
             return SpeciesDetail(
+                speciesId = buffer.readUtf(128),
                 name = buffer.readUtf(),
                 dexNumber = buffer.readVarInt(),
                 primaryType = buffer.readUtf(),
@@ -111,12 +117,13 @@ class SpeciesDetailResponsePacket(
 
     override fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeVarLong(requestId)
-        buffer.writeVarInt(dexNumber)
+        buffer.writeUtf(speciesId, 128)
         buffer.writeUtf(status.name)
         encodeList(buffer, details) { encodeDetail(buffer, it) }
     }
 
     private fun encodeDetail(buffer: RegistryFriendlyByteBuf, d: SpeciesDetail) {
+        buffer.writeUtf(d.speciesId, 128)
         buffer.writeUtf(d.name)
         buffer.writeVarInt(d.dexNumber)
         buffer.writeUtf(d.primaryType)

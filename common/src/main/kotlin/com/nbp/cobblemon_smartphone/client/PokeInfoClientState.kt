@@ -9,7 +9,7 @@ object PokeInfoClientState {
     private val sequence = AtomicLong()
 
     @Volatile private var expectedDetailRequestId = -1L
-    @Volatile private var expectedDexNumber = -1
+    @Volatile private var expectedSpeciesId = ""
     @Volatile private var detailResponse: SpeciesDetailResponsePacket? = null
     @Volatile private var expectedListRequestId = -1L
     @Volatile private var listResponse: SpeciesListResponsePacket? = null
@@ -39,14 +39,18 @@ object PokeInfoClientState {
         }
     }
 
-    fun beginDetailRequest(requestId: Long, dexNumber: Int) {
+    fun beginDetailRequest(requestId: Long, speciesId: String) {
         expectedDetailRequestId = requestId
-        expectedDexNumber = dexNumber
+        expectedSpeciesId = speciesId
         detailResponse = null
     }
 
+    fun beginDetailRequest(requestId: Long, dexNumber: Int) {
+        beginDetailRequest(requestId, dexNumber.toString())
+    }
+
     fun accept(packet: SpeciesDetailResponsePacket) {
-        if (matchesExpected(packet.requestId, packet.dexNumber)) {
+        if (matchesExpected(packet.requestId, packet.speciesId)) {
             detailResponse = packet
         }
     }
@@ -61,11 +65,14 @@ object PokeInfoClientState {
     fun cancelDetailRequest(requestId: Long) {
         if (requestId == expectedDetailRequestId) {
             expectedDetailRequestId = -1L
-            expectedDexNumber = -1
+            expectedSpeciesId = ""
             detailResponse = null
         }
     }
 
+    internal fun matchesExpected(requestId: Long, speciesId: String): Boolean =
+        requestId == expectedDetailRequestId && speciesId.equals(expectedSpeciesId, ignoreCase = true)
+
     internal fun matchesExpected(requestId: Long, dexNumber: Int): Boolean =
-        requestId == expectedDetailRequestId && dexNumber == expectedDexNumber
+        requestId == expectedDetailRequestId && (expectedSpeciesId == dexNumber.toString() || expectedSpeciesId.toIntOrNull() == dexNumber)
 }

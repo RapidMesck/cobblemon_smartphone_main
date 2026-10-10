@@ -18,22 +18,22 @@ object RequestSpeciesDetailHandler : ServerNetworkPacketHandler<RequestSpeciesDe
 
             if (!limiter.tryAcquire(player.uuid)) {
                 SpeciesDetailResponsePacket(
-                    packet.requestId, packet.dexNumber,
+                    packet.requestId, packet.speciesId,
                     SpeciesDetailResponsePacket.Status.RATE_LIMITED, emptyList()
                 ).sendToPlayer(player)
                 return@execute
             }
 
             try {
-                val details = PokeInfoDataProvider.getAllDetails(packet.dexNumber)
+                val details = PokeInfoDataProvider.getAllDetails(packet.speciesId)
                 val status = if (details.isEmpty()) SpeciesDetailResponsePacket.Status.NOT_FOUND
                 else SpeciesDetailResponsePacket.Status.SUCCESS
                 SpeciesDetailResponsePacket(
-                    packet.requestId, packet.dexNumber, status, details
+                    packet.requestId, packet.speciesId, status, details
                 ).sendToPlayer(player)
             } catch (_: Exception) {
                 SpeciesDetailResponsePacket(
-                    packet.requestId, packet.dexNumber,
+                    packet.requestId, packet.speciesId,
                     SpeciesDetailResponsePacket.Status.ERROR, emptyList()
                 ).sendToPlayer(player)
             }
