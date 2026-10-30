@@ -6,6 +6,7 @@ import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
 import com.nbp.cobblemon_smartphone.client.gui.StructureCompassOverlay
 import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
+import com.nbp.cobblemon_smartphone.client.render.RotomClientManager
 import com.nbp.cobblemon_smartphone.client.social.CallClientTicker
 import com.nbp.cobblemon_smartphone.client.social.SocialClientSession
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
@@ -67,6 +68,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             }
             FabricSmartphoneKeybindHandler.onClientTick(client)
             CallClientTicker.tick()
+            RotomClientManager.tick()
             SocialPhotoClient.tick()
             GpsClientState.tick()
             StructureCompassClientState.tick()

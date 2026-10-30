@@ -2,18 +2,20 @@ package com.nbp.cobblemon_smartphone.command
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.LongArgumentType
+import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import com.nbp.cobblemon_smartphone.social.SocialData
+import com.nbp.cobblemon_smartphone.social.SmartphoneInteractionManager
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.arguments.GameProfileArgument
 import net.minecraft.network.chat.Component
 
 /**
- * Operator moderation for the Social app.
+ * Commands for the Social app and remote smartphone interactions.
  *
- * Uses [GameProfileArgument] rather than EntityArgument so offline players can be banned too —
- * the player who needs moderating is often the one who just logged off.
+ * Moderation commands require OP level 2.
+ * Interaction commands (accept/decline) can be run by any player.
  */
 object SocialCommands {
     private const val OP_PERMISSION_LEVEL = 2
@@ -23,9 +25,27 @@ object SocialCommands {
     fun register(dispatcher: CommandDispatcher<CommandSourceStack>) {
         dispatcher.register(
             Commands.literal("social")
-                .requires { it.hasPermission(OP_PERMISSION_LEVEL) }
+                // User-accessible interaction acceptance & decline
+                .then(
+                    Commands.literal("accept")
+                        .executes { SmartphoneInteractionManager.handleAcceptCommand(it, null) }
+                        .then(
+                            Commands.argument("requestId", StringArgumentType.string())
+                                .executes { SmartphoneInteractionManager.handleAcceptCommand(it, StringArgumentType.getString(it, "requestId")) }
+                        )
+                )
+                .then(
+                    Commands.literal("decline")
+                        .executes { SmartphoneInteractionManager.handleDeclineCommand(it, null) }
+                        .then(
+                            Commands.argument("requestId", StringArgumentType.string())
+                                .executes { SmartphoneInteractionManager.handleDeclineCommand(it, StringArgumentType.getString(it, "requestId")) }
+                        )
+                )
+                // Operator moderation commands
                 .then(
                     Commands.literal("ban")
+                        .requires { it.hasPermission(OP_PERMISSION_LEVEL) }
                         .then(
                             Commands.argument("targets", GameProfileArgument.gameProfile())
                                 .executes { setBan(it, Scope.ALL, true) }
@@ -36,6 +56,7 @@ object SocialCommands {
                 )
                 .then(
                     Commands.literal("unban")
+                        .requires { it.hasPermission(OP_PERMISSION_LEVEL) }
                         .then(
                             Commands.argument("targets", GameProfileArgument.gameProfile())
                                 .executes { setBan(it, Scope.ALL, false) }
@@ -43,6 +64,7 @@ object SocialCommands {
                 )
                 .then(
                     Commands.literal("delete")
+                        .requires { it.hasPermission(OP_PERMISSION_LEVEL) }
                         .then(
                             Commands.argument("id", LongArgumentType.longArg(1))
                                 .executes { deletePost(it) }
@@ -50,15 +72,39 @@ object SocialCommands {
                 )
                 .then(
                     Commands.literal("cleanphotos")
+                        .requires { it.hasPermission(OP_PERMISSION_LEVEL) }
                         .executes { cleanPhotos(it) }
                 )
                 .then(
                     Commands.literal("reports")
+                        .requires { it.hasPermission(OP_PERMISSION_LEVEL) }
                         .executes { listReports(it) }
                 )
                 .then(
                     Commands.literal("clearreports")
+                        .requires { it.hasPermission(OP_PERMISSION_LEVEL) }
                         .executes { clearReports(it) }
+                )
+        )
+
+        // Also register /smartphone accept / decline as an intuitive alias
+        dispatcher.register(
+            Commands.literal("smartphone")
+                .then(
+                    Commands.literal("accept")
+                        .executes { SmartphoneInteractionManager.handleAcceptCommand(it, null) }
+                        .then(
+                            Commands.argument("requestId", StringArgumentType.string())
+                                .executes { SmartphoneInteractionManager.handleAcceptCommand(it, StringArgumentType.getString(it, "requestId")) }
+                        )
+                )
+                .then(
+                    Commands.literal("decline")
+                        .executes { SmartphoneInteractionManager.handleDeclineCommand(it, null) }
+                        .then(
+                            Commands.argument("requestId", StringArgumentType.string())
+                                .executes { SmartphoneInteractionManager.handleDeclineCommand(it, StringArgumentType.getString(it, "requestId")) }
+                        )
                 )
         )
     }

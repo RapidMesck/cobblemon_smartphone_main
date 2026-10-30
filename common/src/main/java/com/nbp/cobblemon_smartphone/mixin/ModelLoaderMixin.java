@@ -46,5 +46,11 @@ public abstract class ModelLoaderMixin {
             ModelResourceLocation handModelId = new ModelResourceLocation(handLocation, "inventory");
             this.registerModel(handModelId, unbakedHandModel);
         }
+
+        // Modelo 3D do Rotom (para testes com o celular laranja)
+        ResourceLocation rotomLocation = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "item/rotom");
+        UnbakedModel unbakedRotomModel = this.getModel(rotomLocation);
+        ModelResourceLocation rotomModelId = new ModelResourceLocation(rotomLocation, "inventory");
+        this.registerModel(rotomModelId, unbakedRotomModel);
     }
 }

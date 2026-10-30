@@ -20,6 +20,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneGpsItems
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.server.RotomServerManager
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
 import com.nbp.cobblemon_smartphone.util.ActionOrderStorage
@@ -106,6 +107,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
             }
             SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(player)
             SyncEnergyConfigPacket.fromServerConfig().sendToPlayer(player)
+            RotomServerManager.onPlayerJoin(player)
         }
 
         // End any call a player was in when they disconnect, restoring the other side's voice group.
@@ -113,6 +115,8 @@ class CobblemonSmartphoneNeoForge : Implementation {
             val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
             player.server?.let { CallManager.onLogout(it, player) }
             TomsStorageRemoteSession.onLogout(player)
+            RotomServerManager.onPlayerDisconnect(player)
+            com.nbp.cobblemon_smartphone.social.SmartphoneInteractionManager.onLogout(player)
         }
 
         // Close out the remote-access bypass once the remotely-opened Toms Storage terminal

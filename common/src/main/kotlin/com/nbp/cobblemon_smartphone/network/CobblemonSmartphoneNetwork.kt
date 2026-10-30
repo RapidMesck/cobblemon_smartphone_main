@@ -175,6 +175,10 @@ import com.nbp.cobblemon_smartphone.network.handler.ReportContentHandler
 import com.nbp.cobblemon_smartphone.network.packet.OpenGpsScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenStructureCompassScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokeInfoScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.SetSmartphoneOpenStatePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneOpenStatePacket
+import com.nbp.cobblemon_smartphone.network.handler.SetSmartphoneOpenStateHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncSmartphoneOpenStateHandler
 
 object CobblemonSmartphoneNetwork {
     val s2cPayloads = generateS2CPacketInfoList()
@@ -190,6 +194,7 @@ object CobblemonSmartphoneNetwork {
                 SyncDatapackActionsHandler
             )
         )
+        list.add(PacketRegisterInfo(SyncSmartphoneOpenStatePacket.ID, SyncSmartphoneOpenStatePacket::decode, SyncSmartphoneOpenStateHandler))
         list.add(PacketRegisterInfo(SyncActionOrderPacket.ID, SyncActionOrderPacket::decode, SyncActionOrderHandler))
         list.add(
             PacketRegisterInfo(
@@ -481,6 +486,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(ChallengeTradePacket.ID, ChallengeTradePacket::decode, ChallengeTradeHandler))
         list.add(PacketRegisterInfo(VotePollPacket.ID, VotePollPacket::decode, VotePollHandler))
         list.add(PacketRegisterInfo(ReportContentPacket.ID, ReportContentPacket::decode, ReportContentHandler))
+        list.add(PacketRegisterInfo(SetSmartphoneOpenStatePacket.ID, SetSmartphoneOpenStatePacket::decode, SetSmartphoneOpenStateHandler))
 
         return list
     }

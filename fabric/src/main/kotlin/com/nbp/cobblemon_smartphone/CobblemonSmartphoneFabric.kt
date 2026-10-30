@@ -19,6 +19,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneGpsItems
 import com.nbp.cobblemon_smartphone.network.packet.SyncThemePacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.server.RotomServerManager
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
 import com.nbp.cobblemon_smartphone.util.ActionOrderStorage
@@ -100,12 +101,15 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
             }
             SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(handler.player)
             SyncEnergyConfigPacket.fromServerConfig().sendToPlayer(handler.player)
+            RotomServerManager.onPlayerJoin(handler.player)
         }
 
         // End any call a player was in when they disconnect, restoring the other side's voice group.
         ServerPlayConnectionEvents.DISCONNECT.register { handler, server ->
             CallManager.onLogout(server, handler.player)
             TomsStorageRemoteSession.onLogout(handler.player)
+            RotomServerManager.onPlayerDisconnect(handler.player)
+            com.nbp.cobblemon_smartphone.social.SmartphoneInteractionManager.onLogout(handler.player)
         }
         // Fabric API has no generic "container closed" event, so a per-tick poll (see
         // TomsStorageRemoteSession.tick) is what closes out the remote-access bypass once the

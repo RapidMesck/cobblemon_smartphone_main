@@ -22,6 +22,26 @@ object SmartphoneHelper {
             ?: (if (player.offhandItem.item is SmartphoneItem) player.offhandItem else null)
     }
 
+    /**
+     * Checks if the player has the orange smartphone equipped (main hand, offhand, or accessory slot).
+     * Does NOT match if the smartphone is merely sitting in normal inventory storage.
+     */
+    fun getEquippedOrangeSmartphone(player: Player): ItemStack? {
+        val main = player.mainHandItem
+        if (main.item is SmartphoneItem && (main.item as SmartphoneItem).getColor() == SmartphoneColor.ORANGE) {
+            return main
+        }
+        val off = player.offhandItem
+        if (off.item is SmartphoneItem && (off.item as SmartphoneItem).getColor() == SmartphoneColor.ORANGE) {
+            return off
+        }
+        val compat = getSmartphoneImpl?.invoke(player)
+        if (compat != null && compat.item is SmartphoneItem && (compat.item as SmartphoneItem).getColor() == SmartphoneColor.ORANGE) {
+            return compat
+        }
+        return null
+    }
+
     fun satisfiesUpgradeRequirement(player: Player, upgradeKey: String, actionId: String? = null): Boolean {
         if (actionId != null && CobblemonSmartphone.config.ignoreUpgrades.contains(actionId)) {
             return true

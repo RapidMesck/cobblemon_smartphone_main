@@ -21,6 +21,7 @@
         "MixinPokedexUsageContext",
         "MixinItemInHandRenderer",
         "MouseHandlerMixin",
+        "PlayerRendererMixin",
         "ScreenRenderMixin"
     ]
 }
