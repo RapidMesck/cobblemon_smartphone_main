@@ -137,6 +137,7 @@ class SocialScreen(
         maxScroll = (contentHeight() - (LIST_END_Y - LIST_START_Y)).coerceAtLeast(0)
         scrollY = scrollY.coerceIn(0, maxScroll)
         renderScrollbar(guiGraphics)
+        renderBottomNav(guiGraphics, mouseX, mouseY)
 
         pokemonPopup?.let {
             RenderSystem.disableDepthTest()
@@ -152,13 +153,6 @@ class SocialScreen(
 
     private fun renderFeed(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         var y = screenY + LIST_START_Y - scrollY
-
-        // Subheader filter row (Global | Following) + Discover trainers button
-        if (y + 14 >= screenY + LIST_START_Y && y <= screenY + LIST_END_Y) {
-            renderFeedFilter(guiGraphics, y, mouseX, mouseY)
-        }
-        y += 18
-
         val posts = SocialFeedCache.posts()
         posts.forEachIndexed { index, post ->
             val height = measureCard(post)
@@ -350,7 +344,7 @@ class SocialScreen(
     // --- Layout ---
 
     private fun contentHeight(): Int = when (tab) {
-        Tab.FEED -> 18 + SocialFeedCache.posts().sumOf { measureCard(it) + CARD_GAP }
+        Tab.FEED -> SocialFeedCache.posts().sumOf { measureCard(it) + CARD_GAP }
         Tab.DMS -> SocialDmCache.threads().size * (THREAD_ROW_HEIGHT + CARD_GAP)
         Tab.NOTIFICATIONS -> {
             val notifs = SocialNotificationCache.notifications()
@@ -442,89 +436,178 @@ class SocialScreen(
     }
 
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        guiGraphics.fill(screenX + SCREEN_LEFT, screenY + SCREEN_TOP, screenX + SCREEN_RIGHT, screenY + LIST_START_Y - 1, theme.colors.headerNavy)
-        var tx = screenX + CONTENT_X
-        val btnY = screenY + TITLE_Y - TAB_BUTTON_PAD_Y + 1
-        val btnH = font.lineHeight + TAB_BUTTON_PAD_Y * 2
+        val headerY = screenY + SCREEN_TOP
+        val headerH = LIST_START_Y - SCREEN_TOP
+        val headerW = SCREEN_RIGHT - SCREEN_LEFT
+        val leftX = screenX + SCREEN_LEFT
 
-        Tab.entries.forEachIndexed { index, entry ->
-            val active = tab == entry
-            val hovered = isInTab(mouseX, mouseY, index)
-            val label = lang(when (entry) {
-                Tab.FEED -> "tab_feed"
-                Tab.DMS -> "tab_dms"
-                Tab.NOTIFICATIONS -> "tab_notifications"
-            })
-            val textW = font.width(label)
-            val btnW = textW + TAB_PAD * 2 + TAB_ICON_SPACE
-            val boxX = tx + if (entry == Tab.FEED) 2 else 0
-            val bg = when {
-                active -> theme.colors.primary
-                hovered -> theme.colors.headerNavyLight
-                else -> theme.colors.headerNavy
-            }
-            val tc = when {
-                active -> NAME_COLOR
-                hovered -> NAME_COLOR
-                else -> theme.colors.textMuted
-            }
-            guiGraphics.fill(boxX, btnY, boxX + btnW, btnY + btnH, bg)
-            val iconX = tx + if (entry == Tab.FEED) 6 else 4
-            val iconY = screenY + TITLE_Y
-            SocialUi.drawIcon(
-                guiGraphics,
-                when (entry) {
-                    Tab.FEED -> SocialUi.Icon.FEED
-                    Tab.DMS -> SocialUi.Icon.MESSAGE
-                    Tab.NOTIFICATIONS -> SocialUi.Icon.BELL
-                },
-                iconX,
-                iconY,
-                tc
-            )
-            val hasUnread = when (entry) {
-                Tab.DMS -> SocialDmCache.unreadTotal > 0
-                Tab.NOTIFICATIONS -> SocialNotificationCache.unreadCount > 0
-                Tab.FEED -> false
-            }
-            if (hasUnread) {
-                guiGraphics.fill(iconX + 6, iconY - 1, iconX + 10, iconY + 3, UNREAD_BADGE_COLOR)
-            }
+        guiGraphics.fill(leftX, headerY, leftX + headerW, headerY + headerH, theme.colors.headerNavy)
+        guiGraphics.fill(leftX, headerY + headerH - 1, leftX + headerW, headerY + headerH, SEPARATOR_COLOR)
 
-            val labelX = tx + TAB_PAD + TAB_ICON_SPACE + if (entry == Tab.FEED) 1 else 0
-            guiGraphics.drawString(font, label, labelX, screenY + TITLE_Y + 1, tc, false)
-            if (active) guiGraphics.fill(boxX, btnY + btnH - 1, boxX + btnW, btnY + btnH, theme.colors.gold)
-            tx += btnW + TAB_GAP
-        }
-
-        renderProfileButton(guiGraphics, mouseX, mouseY)
-        renderMuteButton(guiGraphics, mouseX, mouseY)
-
-        if (tab != Tab.NOTIFICATIONS) {
-            val hovered = isInComposeButton(mouseX, mouseY)
-            val (bx, by) = composeButtonPos()
-            SocialUi.iconButton(guiGraphics, SocialUi.Icon.PLUS, bx, by, COMPOSE_SIZE, hovered, colors = theme.colors)
+        when (tab) {
+            Tab.FEED -> renderFeedHeader(guiGraphics, mouseX, mouseY)
+            Tab.DMS -> renderDmsHeader(guiGraphics, mouseX, mouseY)
+            Tab.NOTIFICATIONS -> renderNotificationsHeader(guiGraphics, mouseX, mouseY)
         }
     }
 
-    private fun renderProfileButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val (x, y) = profilePos()
-        val hovered = isInProfileButton(mouseX, mouseY)
-        SocialUi.iconButton(guiGraphics, SocialUi.Icon.USER, x, y, COMPOSE_SIZE, hovered, colors = theme.colors)
+    private fun renderFeedHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val y = screenY + SCREEN_TOP + 2
+        val followingActive = SocialFeedCache.followingOnly
+
+        // Global Pill
+        val (gx, _) = globalFilterPos()
+        val gw = globalFilterWidth()
+        val gHovered = isInGlobalFilter(mouseX, mouseY)
+        val gBg = when {
+            !followingActive -> theme.colors.primary
+            gHovered -> theme.colors.surfaceHover
+            else -> theme.colors.surface
+        }
+        val gTc = if (!followingActive) NAME_COLOR else CONTENT_DIM
+        guiGraphics.fill(gx, y, gx + gw, y + 12, gBg)
+        guiGraphics.fill(gx, y, gx + gw, y + 1, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(gx, y + 11, gx + gw, y + 12, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(gx, y, gx + 1, y + 12, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(gx + gw - 1, y, gx + gw, y + 12, BUTTON_BORDER_COLOR)
+        guiGraphics.drawString(font, lang("feed_global"), gx + 5, y + 2, gTc, false)
+        if (!followingActive) guiGraphics.fill(gx + 2, y + 10, gx + gw - 2, y + 11, theme.colors.gold)
+
+        // Following Pill
+        val (fx, _) = followingFilterPos()
+        val fw = followingFilterWidth()
+        val fHovered = isInFollowingFilter(mouseX, mouseY)
+        val fBg = when {
+            followingActive -> theme.colors.primary
+            fHovered -> theme.colors.surfaceHover
+            else -> theme.colors.surface
+        }
+        val fTc = if (followingActive) NAME_COLOR else CONTENT_DIM
+        guiGraphics.fill(fx, y, fx + fw, y + 12, fBg)
+        guiGraphics.fill(fx, y, fx + fw, y + 1, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(fx, y + 11, fx + fw, y + 12, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(fx, y, fx + 1, y + 12, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(fx + fw - 1, y, fx + fw, y + 12, BUTTON_BORDER_COLOR)
+        guiGraphics.drawString(font, lang("feed_following"), fx + 5, y + 2, fTc, false)
+        if (followingActive) guiGraphics.fill(fx + 2, y + 10, fx + fw - 2, y + 11, theme.colors.gold)
+
+        // Active Hashtag Pill
+        val activeTag = SocialFeedCache.hashtag
+        val (mx, _) = mutePos()
+        if (activeTag != null) {
+            val tagLabel = "#$activeTag ✕"
+            val tw = font.width(tagLabel) + 8
+            val tx = fx + fw + 3
+            if (tx + tw < mx - 3) {
+                val tHovered = isInHashtagFilter(mouseX, mouseY)
+                guiGraphics.fill(tx, y, tx + tw, y + 12, if (tHovered) theme.colors.danger else theme.colors.gold)
+                guiGraphics.fill(tx, y, tx + tw, y + 1, BUTTON_BORDER_COLOR)
+                guiGraphics.fill(tx, y + 11, tx + tw, y + 12, BUTTON_BORDER_COLOR)
+                guiGraphics.fill(tx, y, tx + 1, y + 12, BUTTON_BORDER_COLOR)
+                guiGraphics.fill(tx + tw - 1, y, tx + tw, y + 12, BUTTON_BORDER_COLOR)
+                guiGraphics.drawString(font, tagLabel, tx + 4, y + 2, 0xFF000000.toInt(), false)
+            }
+        }
+
+        renderMuteButton(guiGraphics, mouseX, mouseY)
+        renderComposeButton(guiGraphics, mouseX, mouseY)
+    }
+
+    private fun renderDmsHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val y = screenY + SCREEN_TOP + 2
+        val iconX = screenX + SCREEN_LEFT + 4
+        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.MESSAGE, iconX, y + 2, theme.colors.gold)
+        guiGraphics.drawString(font, lang("tab_dms"), iconX + 13, y + 2, NAME_COLOR, false)
+
+        renderMuteButton(guiGraphics, mouseX, mouseY)
+        renderComposeButton(guiGraphics, mouseX, mouseY)
+    }
+
+    private fun renderNotificationsHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val y = screenY + SCREEN_TOP + 2
+        val iconX = screenX + SCREEN_LEFT + 4
+        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.BELL, iconX, y + 2, theme.colors.gold)
+        val unread = SocialNotificationCache.unreadCount
+        val title = if (unread > 0) "$unread ${lang("new_alerts")}" else lang("tab_notifications")
+        guiGraphics.drawString(font, title, iconX + 13, y + 2, NAME_COLOR, false)
+
+        renderMuteButton(guiGraphics, mouseX, mouseY)
+    }
+
+    private fun renderComposeButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val hovered = isInComposeButton(mouseX, mouseY)
+        val (bx, by) = composeButtonPos()
+        SocialUi.iconButton(guiGraphics, SocialUi.Icon.PLUS, bx, by, COMPOSE_SIZE, hovered, colors = theme.colors)
     }
 
     /** Do Not Disturb toggle: a bell that gains a red slash when muted. */
     private fun renderMuteButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val (x, y) = mutePos()
         val hovered = isInMuteButton(mouseX, mouseY)
-        val bg = when {
-            SocialMute.muted -> MUTE_ACTIVE_COLOR
-            hovered -> ACCENT_COLOR
-            else -> SECTION_CONTENT_BG
-        }
         SocialUi.iconButton(guiGraphics, SocialUi.Icon.BELL, x, y, COMPOSE_SIZE, hovered, SocialMute.muted, colors = theme.colors)
         if (SocialMute.muted) {
             guiGraphics.fill(x + 1, y + 5, x + 11, y + 6, MUTE_SLASH_COLOR)
+        }
+    }
+
+    private fun renderBottomNav(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val barY = screenY + SCREEN_BOTTOM - BOTTOM_BAR_HEIGHT
+        val barX = screenX + SCREEN_LEFT
+        val barW = SCREEN_RIGHT - SCREEN_LEFT
+
+        // Dock background and top border
+        guiGraphics.fill(barX, barY, barX + barW, barY + BOTTOM_BAR_HEIGHT, theme.colors.headerNavy)
+        guiGraphics.fill(barX, barY, barX + barW, barY + 1, BUTTON_BORDER_COLOR)
+
+        val slotW = barW / 5
+
+        for (i in 0..4) {
+            val sx = barX + i * slotW
+            val sw = if (i == 4) (barX + barW) - sx else slotW
+            val hovered = mouseX in sx..(sx + sw) && mouseY in barY..(barY + BOTTOM_BAR_HEIGHT)
+            val active = when (i) {
+                0 -> tab == Tab.FEED
+                2 -> tab == Tab.DMS
+                3 -> tab == Tab.NOTIFICATIONS
+                else -> false
+            }
+
+            if (hovered) {
+                guiGraphics.fill(sx, barY + 1, sx + sw, barY + BOTTOM_BAR_HEIGHT, theme.colors.headerNavyLight)
+            }
+
+            val icon = when (i) {
+                0 -> SocialUi.Icon.FEED
+                1 -> SocialUi.Icon.SEARCH
+                2 -> SocialUi.Icon.MESSAGE
+                3 -> SocialUi.Icon.BELL
+                4 -> SocialUi.Icon.USER
+                else -> SocialUi.Icon.FEED
+            }
+
+            val iconColor = when {
+                active -> theme.colors.gold
+                hovered -> NAME_COLOR
+                else -> theme.colors.textMuted
+            }
+
+            val iconX = sx + (sw - 8) / 2
+            val iconY = barY + (BOTTOM_BAR_HEIGHT - 8) / 2 + 1
+            SocialUi.drawIcon(guiGraphics, icon, iconX, iconY, iconColor)
+
+            if (active) {
+                guiGraphics.fill(sx + 6, barY + BOTTOM_BAR_HEIGHT - 2, sx + sw - 6, barY + BOTTOM_BAR_HEIGHT, theme.colors.gold)
+            }
+
+            val hasUnread = when (i) {
+                2 -> SocialDmCache.unreadTotal > 0
+                3 -> SocialNotificationCache.unreadCount > 0
+                else -> false
+            }
+            if (hasUnread) {
+                guiGraphics.fill(iconX + 6, iconY - 1, iconX + 10, iconY + 3, UNREAD_BADGE_COLOR)
+                guiGraphics.fill(iconX + 7, iconY, iconX + 9, iconY + 2, 0xFFFFFFFF.toInt())
+            }
         }
     }
 
@@ -1041,12 +1124,33 @@ class SocialScreen(
             return true
         }
 
-        Tab.entries.forEachIndexed { index, entry ->
-            if (isInTab(mx, my, index)) {
-                playClickSound()
-                switchTab(entry)
-                return true
+        val navIdx = isInBottomNav(mx, my)
+        if (navIdx != null) {
+            playClickSound()
+            when (navIdx) {
+                0 -> {
+                    switchTab(Tab.FEED)
+                    scrollY = 0
+                }
+                1 -> {
+                    Minecraft.getInstance().setScreen(DmNewScreen(color, smartphoneStack))
+                }
+                2 -> {
+                    switchTab(Tab.DMS)
+                    scrollY = 0
+                }
+                3 -> {
+                    switchTab(Tab.NOTIFICATIONS)
+                    scrollY = 0
+                }
+                4 -> {
+                    val me = Minecraft.getInstance().player
+                    if (me != null) {
+                        Minecraft.getInstance().setScreen(SocialProfileScreen(color, smartphoneStack, me.uuid, me.gameProfile.name))
+                    }
+                }
             }
+            return true
         }
 
         // Do Not Disturb toggle: mute/unmute all social alerts, rings and incoming calls.
@@ -1054,15 +1158,6 @@ class SocialScreen(
             playClickSound()
             SaveSocialMutePacket(SocialMute.toggle()).sendToServer()
             return true
-        }
-
-        if (isInProfileButton(mx, my)) {
-            playClickSound()
-            val me = Minecraft.getInstance().player
-            if (me != null) {
-                Minecraft.getInstance().setScreen(SocialProfileScreen(color, smartphoneStack, me.uuid, me.gameProfile.name))
-                return true
-            }
         }
 
         // The "+" means "new post" on the feed and "new conversation" on DMs.
@@ -1075,6 +1170,27 @@ class SocialScreen(
             }
             Minecraft.getInstance().setScreen(next)
             return true
+        }
+
+        if (tab == Tab.FEED) {
+            if (isInGlobalFilter(mx, my)) {
+                playClickSound()
+                SocialFeedCache.setFilter(false)
+                scrollY = 0
+                return true
+            }
+            if (isInFollowingFilter(mx, my)) {
+                playClickSound()
+                SocialFeedCache.setFilter(true)
+                scrollY = 0
+                return true
+            }
+            if (isInHashtagFilter(mx, my)) {
+                playClickSound()
+                SocialFeedCache.clearHashtag()
+                scrollY = 0
+                return true
+            }
         }
 
         if (tab == Tab.DMS && my in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) {
@@ -1140,31 +1256,7 @@ class SocialScreen(
         }
 
         if (tab == Tab.FEED && my in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) {
-            if (isInGlobalFilter(mx, my)) {
-                playClickSound()
-                SocialFeedCache.setFilter(false)
-                scrollY = 0
-                return true
-            }
-            if (isInFollowingFilter(mx, my)) {
-                playClickSound()
-                SocialFeedCache.setFilter(true)
-                scrollY = 0
-                return true
-            }
-            if (isInExploreButton(mx, my)) {
-                playClickSound()
-                Minecraft.getInstance().setScreen(DmNewScreen(color, smartphoneStack))
-                return true
-            }
-            if (isInHashtagFilter(mx, my)) {
-                playClickSound()
-                SocialFeedCache.clearHashtag()
-                scrollY = 0
-                return true
-            }
-
-            var y = screenY + LIST_START_Y - scrollY + 18
+            var y = screenY + LIST_START_Y - scrollY
             SocialFeedCache.posts().forEach { post ->
                 val height = measureCard(post)
                 val authorHitW = HEAD_SIZE + 4 + font.width(post.authorName)
@@ -1289,27 +1381,13 @@ class SocialScreen(
         if (next == Tab.NOTIFICATIONS) SocialNotificationCache.refresh()
     }
 
-    private fun isInTab(mouseX: Int, mouseY: Int, index: Int): Boolean {
-        val baseX = screenX + CONTENT_X
-        val btnY = screenY + TITLE_Y - TAB_BUTTON_PAD_Y + 1
-        val btnH = font.lineHeight + TAB_BUTTON_PAD_Y * 2
-        if (mouseY !in btnY..(btnY + btnH)) return false
-
-        var tx = baseX
-        for (i in 0..index) {
-            val label = lang(when (Tab.entries[i]) {
-                Tab.FEED -> "tab_feed"
-                Tab.DMS -> "tab_dms"
-                Tab.NOTIFICATIONS -> "tab_notifications"
-            })
-            val btnW = font.width(label) + TAB_PAD * 2 + TAB_ICON_SPACE
-            if (i == index) {
-                val boxX = tx + if (Tab.entries[i] == Tab.FEED) 2 else 0
-                return mouseX in boxX..(boxX + btnW)
-            }
-            tx += btnW + TAB_GAP
-        }
-        return false
+    private fun isInBottomNav(mouseX: Int, mouseY: Int): Int? {
+        val barY = screenY + SCREEN_BOTTOM - BOTTOM_BAR_HEIGHT
+        val barX = screenX + SCREEN_LEFT
+        val barW = SCREEN_RIGHT - SCREEN_LEFT
+        if (mouseY !in barY..(barY + BOTTOM_BAR_HEIGHT) || mouseX !in barX..(barX + barW)) return null
+        val slotW = barW / 5
+        return ((mouseX - barX) / slotW).coerceIn(0, 4)
     }
 
     private fun isInThreadRow(mouseX: Int, mouseY: Int, rowY: Int): Boolean =
@@ -1332,58 +1410,43 @@ class SocialScreen(
                 mouseY in rowY..(rowY + NOTIF_ROW_HEIGHT) &&
                 mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
 
-    private fun feedFilterY(): Int = screenY + LIST_START_Y - scrollY
+    private fun feedFilterY(): Int = screenY + SCREEN_TOP + 2
 
     private fun globalFilterPos(): Pair<Int, Int> =
-        screenX + CONTENT_X + 2 to feedFilterY()
+        screenX + SCREEN_LEFT + 3 to feedFilterY()
 
     private fun globalFilterWidth(): Int =
         font.width(lang("feed_global")) + 10
 
     private fun followingFilterPos(): Pair<Int, Int> =
-        globalFilterPos().first + globalFilterWidth() + 4 to feedFilterY()
+        globalFilterPos().first + globalFilterWidth() + 3 to feedFilterY()
 
     private fun followingFilterWidth(): Int =
         font.width(lang("feed_following")) + 10
 
-    private fun exploreButtonPos(): Pair<Int, Int> {
-        val w = exploreButtonWidth()
-        return screenX + CONTENT_X + CONTENT_WIDTH - w - 2 to feedFilterY()
-    }
-
-    private fun exploreButtonWidth(): Int =
-        font.width(lang("explore_trainers")) + 14
-
     private fun isInGlobalFilter(mouseX: Int, mouseY: Int): Boolean {
+        if (tab != Tab.FEED) return false
         val (x, y) = globalFilterPos()
         val w = globalFilterWidth()
-        return mouseX in x..(x + w) && mouseY in y..(y + 12) &&
-                mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
+        return mouseX in x..(x + w) && mouseY in y..(y + 12)
     }
 
     private fun isInFollowingFilter(mouseX: Int, mouseY: Int): Boolean {
+        if (tab != Tab.FEED) return false
         val (x, y) = followingFilterPos()
         val w = followingFilterWidth()
-        return mouseX in x..(x + w) && mouseY in y..(y + 12) &&
-                mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
-    }
-
-    private fun isInExploreButton(mouseX: Int, mouseY: Int): Boolean {
-        val (x, y) = exploreButtonPos()
-        val w = exploreButtonWidth()
-        return mouseX in x..(x + w) && mouseY in y..(y + 12) &&
-                mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
+        return mouseX in x..(x + w) && mouseY in y..(y + 12)
     }
 
     private fun isInHashtagFilter(mouseX: Int, mouseY: Int): Boolean {
+        if (tab != Tab.FEED) return false
         val tag = SocialFeedCache.hashtag ?: return false
         val (fx, y) = followingFilterPos()
         val fw = followingFilterWidth()
         val tagLabel = "#$tag ✕"
         val tw = font.width(tagLabel) + 8
-        val tx = fx + fw + 4
-        return mouseX in tx..(tx + tw) && mouseY in y..(y + 12) &&
-            mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
+        val tx = fx + fw + 3
+        return mouseX in tx..(tx + tw) && mouseY in y..(y + 12)
     }
 
     private fun isInReportButton(mouseX: Int, mouseY: Int, cardX: Int, cardY: Int, cardHeight: Int): Boolean {
@@ -1392,78 +1455,8 @@ class SocialScreen(
         return mouseX in flagX..(cardX + CONTENT_WIDTH - CARD_PAD) && mouseY in (footerY - 1)..(footerY + FOOTER_HEIGHT + 1)
     }
 
-    private fun renderFeedFilter(guiGraphics: GuiGraphics, y: Int, mouseX: Int, mouseY: Int) {
-        val followingActive = SocialFeedCache.followingOnly
-
-        // Global Pill
-        val (gx, _) = globalFilterPos()
-        val gw = globalFilterWidth()
-        val gHovered = isInGlobalFilter(mouseX, mouseY)
-        val gBg = when {
-            !followingActive -> theme.colors.primary
-            gHovered -> theme.colors.surfaceHover
-            else -> theme.colors.surface
-        }
-        val gTc = if (!followingActive) NAME_COLOR else CONTENT_DIM
-        guiGraphics.fill(gx, y, gx + gw, y + 12, gBg)
-        guiGraphics.fill(gx, y, gx + gw, y + 1, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(gx, y + 11, gx + gw, y + 12, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(gx, y, gx + 1, y + 12, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(gx + gw - 1, y, gx + gw, y + 12, BUTTON_BORDER_COLOR)
-        guiGraphics.drawString(font, lang("feed_global"), gx + 5, y + 2, gTc, false)
-        if (!followingActive) guiGraphics.fill(gx + 2, y + 10, gx + gw - 2, y + 11, theme.colors.gold)
-
-        // Following Pill
-        val (fx, _) = followingFilterPos()
-        val fw = followingFilterWidth()
-        val fHovered = isInFollowingFilter(mouseX, mouseY)
-        val fBg = when {
-            followingActive -> theme.colors.primary
-            fHovered -> theme.colors.surfaceHover
-            else -> theme.colors.surface
-        }
-        val fTc = if (followingActive) NAME_COLOR else CONTENT_DIM
-        guiGraphics.fill(fx, y, fx + fw, y + 12, fBg)
-        guiGraphics.fill(fx, y, fx + fw, y + 1, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(fx, y + 11, fx + fw, y + 12, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(fx, y, fx + 1, y + 12, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(fx + fw - 1, y, fx + fw, y + 12, BUTTON_BORDER_COLOR)
-        guiGraphics.drawString(font, lang("feed_following"), fx + 5, y + 2, fTc, false)
-        if (followingActive) guiGraphics.fill(fx + 2, y + 10, fx + fw - 2, y + 11, theme.colors.gold)
-
-        // Hashtag Filter Pill if active
-        val activeTag = SocialFeedCache.hashtag
-        val (ex, _) = exploreButtonPos()
-        if (activeTag != null) {
-            val tagLabel = "#$activeTag ✕"
-            val tw = font.width(tagLabel) + 8
-            val tx = fx + fw + 4
-            if (tx + tw < ex - 2) {
-                val tHovered = isInHashtagFilter(mouseX, mouseY)
-                guiGraphics.fill(tx, y, tx + tw, y + 12, if (tHovered) theme.colors.danger else theme.colors.gold)
-                guiGraphics.fill(tx, y, tx + tw, y + 1, BUTTON_BORDER_COLOR)
-                guiGraphics.fill(tx, y + 11, tx + tw, y + 12, BUTTON_BORDER_COLOR)
-                guiGraphics.fill(tx, y, tx + 1, y + 12, BUTTON_BORDER_COLOR)
-                guiGraphics.fill(tx + tw - 1, y, tx + tw, y + 12, BUTTON_BORDER_COLOR)
-                guiGraphics.drawString(font, tagLabel, tx + 4, y + 2, 0xFF000000.toInt(), false)
-            }
-        }
-
-        // Explore Trainers Button (Right aligned)
-        val ew = exploreButtonWidth()
-        val eHovered = isInExploreButton(mouseX, mouseY)
-        val eBg = if (eHovered) theme.colors.primaryHover else theme.colors.surface
-        guiGraphics.fill(ex, y, ex + ew, y + 12, eBg)
-        guiGraphics.fill(ex, y, ex + ew, y + 1, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(ex, y + 11, ex + ew, y + 12, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(ex, y, ex + 1, y + 12, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(ex + ew - 1, y, ex + ew, y + 12, BUTTON_BORDER_COLOR)
-        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.SEARCH, ex + 3, y + 2, if (eHovered) NAME_COLOR else ACCENT_COLOR)
-        guiGraphics.drawString(font, lang("explore_trainers"), ex + 12, y + 2, if (eHovered) NAME_COLOR else CONTENT_TEXT, false)
-    }
-
     private fun composeButtonPos(): Pair<Int, Int> =
-        screenX + CONTENT_X + CONTENT_WIDTH - COMPOSE_SIZE + 2 to screenY + COMPOSE_Y + 1
+        screenX + SCREEN_RIGHT - COMPOSE_SIZE - 2 to screenY + SCREEN_TOP + 2
 
     private fun isInComposeButton(mouseX: Int, mouseY: Int): Boolean {
         if (tab == Tab.NOTIFICATIONS) return false
@@ -1473,21 +1466,11 @@ class SocialScreen(
 
     private fun mutePos(): Pair<Int, Int> {
         val (cx, cy) = composeButtonPos()
-        return cx - MUTE_GAP - COMPOSE_SIZE to cy
+        return if (tab == Tab.NOTIFICATIONS) cx to cy else cx - MUTE_GAP - COMPOSE_SIZE to cy
     }
 
     private fun isInMuteButton(mouseX: Int, mouseY: Int): Boolean {
         val (x, y) = mutePos()
-        return mouseX in x..(x + COMPOSE_SIZE) && mouseY in y..(y + COMPOSE_SIZE)
-    }
-
-    private fun profilePos(): Pair<Int, Int> {
-        val (mx, my) = mutePos()
-        return mx - MUTE_GAP - COMPOSE_SIZE to my
-    }
-
-    private fun isInProfileButton(mouseX: Int, mouseY: Int): Boolean {
-        val (x, y) = profilePos()
         return mouseX in x..(x + COMPOSE_SIZE) && mouseY in y..(y + COMPOSE_SIZE)
     }
 
@@ -1608,14 +1591,33 @@ class SocialScreen(
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
 
+        val navIdx = isInBottomNav(mouseX, mouseY)
+        if (navIdx != null) {
+            val key = when (navIdx) {
+                0 -> "cobblemon_smartphone.social.tab_feed"
+                1 -> "cobblemon_smartphone.tooltip.social_explore"
+                2 -> "cobblemon_smartphone.social.tab_dms"
+                3 -> "cobblemon_smartphone.social.tab_notifications"
+                4 -> "cobblemon_smartphone.tooltip.social_my_profile"
+                else -> ""
+            }
+            guiGraphics.renderTooltip(font, Component.translatable(key), mouseX, mouseY)
+            return
+        }
+
         val tooltip = when {
             isInBackButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.back_to_phone")
             isInMuteButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_mute")
-            isInProfileButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_my_profile")
             isInComposeButton(mouseX, mouseY) -> {
                 val key = if (tab == Tab.FEED) "social_new_post" else "social_new_message"
                 Component.translatable("cobblemon_smartphone.tooltip.$key")
             }
+            tab == Tab.FEED && isInGlobalFilter(mouseX, mouseY) ->
+                Component.translatable("cobblemon_smartphone.tooltip.social_feed_global")
+            tab == Tab.FEED && isInFollowingFilter(mouseX, mouseY) ->
+                Component.translatable("cobblemon_smartphone.tooltip.social_feed_following")
+            tab == Tab.FEED && isInHashtagFilter(mouseX, mouseY) ->
+                Component.translatable("cobblemon_smartphone.tooltip.social_clear_hashtag")
             tab == Tab.DMS -> findHoveredThread(mouseX, mouseY)?.let {
                 Component.translatable("cobblemon_smartphone.tooltip.social_open_conversation")
             }
@@ -1628,14 +1630,6 @@ class SocialScreen(
                 }
                 Component.translatable("cobblemon_smartphone.tooltip.$key")
             }
-            tab == Tab.FEED && isInGlobalFilter(mouseX, mouseY) ->
-                Component.translatable("cobblemon_smartphone.tooltip.social_feed_global")
-            tab == Tab.FEED && isInFollowingFilter(mouseX, mouseY) ->
-                Component.translatable("cobblemon_smartphone.tooltip.social_feed_following")
-            tab == Tab.FEED && isInHashtagFilter(mouseX, mouseY) ->
-                Component.translatable("cobblemon_smartphone.tooltip.social_clear_hashtag")
-            tab == Tab.FEED && isInExploreButton(mouseX, mouseY) ->
-                Component.translatable("cobblemon_smartphone.tooltip.social_explore")
             tab == Tab.FEED -> findHoveredCardTooltip(mouseX, mouseY)
             else -> null
         } ?: return
@@ -1726,20 +1720,14 @@ class SocialScreen(
         private const val CONTENT_X = SCREEN_LEFT
         // Leaves SCROLLBAR_GAP + SCROLLBAR_WIDTH to the right, landing flush on SCREEN_RIGHT.
         private const val CONTENT_WIDTH = 165
-        private const val TITLE_Y = 27
-        private const val LIST_START_Y = 42
-        private const val LIST_END_Y = SCREEN_BOTTOM - 2
+        private const val LIST_START_Y = 40
+        private const val BOTTOM_BAR_HEIGHT = 16
+        private const val LIST_END_Y = SCREEN_BOTTOM - BOTTOM_BAR_HEIGHT - 2
 
-        private const val COMPOSE_Y = 25
         private const val COMPOSE_SIZE = 12
         private const val MUTE_GAP = 3
         private const val MUTE_ACTIVE_COLOR = 0xFFAA3333.toInt()
         private const val MUTE_SLASH_COLOR = 0xFFFF3030.toInt()
-
-        private const val TAB_PAD = 4
-        private const val TAB_BUTTON_PAD_Y = 2
-        private const val TAB_GAP = 3
-        private const val TAB_ICON_SPACE = 11
 
         private const val THREAD_ROW_HEIGHT = 28
         private const val NOTIF_ROW_HEIGHT = 28
