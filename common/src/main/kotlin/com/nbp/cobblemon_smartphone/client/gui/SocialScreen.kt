@@ -47,12 +47,13 @@ import org.joml.Quaternionf
 class SocialScreen(
     private val color: SmartphoneColor,
     private val smartphoneStack: ItemStack? = null,
-    startOnDms: Boolean = false
+    startOnDms: Boolean = false,
+    initialTab: Tab = if (startOnDms) Tab.DMS else Tab.FEED
 ) : Screen(Component.literal("Social")) {
 
-    private enum class Tab { FEED, DMS, NOTIFICATIONS }
+    enum class Tab { FEED, DMS, NOTIFICATIONS }
 
-    private var tab = if (startOnDms) Tab.DMS else Tab.FEED
+    private var tab = initialTab
     private val frameTexture get() = color.getLargeScreenTexture()
     private var screenX = 0
     private var screenY = 0

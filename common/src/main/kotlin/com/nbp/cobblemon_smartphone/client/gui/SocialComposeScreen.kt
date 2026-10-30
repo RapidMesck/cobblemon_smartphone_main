@@ -54,7 +54,7 @@ class SocialComposeScreen(
     private var screenX = 0
     private var screenY = 0
     private var selectedSlot = -1
-    private var attachmentMode = if (photoId != null) AttachmentMode.PHOTO else AttachmentMode.NONE
+    private var attachmentMode = if (photoId != null) AttachmentMode.PHOTO else AttachmentMode.POKEMON
     private var showDetails = false
     private var showIvs = false
     private var showEvs = false

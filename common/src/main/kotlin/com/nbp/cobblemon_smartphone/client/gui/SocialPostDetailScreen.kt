@@ -189,7 +189,10 @@ class SocialPostDetailScreen(
         renderSendButton(guiGraphics, mouseX, mouseY)
 
         // 6. Tooltips
-        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
+        if (pokemonPopup == null) renderHoveredTooltip(guiGraphics, mouseX, mouseY)
+
+        // 7. Modal Pokemon Details Popup
+        pokemonPopup?.let { renderPokemonPopup(guiGraphics, it, mouseX, mouseY) }
     }
 
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -278,6 +281,18 @@ class SocialPostDetailScreen(
                 cursorY += font.lineHeight
             }
             cursorY += TEXT_GAP
+        }
+
+        p.attachment?.let { attachment ->
+            val attW = CONTENT_WIDTH - CARD_PAD * 2
+            val attH = attachmentHeight(attachment)
+            guiGraphics.fill(textX, cursorY, textX + attW, cursorY + attH, ATTACHMENT_BG_COLOR)
+            guiGraphics.fill(textX, cursorY, textX + attW, cursorY + 1, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(textX, cursorY + attH - 1, textX + attW, cursorY + attH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(textX, cursorY + 1, textX + 1, cursorY + attH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(textX + attW - 1, cursorY, textX + attW, cursorY + attH, BUTTON_BORDER_COLOR)
+            renderAttachment(guiGraphics, p, attachment, textX, cursorY)
+            cursorY += attH + TEXT_GAP
         }
 
         p.photo?.let { photo ->
@@ -421,6 +436,18 @@ class SocialPostDetailScreen(
         val mx = mouseX.toInt()
         val my = mouseY.toInt()
 
+        if (pokemonPopup != null) {
+            val px = popupX()
+            val py = popupY()
+            val pw = POPUP_WIDTH
+            val ph = popupHeight(pokemonPopup!!)
+            if (isInPopupClose(mx, my) || mx !in px..(px + pw) || my !in py..(py + ph)) {
+                playClickSound()
+                pokemonPopup = null
+            }
+            return true
+        }
+
         if (isInBack(mx, my)) {
             playClickSound()
             minecraft?.setScreen(SocialScreen(color, smartphoneStack))
@@ -450,6 +477,11 @@ class SocialPostDetailScreen(
                 playClickSound()
                 minecraft?.setScreen(DmThreadScreen(color, smartphoneStack, post.authorUuid, post.authorName))
             }
+            return true
+        }
+        if (isInPokemonInfoButton(post, mx, my, screenX + CONTENT_X, cardY)) {
+            playClickSound()
+            pokemonPopup = post.attachment
             return true
         }
         if (isInLikeButton(mx, my, screenX + CONTENT_X, cardY, postH)) {
@@ -498,7 +530,8 @@ class SocialPostDetailScreen(
         // Photo load click
         post.photo?.let { photo ->
             val photoY = cardY + CARD_PAD + HEADER_HEIGHT + TEXT_GAP + 1 +
-                (if (post.text.isNotBlank()) wrappedLines(post.text).size * font.lineHeight + TEXT_GAP else 0)
+                (if (post.text.isNotBlank()) wrappedLines(post.text).size * font.lineHeight + TEXT_GAP else 0) +
+                (post.attachment?.let { attachmentHeight(it) + TEXT_GAP } ?: 0)
             val (photoW, photoH) = photoDisplaySize(photo.width, photo.height)
             val photoX = screenX + CONTENT_X + CARD_PAD + ((CONTENT_WIDTH - CARD_PAD * 2) - photoW) / 2
             if (mx in photoX..(photoX + photoW) && my in photoY..(photoY + photoH)) {
@@ -563,6 +596,10 @@ class SocialPostDetailScreen(
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
         if (keyCode == 256) { // Escape
+            if (pokemonPopup != null) {
+                pokemonPopup = null
+                return true
+            }
             minecraft?.setScreen(SocialScreen(color, smartphoneStack))
             return true
         }
@@ -594,6 +631,7 @@ class SocialPostDetailScreen(
     private fun measureCard(p: SocialPostView): Int {
         var h = CARD_PAD + HEADER_HEIGHT + TEXT_GAP + 1
         if (p.text.isNotBlank()) h += wrappedLines(p.text).size * font.lineHeight + TEXT_GAP
+        if (p.attachment != null) h += attachmentHeight(p.attachment) + TEXT_GAP
         if (p.photo != null) h += photoDisplaySize(p.photo.width, p.photo.height).second + TEXT_GAP
         if (p.poll != null) h += measurePoll(p.poll) + TEXT_GAP
         h += TEXT_GAP + 1 + FOOTER_HEIGHT + CARD_PAD
@@ -694,6 +732,7 @@ class SocialPostDetailScreen(
         val w = CONTENT_WIDTH - CARD_PAD * 2
         var cursorY = cardY + CARD_PAD + HEADER_HEIGHT + TEXT_GAP + 1
         if (p.text.isNotBlank()) cursorY += wrappedLines(p.text).size * font.lineHeight + TEXT_GAP
+        p.attachment?.let { cursorY += attachmentHeight(it) + TEXT_GAP }
         if (p.photo != null) cursorY += photoDisplaySize(p.photo.width, p.photo.height).second + TEXT_GAP
 
         val qLines = font.split(Component.literal(poll.question), w - 8).size
@@ -871,6 +910,297 @@ class SocialPostDetailScreen(
         Minecraft.getInstance().player?.playSound(CobblemonSounds.GUI_CLICK, 0.5f, 1.0f)
     }
 
+    private fun renderAttachment(
+        guiGraphics: GuiGraphics,
+        post: SocialPostView,
+        attachment: com.nbp.cobblemon_smartphone.social.PokemonAttachment,
+        x: Int,
+        y: Int
+    ) {
+        val renderable = cachedRenderable ?: run {
+            val species = PokemonSpecies.getByIdentifier(ResourceLocation.parse(attachment.species))
+            species?.let { RenderablePokemon(it, attachment.aspects) }?.also { cachedRenderable = it }
+        }
+
+        val modelBoxX = x + MODEL_BOX_X
+        val modelBoxY = y + MODEL_BOX_Y
+        renderPokeballWatermark(guiGraphics, modelBoxX, modelBoxY)
+
+        if (renderable != null && pokemonPopup == null) {
+            guiGraphics.enableScissor(
+                modelBoxX + 1,
+                modelBoxY + 1,
+                modelBoxX + MODEL_BOX_WIDTH - 1,
+                modelBoxY + MODEL_BOX_HEIGHT - 1
+            )
+            val matrices = guiGraphics.pose()
+            matrices.pushPose()
+            matrices.translate((x + MODEL_X).toDouble(), (y + MODEL_Y).toDouble(), 0.0)
+            drawProfilePokemon(
+                renderable, matrices, Quaternionf().rotateY(Math.toRadians(30.0).toFloat()),
+                PoseType.PROFILE, posableState, 0f, MODEL_SCALE
+            )
+            matrices.popPose()
+            guiGraphics.disableScissor()
+        }
+
+        if (attachment.aspects.contains(SHINY_ASPECT)) {
+            guiGraphics.drawString(font, SHINY_ICON, modelBoxX + 2, modelBoxY + 2, SHINY_COLOR, false)
+        }
+
+        val speciesLabel = speciesName(attachment.species)
+        val label = attachment.nickname?.let { "$it ($speciesLabel)" } ?: speciesLabel
+        val infoX = x + ATTACHMENT_TEXT_X
+        val compactLabel = font.plainSubstrByWidth(label, (ATTACHMENT_TEXT_WIDTH / ATTACHMENT_TEXT_SCALE).toInt())
+        drawAttachmentText(guiGraphics, compactLabel, infoX.toFloat(), (y + 5).toFloat(), CONTENT_TEXT)
+        drawAttachmentText(guiGraphics, "Lv. ${attachment.level}", infoX.toFloat(), (y + 15).toFloat(), CONTENT_DIM)
+        renderAttachmentStatusIcons(guiGraphics, attachment, x, y)
+        renderTrainingInfoButton(guiGraphics, attachment, x, y)
+    }
+
+    private fun renderTrainingInfoButton(
+        guiGraphics: GuiGraphics,
+        attachment: com.nbp.cobblemon_smartphone.social.PokemonAttachment,
+        x: Int,
+        y: Int
+    ) {
+        if (!hasPokemonDetails(attachment)) return
+        val bx = x + INFO_BUTTON_X
+        val by = y + INFO_BUTTON_Y
+        guiGraphics.fill(bx, by, bx + INFO_BUTTON_WIDTH, by + INFO_BUTTON_HEIGHT, BUTTON_BORDER_COLOR)
+        guiGraphics.fill(bx + 1, by + 1, bx + INFO_BUTTON_WIDTH - 1, by + INFO_BUTTON_HEIGHT - 1, SECTION_CONTENT_BG)
+        val label = lang("show_more")
+        drawCenteredAttachmentText(
+            guiGraphics,
+            label,
+            (bx + INFO_BUTTON_WIDTH / 2f),
+            (by + 2).toFloat(),
+            CONTENT_TEXT
+        )
+    }
+
+    private fun renderPokeballWatermark(guiGraphics: GuiGraphics, x: Int, y: Int) {
+        val frame = ((System.currentTimeMillis() / POKEBALL_FRAME_TIME_MS) % POKEBALL_FRAME_COUNT).toInt()
+        RenderSystem.setShaderColor(POKEBALL_TINT_R, POKEBALL_TINT_G, POKEBALL_TINT_B, POKEBALL_TINT_ALPHA)
+        guiGraphics.blit(
+            theme.getSocialPokeballTexture(),
+            x + 1,
+            y + 1,
+            MODEL_BOX_WIDTH - 2,
+            MODEL_BOX_HEIGHT - 2,
+            0f,
+            (frame * POKEBALL_FRAME_SIZE).toFloat(),
+            POKEBALL_FRAME_SIZE,
+            POKEBALL_FRAME_SIZE,
+            POKEBALL_TEXTURE_WIDTH,
+            POKEBALL_TEXTURE_HEIGHT
+        )
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f)
+    }
+
+    private fun drawAttachmentText(guiGraphics: GuiGraphics, text: String, x: Float, y: Float, color: Int) {
+        val matrices = guiGraphics.pose()
+        matrices.pushPose()
+        matrices.translate(x, y, 0f)
+        matrices.scale(ATTACHMENT_TEXT_SCALE, ATTACHMENT_TEXT_SCALE, 1f)
+        guiGraphics.drawString(font, text, 0, 0, color, false)
+        matrices.popPose()
+    }
+
+    private fun drawCenteredAttachmentText(guiGraphics: GuiGraphics, text: String, centerX: Float, y: Float, color: Int) {
+        val scaledWidth = font.width(text) * ATTACHMENT_TEXT_SCALE
+        drawAttachmentText(guiGraphics, text, centerX - scaledWidth / 2f, y, color)
+    }
+
+    private fun renderAttachmentStatusIcons(
+        guiGraphics: GuiGraphics,
+        attachment: com.nbp.cobblemon_smartphone.social.PokemonAttachment,
+        x: Int,
+        y: Int
+    ) {
+        var right = x + ATTACHMENT_WIDTH - ATTACHMENT_INNER_PAD
+        val genderIcon = when (attachment.gender?.uppercase()) {
+            "MALE" -> MALE_ICON to GENDER_MALE_COLOR
+            "FEMALE" -> FEMALE_ICON to GENDER_FEMALE_COLOR
+            else -> null
+        }
+        genderIcon?.let { (icon, color) ->
+            right -= font.width(icon)
+            guiGraphics.drawString(font, icon, right, y + 4, color, false)
+        }
+    }
+
+    private fun attachmentHeight(attachment: com.nbp.cobblemon_smartphone.social.PokemonAttachment): Int =
+        ATTACHMENT_HEIGHT
+
+    private fun hasPokemonDetails(attachment: com.nbp.cobblemon_smartphone.social.PokemonAttachment): Boolean =
+        attachment.ivs.size == STAT_COUNT ||
+                attachment.evs.size == STAT_COUNT ||
+                attachment.ability != null ||
+                attachment.nature != null ||
+                attachment.types.isNotEmpty()
+
+    private fun renderPokemonPopup(
+        guiGraphics: GuiGraphics,
+        attachment: com.nbp.cobblemon_smartphone.social.PokemonAttachment,
+        mouseX: Int,
+        mouseY: Int
+    ) {
+        guiGraphics.fill(
+            screenX + CONTENT_X,
+            screenY + 24,
+            screenX + CONTENT_X + CONTENT_WIDTH,
+            screenY + 194,
+            POPUP_OVERLAY_COLOR
+        )
+        val px = popupX()
+        val py = popupY()
+        val popupHeight = popupHeight(attachment)
+        SocialUi.surface(guiGraphics, px, py, POPUP_WIDTH, popupHeight, colors = theme.colors)
+        guiGraphics.fill(px + 1, py + 1, px + POPUP_WIDTH - 1, py + POPUP_HEADER_HEIGHT, theme.colors.headerNavyLight)
+
+        val title = lang("pokemon_details")
+        guiGraphics.drawString(font, title, px + POPUP_PAD, py + 5, NAME_COLOR, false)
+        val closeColor = if (isInPopupClose(mouseX, mouseY)) LIKED_COLOR else NAME_COLOR
+        guiGraphics.drawString(font, "×", px + POPUP_WIDTH - POPUP_PAD - font.width("×"), py + 5, closeColor, false)
+
+        val speciesLabel = speciesName(attachment.species)
+        val pokemonLabel = attachment.nickname?.let { "$it ($speciesLabel)" } ?: speciesLabel
+        drawAttachmentText(guiGraphics, pokemonLabel, (px + POPUP_PAD).toFloat(), (py + 21).toFloat(), CONTENT_TEXT)
+
+        val allOptionalDetails = attachment.ivs.size == STAT_COUNT &&
+                attachment.evs.size == STAT_COUNT &&
+                attachment.ability != null &&
+                attachment.nature != null
+        var leftInfoY = py + 32
+
+        if (attachment.types.isNotEmpty()) {
+            val typeNames = attachment.types.joinToString("/") { type ->
+                Component.translatable("cobblemon.type.${type.lowercase()}").string
+            }
+            val types = "${lang("types")}: $typeNames"
+            val width = if (allOptionalDetails) POPUP_LEFT_INFO_WIDTH else POPUP_FULL_INFO_WIDTH
+            val trimmed = font.plainSubstrByWidth(types, (width / ATTACHMENT_TEXT_SCALE).toInt())
+            drawAttachmentText(guiGraphics, trimmed, (px + POPUP_PAD).toFloat(), leftInfoY.toFloat(), CONTENT_TEXT)
+            leftInfoY += POPUP_INFO_LINE_HEIGHT
+        }
+
+        attachment.ability?.let { abilityKey ->
+            val ability = "${lang("ability")}: ${Component.translatable(abilityKey).string}"
+            val width = if (allOptionalDetails) POPUP_LEFT_INFO_WIDTH else POPUP_FULL_INFO_WIDTH
+            val trimmed = font.plainSubstrByWidth(ability, (width / ATTACHMENT_TEXT_SCALE).toInt())
+            drawAttachmentText(guiGraphics, trimmed, (px + POPUP_PAD).toFloat(), leftInfoY.toFloat(), CONTENT_TEXT)
+            leftInfoY += POPUP_INFO_LINE_HEIGHT
+        }
+
+        attachment.nature?.let { natureKey ->
+            val nature = "${lang("nature")}: ${Component.translatable(natureKey).string}"
+            if (allOptionalDetails) {
+                val trimmed = font.plainSubstrByWidth(nature, (POPUP_RIGHT_INFO_WIDTH / ATTACHMENT_TEXT_SCALE).toInt())
+                drawAttachmentText(guiGraphics, trimmed, (px + POPUP_RIGHT_INFO_X).toFloat(), (py + 32).toFloat(), CONTENT_TEXT)
+            } else {
+                val trimmed = font.plainSubstrByWidth(nature, (POPUP_FULL_INFO_WIDTH / ATTACHMENT_TEXT_SCALE).toInt())
+                drawAttachmentText(guiGraphics, trimmed, (px + POPUP_PAD).toFloat(), leftInfoY.toFloat(), CONTENT_TEXT)
+            }
+        }
+
+        val hasIvs = attachment.ivs.size == STAT_COUNT
+        val hasEvs = attachment.evs.size == STAT_COUNT
+        val infoBottomY = py + POPUP_INFO_START_Y + popupInfoRows(attachment) * POPUP_INFO_LINE_HEIGHT
+        val statsHeaderY = infoBottomY + POPUP_STATS_GAP
+        if (hasIvs || hasEvs) {
+            val statStartX = px + POPUP_STAT_VALUES_X
+            STAT_LABELS.forEachIndexed { index, stat ->
+                drawCenteredAttachmentText(
+                    guiGraphics,
+                    stat,
+                    (statStartX + index * POPUP_STAT_COLUMN_WIDTH).toFloat(),
+                    statsHeaderY.toFloat(),
+                    STAT_COLORS[index]
+                )
+            }
+        }
+        var rowY = statsHeaderY + POPUP_STAT_HEADER_GAP
+        if (hasIvs) {
+            drawPopupTrainingRow(guiGraphics, "IV", attachment.ivs, px, rowY)
+            rowY += POPUP_STAT_ROW_HEIGHT
+        }
+        if (hasEvs) {
+            drawPopupTrainingRow(guiGraphics, "EV", attachment.evs, px, rowY)
+        }
+    }
+
+    private fun drawPopupTrainingRow(guiGraphics: GuiGraphics, label: String, values: List<Int>, x: Int, y: Int) {
+        drawAttachmentText(guiGraphics, label, (x + POPUP_PAD).toFloat(), y.toFloat(), CONTENT_TEXT)
+        val statStartX = x + POPUP_STAT_VALUES_X
+        values.take(STAT_COUNT).forEachIndexed { index, value ->
+            drawCenteredAttachmentText(
+                guiGraphics,
+                value.toString(),
+                (statStartX + index * POPUP_STAT_COLUMN_WIDTH).toFloat(),
+                y.toFloat(),
+                STAT_COLORS[index]
+            )
+        }
+    }
+
+    private fun speciesName(speciesId: String): String {
+        val parsed = ResourceLocation.tryParse(speciesId) ?: return speciesId
+        return PokemonSpecies.getByIdentifier(parsed)?.name ?: speciesId.substringAfter(':')
+    }
+
+    private fun popupX(): Int = screenX + CONTENT_X + (CONTENT_WIDTH - POPUP_WIDTH) / 2
+    private fun popupY(): Int = screenY + POPUP_Y
+
+    private fun isInPopupClose(mouseX: Int, mouseY: Int): Boolean {
+        val px = popupX()
+        val py = popupY()
+        val closeX = px + POPUP_WIDTH - POPUP_PAD - font.width("×") - 2
+        val closeY = py + 3
+        return mouseX in closeX..(closeX + font.width("×") + 4) && mouseY in closeY..(closeY + font.lineHeight + 2)
+    }
+
+    private fun popupInfoRows(attachment: com.nbp.cobblemon_smartphone.social.PokemonAttachment): Int {
+        val allOptionalDetails = attachment.ivs.size == STAT_COUNT &&
+                attachment.evs.size == STAT_COUNT &&
+                attachment.ability != null &&
+                attachment.nature != null
+        var leftRows = 0
+        if (attachment.types.isNotEmpty()) leftRows++
+        if (attachment.ability != null) leftRows++
+        if (attachment.nature != null && !allOptionalDetails) leftRows++
+        val rightRows = if (attachment.nature != null && allOptionalDetails) 1 else 0
+        return maxOf(leftRows, rightRows)
+    }
+
+    private fun popupHeight(attachment: com.nbp.cobblemon_smartphone.social.PokemonAttachment): Int {
+        val infoBottom = POPUP_INFO_START_Y + popupInfoRows(attachment) * POPUP_INFO_LINE_HEIGHT
+        val statRows = (if (attachment.ivs.size == STAT_COUNT) 1 else 0) +
+                (if (attachment.evs.size == STAT_COUNT) 1 else 0)
+        val statHeight = if (statRows > 0) {
+            POPUP_STATS_GAP + POPUP_STAT_HEADER_GAP + statRows * POPUP_STAT_ROW_HEIGHT
+        } else 0
+        return maxOf(POPUP_MIN_HEIGHT, infoBottom + statHeight + POPUP_BOTTOM_PAD)
+    }
+
+    private fun isInPokemonInfoButton(post: SocialPostView, mouseX: Int, mouseY: Int, cardX: Int, cardY: Int): Boolean {
+        val attachment = post.attachment ?: return false
+        if (!hasPokemonDetails(attachment)) return false
+        val attachmentX = cardX + CARD_PAD
+        val attachmentY = attachmentY(post, cardY)
+        val x = attachmentX + INFO_BUTTON_X
+        val y = attachmentY + INFO_BUTTON_Y
+        return mouseX in x..(x + INFO_BUTTON_WIDTH) && mouseY in y..(y + INFO_BUTTON_HEIGHT)
+    }
+
+    private fun attachmentY(post: SocialPostView, cardY: Int): Int {
+        var y = cardY + CARD_PAD + HEADER_HEIGHT + TEXT_GAP + 1
+        if (post.text.isNotBlank()) {
+            y += wrappedLines(post.text).size * font.lineHeight + TEXT_GAP
+        }
+        return y
+    }
+
     companion object {
         const val GUI_WIDTH = 211
         const val GUI_HEIGHT = 207
@@ -897,5 +1227,70 @@ class SocialPostDetailScreen(
 
         const val SEPARATOR_COLOR = 0x22000000
         const val LIKED_COLOR = 0xFFD84A4A.toInt()
+
+        const val ATTACHMENT_HEIGHT = 44
+        const val ATTACHMENT_WIDTH = CONTENT_WIDTH - CARD_PAD * 2
+        const val ATTACHMENT_INNER_PAD = 5
+        const val ATTACHMENT_TEXT_X = 52
+        const val ATTACHMENT_TEXT_WIDTH = ATTACHMENT_WIDTH - ATTACHMENT_TEXT_X - ATTACHMENT_INNER_PAD - 16
+        const val ATTACHMENT_TEXT_SCALE = 0.75f
+        const val MODEL_BOX_X = 3
+        const val MODEL_BOX_Y = 2
+        const val MODEL_BOX_WIDTH = 40
+        const val MODEL_BOX_HEIGHT = 40
+        const val MODEL_X = 25
+        const val MODEL_Y = 5
+        const val MODEL_SCALE = 18f
+        const val STAT_COUNT = 6
+        const val INFO_BUTTON_X = 52
+        const val INFO_BUTTON_Y = 28
+        const val INFO_BUTTON_WIDTH = 42
+        const val INFO_BUTTON_HEIGHT = 11
+        const val MALE_ICON = "♂"
+        const val FEMALE_ICON = "♀"
+        const val SHINY_ICON = "★"
+        const val SHINY_ASPECT = "shiny"
+
+        const val POPUP_Y = 62
+        const val POPUP_WIDTH = 151
+        const val POPUP_HEADER_HEIGHT = 16
+        const val POPUP_PAD = 7
+        const val POPUP_INFO_START_Y = 32
+        const val POPUP_LEFT_INFO_WIDTH = 68
+        const val POPUP_FULL_INFO_WIDTH = POPUP_WIDTH - POPUP_PAD * 2
+        const val POPUP_RIGHT_INFO_X = 78
+        const val POPUP_RIGHT_INFO_WIDTH = 66
+        const val POPUP_INFO_LINE_HEIGHT = 10
+        const val POPUP_STATS_GAP = 3
+        const val POPUP_STAT_HEADER_GAP = 11
+        const val POPUP_STAT_ROW_HEIGHT = 10
+        const val POPUP_MIN_HEIGHT = 50
+        const val POPUP_BOTTOM_PAD = 7
+        const val POPUP_STAT_VALUES_X = 31
+        const val POPUP_STAT_COLUMN_WIDTH = 20
+
+        const val ATTACHMENT_BG_COLOR = 0x553A96B6
+        const val POPUP_OVERLAY_COLOR = 0x88071322.toInt()
+        const val POKEBALL_FRAME_COUNT = 16L
+        const val POKEBALL_FRAME_SIZE = 109
+        const val POKEBALL_TEXTURE_WIDTH = 109
+        const val POKEBALL_TEXTURE_HEIGHT = POKEBALL_FRAME_SIZE * POKEBALL_FRAME_COUNT.toInt()
+        const val POKEBALL_FRAME_TIME_MS = 280L
+        const val POKEBALL_TINT_R = 1.5f
+        const val POKEBALL_TINT_G = 3.9f
+        const val POKEBALL_TINT_B = 4.7f
+        const val POKEBALL_TINT_ALPHA = 0.12f
+        const val GENDER_MALE_COLOR = 0xFF408CFF.toInt()
+        const val GENDER_FEMALE_COLOR = 0xFFFF5C9A.toInt()
+
+        val STAT_LABELS = listOf("HP", "ATK", "DEF", "SPA", "SPD", "SPE")
+        val STAT_COLORS = listOf(
+            0xFF2EAD5B.toInt(), // HP: green
+            0xFFE34B4B.toInt(), // Attack: red
+            0xFF82C91E.toInt(), // Defence: lime
+            0xFFFF8C32.toInt(), // Special Attack: orange
+            0xFFE0B928.toInt(), // Special Defence: yellow
+            0xFF3F7FE5.toInt()  // Speed: blue
+        )
     }
 }

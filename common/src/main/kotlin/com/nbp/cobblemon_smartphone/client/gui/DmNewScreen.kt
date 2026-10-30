@@ -3,6 +3,8 @@ package com.nbp.cobblemon_smartphone.client.gui
 import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.api.gui.blitk
 import com.nbp.cobblemon_smartphone.client.social.FakePlayerFilter
+import com.nbp.cobblemon_smartphone.client.social.SocialDmCache
+import com.nbp.cobblemon_smartphone.client.social.SocialNotificationCache
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
@@ -179,7 +181,73 @@ class DmNewScreen(
 
         guiGraphics.disableScissor()
 
+        renderBottomNav(guiGraphics, mouseX, mouseY)
         renderHoveredTooltip(guiGraphics, mouseX, mouseY, players)
+    }
+
+    private fun renderBottomNav(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val barY = screenY + SCREEN_BOTTOM - BOTTOM_BAR_HEIGHT
+        val barX = screenX + CONTENT_X
+        val barW = CONTENT_WIDTH
+
+        // Dock background and top border
+        guiGraphics.fill(barX, barY, barX + barW, barY + BOTTOM_BAR_HEIGHT, theme.colors.headerNavy)
+        guiGraphics.fill(barX, barY, barX + barW, barY + 1, theme.colors.primaryBorder)
+
+        val slotW = barW / 4
+
+        for (i in 0..3) {
+            val sx = barX + i * slotW
+            val sw = if (i == 3) (barX + barW) - sx else slotW
+            val hovered = mouseX in sx..(sx + sw) && mouseY in barY..(barY + BOTTOM_BAR_HEIGHT)
+            val active = (i == 1) // Discovery is slot 1
+
+            if (hovered) {
+                guiGraphics.fill(sx, barY + 1, sx + sw, barY + BOTTOM_BAR_HEIGHT, theme.colors.headerNavyLight)
+            }
+
+            val icon = when (i) {
+                0 -> SocialUi.Icon.FEED
+                1 -> SocialUi.Icon.SEARCH
+                2 -> SocialUi.Icon.MESSAGE
+                3 -> SocialUi.Icon.BELL
+                else -> SocialUi.Icon.FEED
+            }
+
+            val iconColor = when {
+                active -> theme.colors.gold
+                hovered -> theme.colors.textPrimary
+                else -> theme.colors.textMuted
+            }
+
+            val iconX = sx + (sw - 8) / 2
+            val iconY = barY + (BOTTOM_BAR_HEIGHT - 8) / 2 + 1
+            SocialUi.drawIcon(guiGraphics, icon, iconX, iconY, iconColor)
+
+            if (active) {
+                guiGraphics.fill(sx + 6, barY + BOTTOM_BAR_HEIGHT - 2, sx + sw - 6, barY + BOTTOM_BAR_HEIGHT, theme.colors.gold)
+            }
+
+            val hasUnread = when (i) {
+                2 -> SocialDmCache.unreadTotal > 0
+                3 -> SocialNotificationCache.unreadCount > 0
+                else -> false
+            }
+            if (hasUnread) {
+                guiGraphics.fill(iconX + 6, iconY - 1, iconX + 10, iconY + 3, theme.colors.danger)
+                guiGraphics.fill(iconX + 7, iconY, iconX + 9, iconY + 2, 0xFFFFFFFF.toInt())
+            }
+        }
+    }
+
+    private fun isInBottomNav(mouseX: Int, mouseY: Int): Int? {
+        val barY = screenY + SCREEN_BOTTOM - BOTTOM_BAR_HEIGHT
+        val barX = screenX + CONTENT_X
+        val barW = CONTENT_WIDTH
+        if (mouseY !in barY..(barY + BOTTOM_BAR_HEIGHT) || mouseX !in barX..(barX + barW)) return null
+        val slotW = barW / 4
+        val relX = mouseX - barX
+        return (relX / slotW).coerceIn(0, 3)
     }
 
     private fun renderRow(guiGraphics: GuiGraphics, info: PlayerInfo, y: Int, mouseX: Int, mouseY: Int) {
@@ -206,7 +274,19 @@ class DmNewScreen(
 
         if (isInBack(mx, my)) {
             playClickSound()
-            Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack, startOnDms = false))
+            Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack, initialTab = SocialScreen.Tab.FEED))
+            return true
+        }
+
+        val navIdx = isInBottomNav(mx, my)
+        if (navIdx != null) {
+            playClickSound()
+            when (navIdx) {
+                0 -> Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack, initialTab = SocialScreen.Tab.FEED))
+                1 -> scrollY = 0
+                2 -> Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack, initialTab = SocialScreen.Tab.DMS))
+                3 -> Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack, initialTab = SocialScreen.Tab.NOTIFICATIONS))
+            }
             return true
         }
 
@@ -248,6 +328,19 @@ class DmNewScreen(
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, players: List<PlayerInfo>) {
         if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
 
+        val navIdx = isInBottomNav(mouseX, mouseY)
+        if (navIdx != null) {
+            val key = when (navIdx) {
+                0 -> "cobblemon_smartphone.social.tab_feed"
+                1 -> "cobblemon_smartphone.tooltip.social_explore"
+                2 -> "cobblemon_smartphone.social.tab_dms"
+                3 -> "cobblemon_smartphone.social.tab_notifications"
+                else -> ""
+            }
+            guiGraphics.renderTooltip(font, Component.translatable(key), mouseX, mouseY)
+            return
+        }
+
         val hoveredPlayer = findHoveredPlayer(mouseX, mouseY, players)
         val tooltip = when {
             isInBack(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_back_to_social")
@@ -281,8 +374,10 @@ class DmNewScreen(
         private const val CONTENT_X = 20
         private const val CONTENT_WIDTH = 171
         private const val TITLE_Y = 27
+        private const val SCREEN_BOTTOM = 192
+        private const val BOTTOM_BAR_HEIGHT = 16
         private const val LIST_START_Y = 58
-        private const val LIST_END_Y = 192
+        private const val LIST_END_Y = SCREEN_BOTTOM - BOTTOM_BAR_HEIGHT // 176
 
         private const val ROW_HEIGHT = 18
         private const val ROW_GAP = 2
