@@ -253,7 +253,6 @@ object SmartphoneThemeRegistry {
                                 textMuted = SmartphoneThemeColors.parseHex(colObj.get("text_muted")?.asString) ?: baseColors.textMuted,
                                 textDark = SmartphoneThemeColors.parseHex(colObj.get("text_dark")?.asString) ?: baseColors.textDark,
                                 textDarkMuted = SmartphoneThemeColors.parseHex(colObj.get("text_dark_muted")?.asString) ?: baseColors.textDarkMuted,
-                                userName = SmartphoneThemeColors.parseHex(colObj.get("user_name")?.asString ?: colObj.get("username")?.asString) ?: baseColors.userName,
                                 gold = SmartphoneThemeColors.parseHex(colObj.get("gold")?.asString) ?: baseColors.gold,
                                 danger = SmartphoneThemeColors.parseHex(colObj.get("danger")?.asString) ?: baseColors.danger,
                                 success = SmartphoneThemeColors.parseHex(colObj.get("success")?.asString) ?: baseColors.success,

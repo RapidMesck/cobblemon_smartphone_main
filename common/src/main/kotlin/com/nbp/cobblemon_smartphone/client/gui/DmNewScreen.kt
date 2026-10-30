@@ -374,10 +374,10 @@ class DmNewScreen(
         private const val CONTENT_X = 20
         private const val CONTENT_WIDTH = 171
         private const val TITLE_Y = 27
-        private const val SCREEN_BOTTOM = 192
+        private const val SCREEN_BOTTOM = 194
         private const val BOTTOM_BAR_HEIGHT = 16
         private const val LIST_START_Y = 58
-        private const val LIST_END_Y = SCREEN_BOTTOM - BOTTOM_BAR_HEIGHT // 176
+        private const val LIST_END_Y = SCREEN_BOTTOM - BOTTOM_BAR_HEIGHT - 2 // 176
 
         private const val ROW_HEIGHT = 18
         private const val ROW_GAP = 2

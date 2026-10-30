@@ -227,13 +227,10 @@ class SocialScreen(
         }
 
         var y = screenY + LIST_START_Y - scrollY
-        val topH = 14
-        if (y + topH >= screenY + LIST_START_Y && y <= screenY + LIST_END_Y) {
-            val unread = SocialNotificationCache.unreadCount
-            val summary = if (unread > 0) "$unread ${lang("new_alerts")}" else lang("notifications")
-            guiGraphics.drawString(font, summary, screenX + CONTENT_X + 2, y + 3, CONTENT_DIM, false)
-
-            if (unread > 0) {
+        val unread = SocialNotificationCache.unreadCount
+        if (unread > 0) {
+            val topH = 14
+            if (y + topH >= screenY + LIST_START_Y && y <= screenY + LIST_END_Y) {
                 val markLabel = lang("mark_all_read")
                 val markW = font.width(markLabel) + 6
                 val markX = screenX + CONTENT_X + CONTENT_WIDTH - markW - 2
@@ -245,8 +242,8 @@ class SocialScreen(
                 guiGraphics.fill(markX + markW - 1, y, markX + markW, y + 12, BUTTON_BORDER_COLOR)
                 guiGraphics.drawString(font, markLabel, markX + 3, y + 2, if (hovered) NAME_COLOR else CONTENT_TEXT, false)
             }
+            y += 16
         }
-        y += 16
 
         notifications.forEach { notif ->
             if (y + NOTIF_ROW_HEIGHT >= screenY + LIST_START_Y && y <= screenY + LIST_END_Y) {
@@ -350,7 +347,7 @@ class SocialScreen(
         Tab.NOTIFICATIONS -> {
             val notifs = SocialNotificationCache.notifications()
             if (notifs.isEmpty()) 0
-            else 16 + notifs.size * (NOTIF_ROW_HEIGHT + CARD_GAP)
+            else (if (SocialNotificationCache.unreadCount > 0) 16 else 0) + notifs.size * (NOTIF_ROW_HEIGHT + CARD_GAP)
         }
     }
 
@@ -634,7 +631,7 @@ class SocialScreen(
             cursorY,
             HEAD_SIZE
         )
-        guiGraphics.drawString(font, post.authorName, textX + HEAD_SIZE + 4, cursorY + 2, theme.colors.userName, false)
+        guiGraphics.drawString(font, post.authorName, textX + HEAD_SIZE + 4, cursorY + 2, NAME_COLOR, false)
 
         val age = relativeTime(post.timestamp)
         guiGraphics.drawString(
@@ -1204,12 +1201,14 @@ class SocialScreen(
 
         if (tab == Tab.NOTIFICATIONS && my in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) {
             var y = screenY + LIST_START_Y - scrollY
-            if (isInMarkAllRead(mx, my, y)) {
-                playClickSound()
-                SocialNotificationCache.markAllRead()
-                return true
+            if (SocialNotificationCache.unreadCount > 0) {
+                if (isInMarkAllRead(mx, my, y)) {
+                    playClickSound()
+                    SocialNotificationCache.markAllRead()
+                    return true
+                }
+                y += 16
             }
-            y += 16
             SocialNotificationCache.notifications().forEach { notif ->
                 if (isInNotificationRow(mx, my, y)) {
                     playClickSound()
@@ -1634,7 +1633,7 @@ class SocialScreen(
 
     private fun findHoveredNotification(mouseX: Int, mouseY: Int): SocialNotificationView? {
         if (mouseY !in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) return null
-        var y = screenY + LIST_START_Y - scrollY + 16
+        var y = screenY + LIST_START_Y - scrollY + (if (SocialNotificationCache.unreadCount > 0) 16 else 0)
         for (notif in SocialNotificationCache.notifications()) {
             if (isInNotificationRow(mouseX, mouseY, y)) return notif
             y += NOTIF_ROW_HEIGHT + CARD_GAP

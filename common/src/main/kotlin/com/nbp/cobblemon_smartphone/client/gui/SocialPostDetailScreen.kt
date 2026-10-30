@@ -259,7 +259,7 @@ class SocialPostDetailScreen(
             cursorY,
             HEAD_SIZE
         )
-        guiGraphics.drawString(font, p.authorName, textX + HEAD_SIZE + 4, cursorY + 2, theme.colors.userName, false)
+        guiGraphics.drawString(font, p.authorName, textX + HEAD_SIZE + 4, cursorY + 2, NAME_COLOR, false)
 
         val age = relativeTime(p.timestamp)
         guiGraphics.drawString(
@@ -380,7 +380,7 @@ class SocialPostDetailScreen(
             HEAD_SIZE
         )
 
-        guiGraphics.drawString(font, comment.authorName, headX + HEAD_SIZE + 3, y + 3, theme.colors.userName, false)
+        guiGraphics.drawString(font, comment.authorName, headX + HEAD_SIZE + 3, y + 3, NAME_COLOR, false)
         val age = relativeTime(comment.timestamp)
         guiGraphics.drawString(font, age, x + CONTENT_WIDTH - 4 - font.width(age), y + 3, MUTED_COLOR, false)
 
