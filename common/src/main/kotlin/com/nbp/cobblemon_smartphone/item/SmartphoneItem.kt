@@ -13,12 +13,18 @@ import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
 import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
 import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.isRotomPhone
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomPhone
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.sounds.SoundSource
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.InteractionResultHolder
@@ -29,6 +35,7 @@ import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.item.UseAnim
 import net.minecraft.world.item.context.UseOnContext
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.Blocks
 
 class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().stacksTo(MAX_STACK)) {
 
@@ -73,6 +80,68 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
     // terminal to this smartphone on sneak-right-click, without this item knowing they exist.
     override fun useOn(context: UseOnContext): InteractionResult {
         val stack = context.itemInHand
+        val level = context.level
+        val pos = context.clickedPos
+        val blockState = level.getBlockState(pos)
+
+        // Transform into Rotom Phone when interacting with a Lightning Rod
+        if (blockState.`is`(Blocks.LIGHTNING_ROD)) {
+            val player = context.player
+            if (stack.isRotomPhone()) {
+                if (level.isClientSide && player != null) {
+                    player.displayClientMessage(
+                        Component.translatable("message.cobblemon_smartphone.already_rotom")
+                            .withStyle(ChatFormatting.YELLOW),
+                        true
+                    )
+                }
+                return InteractionResult.sidedSuccess(level.isClientSide)
+            }
+
+            stack.setRotomPhone(true)
+
+            if (!level.isClientSide) {
+                level.playSound(
+                    null,
+                    pos,
+                    SoundEvents.LIGHTNING_BOLT_THUNDER,
+                    SoundSource.BLOCKS,
+                    0.7f,
+                    1.4f
+                )
+                level.playSound(
+                    null,
+                    pos,
+                    SoundEvents.LIGHTNING_BOLT_IMPACT,
+                    SoundSource.BLOCKS,
+                    0.5f,
+                    1.2f
+                )
+                if (level is ServerLevel) {
+                    level.sendParticles(
+                        ParticleTypes.ELECTRIC_SPARK,
+                        pos.x + 0.5,
+                        pos.y + 0.8,
+                        pos.z + 0.5,
+                        30,
+                        0.25,
+                        0.35,
+                        0.25,
+                        0.15
+                    )
+                }
+                if (player != null) {
+                    player.displayClientMessage(
+                        Component.translatable("message.cobblemon_smartphone.became_rotom")
+                            .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD),
+                        true
+                    )
+                }
+            }
+
+            return InteractionResult.sidedSuccess(level.isClientSide)
+        }
+
         for (link in SmartphoneStorageLinkRegistry.getAll()) {
             val result = link.tryLink(context, stack)
             if (result != null) return result
@@ -134,6 +203,10 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         list: MutableList<Component>,
         tooltipFlag: TooltipFlag
     ) {
+        if (itemStack.isRotomPhone()) {
+            list.add(Component.translatable("tooltip.cobblemon_smartphone.rotom_phone").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD))
+        }
+
         list.add(Component.translatable("item.cobblemon_smartphone.smartphone.desc").withStyle(ChatFormatting.GRAY))
 
         if (CobblemonSmartphone.config.energy.enableEnergy) {

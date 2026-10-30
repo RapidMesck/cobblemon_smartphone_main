@@ -45,6 +45,12 @@ enum class SmartphoneColor(val modelName: String) {
         return ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "item/${modelName}_smartphone_3d")
     }
 
+    // 3D Rotom
+    fun getRotomModelPath(): ResourceLocation {
+        // Ex.: cobblemon_smartphone:item/rotom_black
+        return ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "item/rotom_${modelName}")
+    }
+
     fun getSmallScreenTexture(): ResourceLocation {
         return ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone",
