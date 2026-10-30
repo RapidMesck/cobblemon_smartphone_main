@@ -141,6 +141,7 @@ class DmThreadScreen(
         SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
         blitk(matrixStack = matrices, texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()), x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
 
+        renderBackButton(guiGraphics, mouseX, mouseY)
         renderHeader(guiGraphics, mouseX, mouseY)
         if (hasActionBar) {
             renderActionBar(guiGraphics, mouseX, mouseY)
@@ -210,24 +211,21 @@ class DmThreadScreen(
         }
     }
 
+    private fun renderBackButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val color = if (isInBack(mouseX, mouseY)) theme.colors.gold else theme.colors.textPrimary
+        guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, color, false)
+    }
+
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
         guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + ACTION_BAR_Y, theme.colors.headerNavy)
-        guiGraphics.drawString(
-            font,
-            lang("back"),
-            screenX + CONTENT_X + 2,
-            screenY + TITLE_Y + 2,
-            if (isInBack(mouseX, mouseY)) theme.colors.gold else MUTED_COLOR,
-            false
-        )
 
         renderMuteBell(guiGraphics, mouseX, mouseY)
         if (callAvailable()) {
             renderCallButton(guiGraphics, mouseX, mouseY)
         }
 
-        // Name centered between the back link and the call button.
+        // Name centered in header.
         val name = SocialDmCache.currentThreadName.ifBlank { otherName }
         guiGraphics.drawString(
             font,
@@ -908,8 +906,8 @@ class DmThreadScreen(
             mouseY in popupY()..(popupY() + POPUP_HEADER_HEIGHT)
 
     private fun isInBack(mouseX: Int, mouseY: Int): Boolean =
-        mouseX in (screenX + CONTENT_X + 2)..(screenX + CONTENT_X + 2 + font.width(lang("back"))) &&
-                mouseY in (screenY + TITLE_Y + 2)..(screenY + TITLE_Y + 2 + font.lineHeight)
+        mouseX in (screenX + BACK_X)..(screenX + BACK_X + 30) &&
+                mouseY in (screenY + BACK_Y - 2)..(screenY + BACK_Y + 10)
 
     private fun isInFollowButton(mouseX: Int, mouseY: Int): Boolean {
         if (!hasActionBar) return false
@@ -992,6 +990,8 @@ class DmThreadScreen(
 
         private const val GUI_WIDTH = 211
         private const val GUI_HEIGHT = 207
+        private const val BACK_X = 20
+        private const val BACK_Y = 14
 
         // Lit screen is x 20..191, y 24..194 — everything below stays inside it.
         private const val CONTENT_X = 20

@@ -112,7 +112,7 @@ class StructureCompassScreen(
 
         // Back button
         val backHover = isInBackButton(mouseX, mouseY)
-        val backColor = if (backHover) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
+        val backColor = if (backHover) theme.colors.gold else theme.colors.textPrimary
         guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, backColor, false)
 
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
@@ -121,7 +121,7 @@ class StructureCompassScreen(
         if (StructureCompassClientState.tracking) {
             val stopText = lang("stop_tracking")
             val stopHover = isInStopButton(mouseX, mouseY)
-            val stopColor = if (stopHover) 0xFFFF6B6B.toInt() else 0xFFFFFFFF.toInt()
+            val stopColor = if (stopHover) theme.colors.danger else theme.colors.textPrimary
             guiGraphics.drawString(font, stopText, stopButtonX(stopText), screenY + BACK_Y, stopColor, false)
         }
 

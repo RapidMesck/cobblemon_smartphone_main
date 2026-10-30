@@ -350,7 +350,7 @@ class PokeInfoDetailScreen(
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val hovered = isInBackButton(mouseX, mouseY)
         val backY = screenY + HEADER_Y + 6
-        val color = if (hovered) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
+        val color = if (hovered) theme.colors.gold else theme.colors.textPrimary
         draw(guiGraphics, lang("back"), screenX + HEADER_BACK_X, backY, color)
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
     }

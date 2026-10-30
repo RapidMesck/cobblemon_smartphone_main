@@ -120,13 +120,23 @@ class SocialPostDetailScreen(
             height = GUI_HEIGHT
         )
 
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
+        renderBackButton(guiGraphics, mouseX, mouseY)
         renderHeader(guiGraphics, mouseX, mouseY)
 
         val comments = SocialCommentCache.commentsFor(post.id)
         val postHeight = measureCard(post)
+        val commentsHeaderGap = 6
         val commentsHeaderHeight = 16
-        val commentsHeight = comments.sumOf { measureComment(it) + COMMENT_GAP }
-        val totalContentHeight = postHeight + commentsHeaderHeight + commentsHeight + 8
+        val commentsHeight = if (comments.isEmpty()) {
+            val emptyMsg = lang(if (SocialCommentCache.isLoading(post.id)) "loading" else "no_comments")
+            val wrapped = font.split(Component.literal(emptyMsg), CONTENT_WIDTH - 8)
+            wrapped.size * font.lineHeight
+        } else {
+            comments.sumOf { measureComment(it) + COMMENT_GAP }
+        }
+        val bottomPadding = 16
+        val totalContentHeight = postHeight + commentsHeaderGap + commentsHeaderHeight + commentsHeight + bottomPadding
 
         val viewportHeight = LIST_END_Y - LIST_START_Y
         maxScroll = (totalContentHeight - viewportHeight).coerceAtLeast(0)
@@ -143,7 +153,7 @@ class SocialPostDetailScreen(
 
         // 1. Post Card
         renderCard(guiGraphics, post, screenX + CONTENT_X, cursorY, mouseX, mouseY, postHeight)
-        cursorY += postHeight + 6
+        cursorY += postHeight + commentsHeaderGap
 
         // 2. Comments Header
         val commentsTitle = "${lang("comments")} (${comments.size})"
@@ -195,26 +205,27 @@ class SocialPostDetailScreen(
         pokemonPopup?.let { renderPokemonPopup(guiGraphics, it, mouseX, mouseY) }
     }
 
-    private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
-        guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + LIST_START_Y, theme.colors.headerNavy)
+    private fun renderBackButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val color = if (isInBack(mouseX, mouseY)) theme.colors.gold else theme.colors.textPrimary
+        guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, color, false)
+    }
 
-        val backHovered = isInBack(mouseX, mouseY)
-        guiGraphics.drawString(
-            font,
-            lang("back"),
-            screenX + CONTENT_X + 4,
-            screenY + TITLE_Y + 2,
-            if (backHovered) theme.colors.gold else MUTED_COLOR,
-            false
-        )
+    private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val headerY = screenY + SCREEN_TOP
+        val headerH = LIST_START_Y - SCREEN_TOP
+        val headerW = SCREEN_RIGHT - SCREEN_LEFT
+        val leftX = screenX + SCREEN_LEFT
+
+        guiGraphics.fill(leftX, headerY, leftX + headerW, headerY + headerH, theme.colors.headerNavy)
+        guiGraphics.fill(leftX, headerY + headerH - 1, leftX + headerW, headerY + headerH, SEPARATOR_COLOR)
 
         val title = lang("post_detail")
+        val titleY = headerY + (headerH - font.lineHeight) / 2
         guiGraphics.drawString(
             font,
             title,
-            screenX + CONTENT_X + (CONTENT_WIDTH - font.width(title)) / 2,
-            screenY + TITLE_Y + 2,
+            leftX + (headerW - font.width(title)) / 2,
+            titleY,
             NAME_COLOR,
             false
         )
@@ -412,23 +423,30 @@ class SocialPostDetailScreen(
         }
     }
 
-    private fun scrollbarX(): Int = screenX + CONTENT_X + CONTENT_WIDTH + 2
+    private fun scrollbarX(): Int = screenX + CONTENT_X + CONTENT_WIDTH + SCROLLBAR_GAP
 
     private fun isInScrollbar(mouseX: Int, mouseY: Int): Boolean {
-        if (maxScroll <= 0) return false
-        val sx = scrollbarX()
-        return mouseX in sx..(sx + 4) && mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
+        val trackX = scrollbarX()
+        return maxScroll > 0 && mouseX in trackX..(trackX + SCROLLBAR_WIDTH) &&
+                mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
     }
 
     private fun renderScrollbar(guiGraphics: GuiGraphics) {
-        val barX = scrollbarX()
-        val barY = screenY + LIST_START_Y
-        val barH = LIST_END_Y - LIST_START_Y
-        guiGraphics.fill(barX, barY, barX + 4, barY + barH, BUTTON_BORDER_COLOR)
+        if (maxScroll <= 0) return
+        val trackX = scrollbarX()
+        val trackY = screenY + LIST_START_Y
+        val trackH = LIST_END_Y - LIST_START_Y
+        guiGraphics.fill(trackX, trackY, trackX + SCROLLBAR_WIDTH, trackY + trackH, 0x20FFFFFF)
 
-        val thumbH = ((barH.toFloat() / (barH + maxScroll)) * barH).toInt().coerceAtLeast(10)
-        val thumbY = barY + ((scrollY.toFloat() / maxScroll) * (barH - thumbH)).toInt()
-        guiGraphics.fill(barX, thumbY, barX + 4, thumbY + thumbH, ACCENT_COLOR)
+        val handleH = (trackH * trackH / (trackH + maxScroll)).coerceAtLeast(10)
+        val handleY = trackY + (trackH - handleH) * scrollY / maxScroll
+        guiGraphics.fill(
+            trackX,
+            handleY,
+            trackX + SCROLLBAR_WIDTH,
+            handleY + handleH,
+            if (draggingScrollbar) 0x90FFFFFF.toInt() else 0x60FFFFFF
+        )
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -455,9 +473,18 @@ class SocialPostDetailScreen(
         }
 
         if (isInScrollbar(mx, my)) {
-            draggingScrollbar = true
-            dragStartMouseY = my
-            dragStartScrollY = scrollY
+            val trackY = screenY + LIST_START_Y
+            val trackH = LIST_END_Y - LIST_START_Y
+            val handleH = (trackH * trackH / (trackH + maxScroll)).coerceAtLeast(10)
+            val handleY = trackY + (trackH - handleH) * scrollY / maxScroll
+            if (my in handleY..(handleY + handleH)) {
+                draggingScrollbar = true
+                dragStartMouseY = my
+                dragStartScrollY = scrollY
+            } else {
+                val ratio = (my - trackY).toFloat() / trackH
+                scrollY = (ratio * maxScroll).toInt().coerceIn(0, maxScroll)
+            }
             return true
         }
 
@@ -545,7 +572,7 @@ class SocialPostDetailScreen(
 
         // Delete comment click
         val comments = SocialCommentCache.commentsFor(post.id)
-        var cursorY = screenY + LIST_START_Y - scrollY + postH + 16
+        var cursorY = screenY + LIST_START_Y - scrollY + postH + 6 + 16
         comments.forEach { comment ->
             val commentH = measureComment(comment)
             val cAuthorHitW = HEAD_SIZE + 4 + font.width(comment.authorName)
@@ -585,10 +612,12 @@ class SocialPostDetailScreen(
 
     override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
         if (draggingScrollbar && maxScroll > 0) {
-            val barH = LIST_END_Y - LIST_START_Y
+            val trackH = LIST_END_Y - LIST_START_Y
+            val handleH = (trackH * trackH / (trackH + maxScroll)).coerceAtLeast(10)
+            val availableTrack = (trackH - handleH).coerceAtLeast(1)
             val deltaY = mouseY.toInt() - dragStartMouseY
-            val scrollDelta = (deltaY.toFloat() / barH * (barH + maxScroll)).toInt()
-            scrollY = (dragStartScrollY + scrollDelta).coerceIn(0, maxScroll)
+            val deltaScroll = (deltaY.toFloat() / availableTrack * maxScroll).toInt()
+            scrollY = (dragStartScrollY + deltaScroll).coerceIn(0, maxScroll)
             return true
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
@@ -797,13 +826,16 @@ class SocialPostDetailScreen(
 
     private fun measureComment(c: SocialCommentView): Int {
         val lines = font.split(formatPostText(c.text), CONTENT_WIDTH - 8)
-        return HEADER_HEIGHT + lines.size * font.lineHeight + 5
+        val headerH = HEADER_HEIGHT + 2
+        val textH = lines.size * font.lineHeight
+        return headerH + 3 + textH + 8
     }
 
     private fun wrappedLines(text: String) = font.split(formatPostText(text), CONTENT_WIDTH - CARD_PAD * 2)
 
     private fun isInBack(mouseX: Int, mouseY: Int): Boolean =
-        mouseX in (screenX + CONTENT_X + 2)..(screenX + CONTENT_X + 36) && mouseY in (screenY + TITLE_Y)..(screenY + TITLE_Y + 12)
+        mouseX in (screenX + BACK_X)..(screenX + BACK_X + 30) &&
+                mouseY in (screenY + BACK_Y - 2)..(screenY + BACK_Y + 10)
 
     private fun isInSend(mouseX: Int, mouseY: Int): Boolean =
         mouseX in (screenX + SEND_BUTTON_X)..(screenX + SEND_BUTTON_X + SEND_BUTTON_SIZE) &&
@@ -868,6 +900,10 @@ class SocialPostDetailScreen(
     }
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (isInBack(mouseX, mouseY)) {
+            guiGraphics.renderTooltip(font, Component.translatable("cobblemon_smartphone.tooltip.social_back_to_social"), mouseX, mouseY)
+            return
+        }
         if (isInSend(mouseX, mouseY)) {
             guiGraphics.renderTooltip(font, Component.translatable("cobblemon_smartphone.tooltip.social_send_comment"), mouseX, mouseY)
             return
@@ -886,7 +922,7 @@ class SocialPostDetailScreen(
             }
         }
         val comments = SocialCommentCache.commentsFor(post.id)
-        var cursorY = screenY + LIST_START_Y - scrollY + postH + 16
+        var cursorY = screenY + LIST_START_Y - scrollY + postH + 6 + 16
         comments.forEach { comment ->
             val commentH = measureComment(comment)
             if (canDeleteComment(comment)) {
@@ -1204,11 +1240,17 @@ class SocialPostDetailScreen(
     companion object {
         const val GUI_WIDTH = 211
         const val GUI_HEIGHT = 207
+        const val BACK_X = 20
+        const val BACK_Y = 14
+        const val SCREEN_TOP = 24
+        const val SCREEN_LEFT = 20
+        const val SCREEN_RIGHT = 191
         const val CONTENT_X = 20
         const val CONTENT_WIDTH = 165
-        const val TITLE_Y = 28
-        const val LIST_START_Y = 46
+        const val LIST_START_Y = 40
         const val LIST_END_Y = 173
+        const val SCROLLBAR_GAP = 2
+        const val SCROLLBAR_WIDTH = 4
 
         const val INPUT_Y = 176
         const val INPUT_WIDTH = 146

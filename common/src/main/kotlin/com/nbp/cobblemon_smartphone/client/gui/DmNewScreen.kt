@@ -114,23 +114,15 @@ class DmNewScreen(
         SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
         blitk(matrixStack = matrices, texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()), x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
 
+        renderBackButton(guiGraphics, mouseX, mouseY)
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
 
         guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + 37, theme.colors.headerNavy)
-        val back = lang("back")
-        guiGraphics.drawString(
-            font,
-            back,
-            screenX + CONTENT_X + 2,
-            screenY + TITLE_Y,
-            if (isInBack(mouseX, mouseY)) theme.colors.gold else MUTED_COLOR,
-            false
-        )
         val title = lang("explore_trainers")
         guiGraphics.drawString(
             font,
             title,
-            screenX + CONTENT_X + CONTENT_WIDTH - font.width(title) - 3,
+            screenX + CONTENT_X + (CONTENT_WIDTH - font.width(title)) / 2,
             screenY + TITLE_Y,
             NAME_COLOR,
             false
@@ -321,9 +313,14 @@ class DmNewScreen(
                 mouseY in rowY..(rowY + ROW_HEIGHT) &&
                 mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
 
+    private fun renderBackButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val color = if (isInBack(mouseX, mouseY)) theme.colors.gold else theme.colors.textPrimary
+        guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, color, false)
+    }
+
     private fun isInBack(mouseX: Int, mouseY: Int): Boolean =
-        mouseX in (screenX + CONTENT_X + 2)..(screenX + CONTENT_X + 2 + font.width(lang("back"))) &&
-                mouseY in (screenY + TITLE_Y)..(screenY + TITLE_Y + font.lineHeight)
+        mouseX in (screenX + BACK_X)..(screenX + BACK_X + 30) &&
+                mouseY in (screenY + BACK_Y - 2)..(screenY + BACK_Y + 10)
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, players: List<PlayerInfo>) {
         if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
@@ -369,6 +366,8 @@ class DmNewScreen(
     companion object {
         private const val GUI_WIDTH = 211
         private const val GUI_HEIGHT = 207
+        private const val BACK_X = 20
+        private const val BACK_Y = 14
 
         // Lit screen is x 20..191, y 24..194.
         private const val CONTENT_X = 20
