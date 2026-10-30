@@ -8,7 +8,6 @@ import com.cobblemon.mod.common.client.gui.drawProfilePokemon
 import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState
 import com.cobblemon.mod.common.entity.PoseType
 import com.cobblemon.mod.common.pokemon.RenderablePokemon
-import com.mojang.blaze3d.systems.RenderSystem
 import com.nbp.cobblemon_smartphone.client.social.SocialFeedCache
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.cobblemon_smartphone.client.social.SocialProfileCache
@@ -37,6 +36,7 @@ import java.util.UUID
 
 /**
  * Screen displaying a player's profile: bio, stats, partner Pokémon showcase, and their posts.
+ * Modernized layout with comfortable spacing and clear visual hierarchy.
  */
 class SocialProfileScreen(
     private val color: SmartphoneColor,
@@ -83,10 +83,10 @@ class SocialProfileScreen(
 
         bioInput = EditBox(
             font,
-            screenX + CONTENT_X + 4,
+            screenX + CONTENT_X + 6,
             screenY + 84,
-            CONTENT_WIDTH - 8,
-            14,
+            CONTENT_WIDTH - 12,
+            16,
             Component.empty()
         )
         bioInput.setMaxLength(150)
@@ -161,7 +161,7 @@ class SocialProfileScreen(
 
         // 1. Profile Header Box
         renderProfileHeader(guiGraphics, profile, screenX + CONTENT_X, cursorY, mouseX, mouseY)
-        cursorY += profileHeaderHeight + 6
+        cursorY += profileHeaderHeight + 8
 
         // 2. Posts Header
         val postsTitle = "${lang("user_posts").format(profile?.name ?: initialName)} (${posts.size})"
@@ -189,16 +189,17 @@ class SocialProfileScreen(
     }
 
     private fun measureProfileHeader(profile: SocialProfileView?): Int {
-        var h = 48 // base info + counters
+        var h = 64 // Identity (avatar 24px + name + status) + dividers + 3-col stats dock
         if (profile?.bio?.isNotBlank() == true || editingBio) {
-            val lines = font.split(Component.literal(profile?.bio ?: ""), CONTENT_WIDTH - 12)
+            val bio = profile?.bio ?: ""
+            val lines = font.split(Component.literal(bio), CONTENT_WIDTH - 12)
             h += (lines.size * font.lineHeight).coerceAtLeast(14) + 6
         }
         if (profile?.favoriteSpecies != null || isOwnProfile) {
-            h += 42 // Partner pokemon card
+            h += 44 // Partner pokemon card (38px + 6px gap)
         }
         if (!isOwnProfile && profile != null) {
-            h += 20 // Action bar: Battle | Trade | Chat
+            h += if (profile.isMutualFollow) 40 else 22 // Action bar: 2 rows if mutual, 1 row if not
         }
         return h
     }
@@ -214,65 +215,109 @@ class SocialProfileScreen(
         val h = measureProfileHeader(profile)
         SocialUi.surface(guiGraphics, x, y, CONTENT_WIDTH, h, colors = theme.colors)
 
-        // Player Head
-        val headSize = 20
+        // 1. Top Identity Section: Avatar (24x24), Name, Online Status & Follow/Edit Button
+        val avatarSize = 24
         PlayerFaceRenderer.draw(
             guiGraphics,
             PlayerHeads.skinFor(profileUuid, profile?.name ?: initialName, profile?.skinUrl),
             x + 6,
             y + 6,
-            headSize
+            avatarSize
         )
 
-        // Name & Online Indicator
         val displayName = profile?.name ?: initialName
-        guiGraphics.drawString(font, displayName, x + 30, y + 6, NAME_COLOR, false)
-
         val isOnline = profile?.isOnline ?: false
         val statusColor = if (isOnline) ONLINE_COLOR else OFFLINE_COLOR
-        guiGraphics.fill(x + 30, y + 17, x + 34, y + 21, statusColor)
         val statusText = lang(if (isOnline) "online" else "offline")
-        guiGraphics.drawString(font, statusText, x + 37, y + 15, CONTENT_DIM, false)
 
-        // Action Buttons (Follow / Edit Bio / DM)
+        // Follow / Edit Button
+        val btnText: String
+        val isFollowingBtn: Boolean
         if (!isOwnProfile && profile != null) {
-            val followText = lang(if (profile.isFollowedByMe) "unfollow" else "follow")
-            val btnW = font.width(followText) + 8
-            val btnX = x + CONTENT_WIDTH - btnW - 6
-            val btnY = y + 5
-            val hovered = mouseX in btnX..(btnX + btnW) && mouseY in btnY..(btnY + 14)
-            val btnBg = if (profile.isFollowedByMe) (if (hovered) DANGER_COLOR else theme.colors.surface) else (if (hovered) theme.colors.primaryHover else ACCENT_COLOR)
-            guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + 14, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(btnX + 1, btnY + 1, btnX + btnW - 1, btnY + 13, btnBg)
-            guiGraphics.drawString(font, followText, btnX + 4, btnY + 3, if (profile.isFollowedByMe && !hovered) CONTENT_TEXT else 0xFFFFFFFF.toInt(), false)
+            btnText = lang(if (profile.isFollowedByMe) "unfollow" else "follow")
+            isFollowingBtn = profile.isFollowedByMe
         } else if (isOwnProfile) {
-            val editBtnText = lang(if (editingBio) "save_bio" else "edit_bio")
-            val btnW = font.width(editBtnText) + 8
-            val btnX = x + CONTENT_WIDTH - btnW - 6
-            val btnY = y + 5
-            val hovered = mouseX in btnX..(btnX + btnW) && mouseY in btnY..(btnY + 14)
-            guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + 14, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(btnX + 1, btnY + 1, btnX + btnW - 1, btnY + 13, if (hovered) theme.colors.primaryHover else ACCENT_COLOR)
-            guiGraphics.drawString(font, editBtnText, btnX + 4, btnY + 3, 0xFFFFFFFF.toInt(), false)
+            btnText = lang(if (editingBio) "save_bio" else "edit_bio")
+            isFollowingBtn = false
+        } else {
+            btnText = ""
+            isFollowingBtn = false
         }
 
-        // Stats: Posts | Followers | Following
-        val statsY = y + 29
+        val btnW = if (btnText.isNotBlank()) font.width(btnText) + 10 else 0
+        val btnX = x + CONTENT_WIDTH - btnW - 6
+        val btnY = y + 7
+        val btnH = 15
+
+        if (btnText.isNotBlank()) {
+            val hovered = mouseX in btnX..(btnX + btnW) && mouseY in btnY..(btnY + btnH)
+            val btnBg = if (!isOwnProfile && isFollowingBtn) {
+                if (hovered) DANGER_COLOR else theme.colors.surface
+            } else {
+                if (hovered) theme.colors.primaryHover else ACCENT_COLOR
+            }
+            guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(btnX + 1, btnY + 1, btnX + btnW - 1, btnY + btnH - 1, btnBg)
+            val btnTextColor = if (!isOwnProfile && isFollowingBtn && !hovered) CONTENT_TEXT else 0xFFFFFFFF.toInt()
+            guiGraphics.drawString(font, btnText, btnX + (btnW - font.width(btnText)) / 2, btnY + 4, btnTextColor, false)
+        }
+
+        // Display Name (max width bounded by follow button)
+        val maxNameW = (btnX - (x + 36) - 4).coerceAtLeast(30)
+        val trimmedName = font.plainSubstrByWidth(displayName, maxNameW)
+        guiGraphics.drawString(font, trimmedName, x + 36, y + 7, NAME_COLOR, false)
+
+        // Online Status indicator
+        guiGraphics.fill(x + 36, y + 20, x + 40, y + 24, statusColor)
+        guiGraphics.drawString(font, statusText, x + 43, y + 17, CONTENT_DIM, false)
+
+        // Subtle divider between identity and stats
+        guiGraphics.fill(x + 6, y + 33, x + CONTENT_WIDTH - 6, y + 34, 0x18000000)
+
+        // 2. Stats Section (3 Columns: Posts | Seguidores | Seguindo)
+        val statsY = y + 37
+        val totalInnerW = CONTENT_WIDTH - 12
+        val colW = totalInnerW / 3
         val postCount = profile?.postCount ?: 0
         val followers = profile?.followerCount ?: 0
         val following = profile?.followingCount ?: 0
-        val statsStr = "${lang("posts_count").format(postCount)}  •  ${lang("followers").format(followers)}  •  ${lang("following").format(following)}"
-        guiGraphics.drawString(font, statsStr, x + 6, statsY, CONTENT_DIM, false)
 
-        var cursorY = y + 42
+        val stats = listOf(
+            postCount.toString() to lang("posts_count").replace("%d", "").trim().ifEmpty { "Posts" },
+            followers.toString() to lang("followers").replace("%d", "").trim().ifEmpty { "Seguidores" },
+            following.toString() to lang("following").replace("%d", "").trim().ifEmpty { "Seguindo" }
+        )
 
-        // Bio section
+        stats.forEachIndexed { i, (count, label) ->
+            val colX = x + 6 + i * colW
+            // Draw count (centered, bold / primary)
+            val countW = font.width(count)
+            guiGraphics.drawString(font, count, colX + (colW - countW) / 2, statsY, NAME_COLOR, false)
+            // Draw label (centered, dimmed)
+            val trimmedLabel = font.plainSubstrByWidth(label, colW - 2)
+            val labelW = font.width(trimmedLabel)
+            guiGraphics.drawString(font, trimmedLabel, colX + (colW - labelW) / 2, statsY + 10, CONTENT_DIM, false)
+
+            // Divider between columns
+            if (i < 2) {
+                val divX = colX + colW
+                guiGraphics.fill(divX, statsY + 2, divX + 1, statsY + 18, 0x15000000)
+            }
+        }
+
+        // Subtle divider between stats and body
+        guiGraphics.fill(x + 6, y + 59, x + CONTENT_WIDTH - 6, y + 60, 0x18000000)
+
+        var cursorY = y + 64
+
+        // 3. Bio Section
         if (editingBio) {
             bioInput.setX(x + 6)
             bioInput.setY(cursorY)
+            bioInput.width = CONTENT_WIDTH - 12
             bioInput.visible = true
             bioInput.render(guiGraphics, mouseX, mouseY, 0f)
-            cursorY += 18
+            cursorY += 22
         } else {
             bioInput.visible = false
             val bio = profile?.bio ?: ""
@@ -282,80 +327,19 @@ class SocialProfileScreen(
                     guiGraphics.drawString(font, line, x + 6, cursorY, CONTENT_TEXT, false)
                     cursorY += font.lineHeight
                 }
-                cursorY += 4
+                cursorY += 6
             }
         }
 
-        // Partner Pokémon Showcase Card
+        // 4. Partner Pokémon Showcase Card
         if (profile?.favoriteSpecies != null || isOwnProfile) {
             renderPartnerCard(guiGraphics, profile, x + 6, cursorY, mouseX, mouseY)
-            cursorY += 40
+            cursorY += 44
         }
 
-        // Gameplay Interaction Bar (Battle | Trade | Chat)
+        // 5. Gameplay Action Bar (Battle | Trade | Message)
         if (!isOwnProfile && profile != null) {
             renderActionBar(guiGraphics, profile, x + 6, cursorY, mouseX, mouseY)
-        }
-    }
-
-    private fun renderActionBar(guiGraphics: GuiGraphics, profile: SocialProfileView, x: Int, y: Int, mouseX: Int, mouseY: Int) {
-        val totalW = CONTENT_WIDTH - 12
-        val gap = 4
-        val btnH = 14
-
-        if (profile.isMutualFollow) {
-            val btnW = (totalW - gap * 2) / 3
-
-            // 1. Battle Challenge Button
-            val bHovered = mouseX in x..(x + btnW) && mouseY in y..(y + btnH)
-            val bBg = if (bHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
-            guiGraphics.fill(x, y, x + btnW, y + btnH, bBg)
-            guiGraphics.fill(x, y, x + btnW, y + 1, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(x, y + btnH - 1, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(x, y, x + 1, y + btnH, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(x + btnW - 1, y, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
-            val bLabel = "⚔ " + lang("battle_action")
-            val bTrimmed = font.plainSubstrByWidth(bLabel, btnW - 4)
-            guiGraphics.drawString(font, bTrimmed, x + (btnW - font.width(bTrimmed)) / 2, y + 3, if (bHovered) NAME_COLOR else CONTENT_TEXT, false)
-
-            // 2. Trade Request Button
-            val tx = x + btnW + gap
-            val tHovered = mouseX in tx..(tx + btnW) && mouseY in y..(y + btnH)
-            val tBg = if (tHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
-            guiGraphics.fill(tx, y, tx + btnW, y + btnH, tBg)
-            guiGraphics.fill(tx, y, tx + btnW, y + 1, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(tx, y + btnH - 1, tx + btnW, y + btnH, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(tx, y, tx + 1, y + btnH, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(tx + btnW - 1, y, tx + btnW, y + btnH, BUTTON_BORDER_COLOR)
-            val tLabel = "⇄ " + lang("trade_action")
-            val tTrimmed = font.plainSubstrByWidth(tLabel, btnW - 4)
-            guiGraphics.drawString(font, tTrimmed, tx + (btnW - font.width(tTrimmed)) / 2, y + 3, if (tHovered) NAME_COLOR else CONTENT_TEXT, false)
-
-            // 3. Message / Chat Button
-            val cx = tx + btnW + gap
-            val mHovered = mouseX in cx..(cx + btnW) && mouseY in y..(y + btnH)
-            val mBg = if (mHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
-            guiGraphics.fill(cx, y, cx + btnW, y + btnH, mBg)
-            guiGraphics.fill(cx, y, cx + btnW, y + 1, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(cx, y + btnH - 1, cx + btnW, y + btnH, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(cx, y, cx + 1, y + btnH, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(cx + btnW - 1, y, cx + btnW, y + btnH, BUTTON_BORDER_COLOR)
-            val mLabel = "✉ " + lang("message_action")
-            val mTrimmed = font.plainSubstrByWidth(mLabel, btnW - 4)
-            guiGraphics.drawString(font, mTrimmed, cx + (btnW - font.width(mTrimmed)) / 2, y + 3, if (mHovered) NAME_COLOR else CONTENT_TEXT, false)
-        } else {
-            // Only Message / DM button is available if not mutually following
-            val btnW = totalW
-            val mHovered = mouseX in x..(x + btnW) && mouseY in y..(y + btnH)
-            val mBg = if (mHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
-            guiGraphics.fill(x, y, x + btnW, y + btnH, mBg)
-            guiGraphics.fill(x, y, x + btnW, y + 1, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(x, y + btnH - 1, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(x, y, x + 1, y + btnH, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(x + btnW - 1, y, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
-            val mLabel = "✉ " + lang("message_action")
-            val mTrimmed = font.plainSubstrByWidth(mLabel, btnW - 4)
-            guiGraphics.drawString(font, mTrimmed, x + (btnW - font.width(mTrimmed)) / 2, y + 3, if (mHovered) NAME_COLOR else CONTENT_TEXT, false)
         }
     }
 
@@ -368,22 +352,18 @@ class SocialProfileScreen(
         mouseY: Int
     ) {
         val cardW = CONTENT_WIDTH - 12
-        val cardH = 36
+        val cardH = 38
         guiGraphics.fill(x, y, x + cardW, y + cardH, SECTION_CONTENT_BG)
         guiGraphics.fill(x, y, x + cardW, y + 1, BUTTON_BORDER_COLOR)
         guiGraphics.fill(x, y + cardH - 1, x + cardW, y + cardH, BUTTON_BORDER_COLOR)
         guiGraphics.fill(x, y, x + 1, y + cardH, BUTTON_BORDER_COLOR)
         guiGraphics.fill(x + cardW - 1, y, x + cardW, y + cardH, BUTTON_BORDER_COLOR)
 
-        val modelBoxSize = 32
-        val modelX = x + 2
-        val modelY = y + 2
-
         val partner = partnerModel
         if (partner != null) {
             val matrices = guiGraphics.pose()
             matrices.pushPose()
-            matrices.translate((modelX + 16).toDouble(), (modelY + 28).toDouble(), 0.0)
+            matrices.translate((x + 18).toDouble(), (y + 30).toDouble(), 0.0)
             drawProfilePokemon(
                 partner, matrices, Quaternionf().rotateY(Math.toRadians(30.0).toFloat()),
                 PoseType.PROFILE, posableState, 0f, 16f
@@ -392,32 +372,91 @@ class SocialProfileScreen(
 
             val species = profile?.favoriteSpecies?.let { PokemonSpecies.getByIdentifier(ResourceLocation.parse(it)) }
             val name = species?.name ?: lang("favorite_pokemon")
-            guiGraphics.drawString(font, name, x + 38, y + 8, NAME_COLOR, false)
+            val maxPartnerNameW = cardW - 48
+            val trimmedPartnerName = font.plainSubstrByWidth(name, maxPartnerNameW)
+            guiGraphics.drawString(font, trimmedPartnerName, x + 40, y + 9, NAME_COLOR, false)
 
-            val tagLabel = lang("favorite_pokemon")
-            guiGraphics.drawString(font, tagLabel, x + 38, y + 20, ACCENT_COLOR, false)
+            val tagLabel = "★ " + lang("favorite_pokemon")
+            guiGraphics.drawString(font, tagLabel, x + 40, y + 21, ACCENT_COLOR, false)
 
             if (profile?.favoriteAspects?.contains("shiny") == true) {
-                guiGraphics.drawString(font, "★", x + cardW - 14, y + 6, 0xFFEAB308.toInt(), false)
+                guiGraphics.drawString(font, "✨", x + cardW - 16, y + 8, 0xFFEAB308.toInt(), false)
             }
         } else {
             val label = lang("favorite_pokemon")
-            guiGraphics.drawString(font, label, x + 8, y + 8, CONTENT_TEXT, false)
+            guiGraphics.drawString(font, label, x + 10, y + 9, CONTENT_TEXT, false)
             if (isOwnProfile) {
                 val chooseText = lang("choose_partner")
-                guiGraphics.drawString(font, "« $chooseText »", x + 8, y + 20, ACCENT_COLOR, false)
+                guiGraphics.drawString(font, "« $chooseText »", x + 10, y + 21, ACCENT_COLOR, false)
             }
         }
 
         if (isOwnProfile) {
-            val changeHovered = mouseX in (x + cardW - 20)..x + cardW && mouseY in y..(y + 14)
+            val changeHovered = mouseX in (x + cardW - 22)..x + cardW && mouseY in (y + cardH - 20)..(y + cardH)
             SocialUi.drawIcon(guiGraphics, SocialUi.Icon.PLUS, x + cardW - 14, y + cardH - 14, if (changeHovered) ACCENT_COLOR else CONTENT_DIM)
         }
     }
 
+    private fun renderActionBar(guiGraphics: GuiGraphics, profile: SocialProfileView, x: Int, y: Int, mouseX: Int, mouseY: Int) {
+        val totalW = CONTENT_WIDTH - 12
+        val gap = 4
+        val btnH = 15
+
+        if (profile.isMutualFollow) {
+            val btnW = (totalW - gap) / 2
+
+            // Row 1: Battle Challenge & Trade Request
+            // 1. Battle Challenge Button
+            val bHovered = mouseX in x..(x + btnW) && mouseY in y..(y + btnH)
+            val bBg = if (bHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
+            guiGraphics.fill(x, y, x + btnW, y + btnH, bBg)
+            guiGraphics.fill(x, y, x + btnW, y + 1, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x, y + btnH - 1, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x, y, x + 1, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x + btnW - 1, y, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            val bLabel = "⚔ " + lang("battle_action")
+            guiGraphics.drawString(font, bLabel, x + (btnW - font.width(bLabel)) / 2, y + 4, if (bHovered) NAME_COLOR else CONTENT_TEXT, false)
+
+            // 2. Trade Request Button
+            val tx = x + btnW + gap
+            val tHovered = mouseX in tx..(tx + btnW) && mouseY in y..(y + btnH)
+            val tBg = if (tHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
+            guiGraphics.fill(tx, y, tx + btnW, y + btnH, tBg)
+            guiGraphics.fill(tx, y, tx + btnW, y + 1, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(tx, y + btnH - 1, tx + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(tx, y, tx + 1, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(tx + btnW - 1, y, tx + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            val tLabel = "⇄ " + lang("trade_action")
+            guiGraphics.drawString(font, tLabel, tx + (btnW - font.width(tLabel)) / 2, y + 4, if (tHovered) NAME_COLOR else CONTENT_TEXT, false)
+
+            // Row 2: Message / DM Button
+            val my = y + btnH + 3
+            val mHovered = mouseX in x..(x + totalW) && mouseY in my..(my + btnH)
+            val mBg = if (mHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
+            guiGraphics.fill(x, my, x + totalW, my + btnH, mBg)
+            guiGraphics.fill(x, my, x + totalW, my + 1, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x, my + btnH - 1, x + totalW, my + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x, my, x + 1, my + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x + totalW - 1, my, x + totalW, my + btnH, BUTTON_BORDER_COLOR)
+            val mLabel = "✉ " + lang("message_action")
+            guiGraphics.drawString(font, mLabel, x + (totalW - font.width(mLabel)) / 2, my + 4, if (mHovered) NAME_COLOR else CONTENT_TEXT, false)
+        } else {
+            // When not mutual follow: single full-width Message / DM button
+            val mHovered = mouseX in x..(x + totalW) && mouseY in y..(y + btnH)
+            val mBg = if (mHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
+            guiGraphics.fill(x, y, x + totalW, y + btnH, mBg)
+            guiGraphics.fill(x, y, x + totalW, y + 1, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x, y + btnH - 1, x + totalW, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x, y, x + 1, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x + totalW - 1, y, x + totalW, y + btnH, BUTTON_BORDER_COLOR)
+            val mLabel = "✉ " + lang("message_action")
+            guiGraphics.drawString(font, mLabel, x + (totalW - font.width(mLabel)) / 2, y + 4, if (mHovered) NAME_COLOR else CONTENT_TEXT, false)
+        }
+    }
+
     private fun renderPartnerPickerModal(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val pw = 140
-        val ph = 60
+        val pw = 144
+        val ph = 64
         val px = screenX + (GUI_WIDTH - pw) / 2
         val py = screenY + (GUI_HEIGHT - ph) / 2
 
@@ -427,27 +466,37 @@ class SocialProfileScreen(
         guiGraphics.fill(px, py, px + 1, py + ph, BUTTON_BORDER_COLOR)
         guiGraphics.fill(px + pw - 1, py, px + pw, py + ph, BUTTON_BORDER_COLOR)
 
-        guiGraphics.drawString(font, lang("choose_partner"), px + 8, py + 6, NAME_COLOR, false)
-        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.CLOSE, px + pw - 12, py + 6, CONTENT_DIM)
+        guiGraphics.drawString(font, lang("choose_partner"), px + 8, py + 7, NAME_COLOR, false)
+        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.CLOSE, px + pw - 14, py + 7, CONTENT_DIM)
 
         val slots = CobblemonClient.storage.party.slots
         var slotX = px + 8
         slots.forEachIndexed { index, pokemon ->
-            val slotHovered = mouseX in slotX..(slotX + 18) && mouseY in (py + 24)..(py + 44)
-            guiGraphics.fill(slotX, py + 24, slotX + 18, py + 44, if (slotHovered) ROW_HOVER_BG else SECTION_CONTENT_BG)
-            guiGraphics.fill(slotX, py + 24, slotX + 18, py + 25, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(slotX, py + 43, slotX + 18, py + 44, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(slotX, py + 24, slotX + 1, py + 44, BUTTON_BORDER_COLOR)
-            guiGraphics.fill(slotX + 17, py + 24, slotX + 18, py + 44, BUTTON_BORDER_COLOR)
+            val slotHovered = mouseX in slotX..(slotX + 18) && mouseY in (py + 26)..(py + 46)
+            guiGraphics.fill(slotX, py + 26, slotX + 18, py + 46, if (slotHovered) ROW_HOVER_BG else SECTION_CONTENT_BG)
+            guiGraphics.fill(slotX, py + 26, slotX + 18, py + 27, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(slotX, py + 45, slotX + 18, py + 46, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(slotX, py + 26, slotX + 1, py + 46, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(slotX + 17, py + 26, slotX + 18, py + 46, BUTTON_BORDER_COLOR)
 
             if (pokemon != null) {
                 val icon = pokemon.species.name.take(2).uppercase()
-                guiGraphics.drawString(font, icon, slotX + 4, py + 29, ACCENT_COLOR, false)
+                guiGraphics.drawString(font, icon, slotX + 4, py + 31, ACCENT_COLOR, false)
             } else {
-                guiGraphics.drawString(font, "-", slotX + 7, py + 29, CONTENT_DIM, false)
+                guiGraphics.drawString(font, "-", slotX + 7, py + 31, CONTENT_DIM, false)
             }
-            slotX += 21
+            slotX += 22
         }
+
+        val removeHovered = mouseX in (px + 8)..(px + pw - 8) && mouseY in (py + 50)..(py + 60)
+        guiGraphics.drawString(
+            font,
+            "× " + lang("remove_partner"),
+            px + 8,
+            py + 50,
+            if (removeHovered) DANGER_COLOR else CONTENT_DIM,
+            false
+        )
     }
 
     private fun renderCard(
@@ -460,36 +509,36 @@ class SocialProfileScreen(
         height: Int
     ) {
         SocialUi.surface(guiGraphics, x, y, CONTENT_WIDTH, height, colors = theme.colors)
-        var cursorY = y + 4
-        val textX = x + 4
+        var cursorY = y + 5
+        val textX = x + 6
 
         PlayerFaceRenderer.draw(
             guiGraphics,
             PlayerHeads.skinFor(p.authorUuid, p.authorName, p.skinUrl),
             textX,
             cursorY,
-            8
+            10
         )
-        guiGraphics.drawString(font, p.authorName, textX + 12, cursorY + 1, NAME_COLOR, false)
+        guiGraphics.drawString(font, p.authorName, textX + 14, cursorY + 1, NAME_COLOR, false)
 
         val age = relativeTime(p.timestamp)
-        guiGraphics.drawString(font, age, x + CONTENT_WIDTH - 4 - font.width(age), cursorY + 1, CONTENT_DIM, false)
-        cursorY += 12
+        guiGraphics.drawString(font, age, x + CONTENT_WIDTH - 6 - font.width(age), cursorY + 1, CONTENT_DIM, false)
+        cursorY += 14
 
-        guiGraphics.fill(textX, cursorY, x + CONTENT_WIDTH - 4, cursorY + 1, 0x22000000)
-        cursorY += 4
+        guiGraphics.fill(textX, cursorY, x + CONTENT_WIDTH - 6, cursorY + 1, 0x18000000)
+        cursorY += 5
 
         if (p.text.isNotBlank()) {
-            val lines = font.split(Component.literal(p.text), CONTENT_WIDTH - 8)
+            val lines = font.split(Component.literal(p.text), CONTENT_WIDTH - 12)
             lines.forEach { line ->
                 guiGraphics.drawString(font, line, textX, cursorY, CONTENT_TEXT, false)
                 cursorY += font.lineHeight
             }
-            cursorY += 3
+            cursorY += 4
         }
 
         val footerY = y + height - 16
-        guiGraphics.fill(textX, footerY - 2, x + CONTENT_WIDTH - 4, footerY - 1, 0x22000000)
+        guiGraphics.fill(textX, footerY - 2, x + CONTENT_WIDTH - 6, footerY - 1, 0x18000000)
 
         // Like icon & count
         val heartHovered = mouseX in textX..(textX + 24) && mouseY in (footerY + 1)..(footerY + 14)
@@ -499,7 +548,7 @@ class SocialProfileScreen(
 
         // Comment icon & count
         val likeW = 12 + font.width(p.likeCount.toString())
-        val commentX = textX + likeW + 8
+        val commentX = textX + likeW + 10
         val commentHovered = mouseX in commentX..(commentX + 24) && mouseY in (footerY + 1)..(footerY + 14)
         val commentColor = if (commentHovered) ACCENT_COLOR else CONTENT_DIM
         SocialUi.drawIcon(guiGraphics, SocialUi.Icon.MESSAGE, commentX, footerY + 2, commentColor)
@@ -515,7 +564,7 @@ class SocialProfileScreen(
             font,
             lang("back"),
             screenX + CONTENT_X + 4,
-            screenY + TITLE_Y + 2,
+            screenY + TITLE_Y + 1,
             if (backHovered) theme.colors.gold else MUTED_COLOR,
             false
         )
@@ -525,7 +574,7 @@ class SocialProfileScreen(
             font,
             title,
             screenX + CONTENT_X + (CONTENT_WIDTH - font.width(title)) / 2,
-            screenY + TITLE_Y + 2,
+            screenY + TITLE_Y + 1,
             NAME_COLOR,
             false
         )
@@ -548,106 +597,117 @@ class SocialProfileScreen(
         val my = mouseY.toInt()
 
         if (pickingPartner) {
-            val pw = 140
-            val ph = 60
+            val pw = 144
+            val ph = 64
             val px = screenX + (GUI_WIDTH - pw) / 2
             val py = screenY + (GUI_HEIGHT - ph) / 2
-            if (mx in (px + pw - 14)..(px + pw) && my in py..(py + 14)) {
+
+            // Close button
+            if (mx in (px + pw - 18)..(px + pw - 4) && my in (py + 4)..(py + 16)) {
                 playClickSound()
                 pickingPartner = false
                 return true
             }
+
+            // Party slots
             var slotX = px + 8
             val slots = CobblemonClient.storage.party.slots
             slots.indices.forEach { index ->
-                if (mx in slotX..(slotX + 18) && my in (py + 24)..(py + 44)) {
+                if (mx in slotX..(slotX + 18) && my in (py + 26)..(py + 46)) {
                     playClickSound()
-                    UpdateProfilePacket(bioInput.value, index).sendToServer()
+                    UpdateProfilePacket("", index).sendToServer()
                     pickingPartner = false
                     return true
                 }
-                slotX += 21
+                slotX += 22
+            }
+
+            // Remove partner
+            if (mx in (px + 8)..(px + pw - 8) && my in (py + 50)..(py + 62)) {
+                playClickSound()
+                UpdateProfilePacket("", -2).sendToServer()
+                pickingPartner = false
+                return true
             }
             return true
         }
 
+        // Back button
         if (isInBack(mx, my)) {
             playClickSound()
             minecraft?.setScreen(SocialScreen(color, smartphoneStack))
             return true
         }
 
-        val profile = SocialProfileCache.getProfile(profileUuid)
-        val headerH = measureProfileHeader(profile)
         val cardX = screenX + CONTENT_X
         val headerY = screenY + LIST_START_Y - scrollY
+        val profile = SocialProfileCache.getProfile(profileUuid)
+        val headerH = measureProfileHeader(profile)
 
-        // Follow / Unfollow button & Action Bar (Battle / Trade / Chat)
         if (!isOwnProfile && profile != null) {
+            // Follow button
             val followText = lang(if (profile.isFollowedByMe) "unfollow" else "follow")
-            val btnW = font.width(followText) + 8
+            val btnW = font.width(followText) + 10
             val btnX = cardX + CONTENT_WIDTH - btnW - 6
-            val btnY = headerY + 5
-            if (mx in btnX..(btnX + btnW) && my in btnY..(btnY + 14)) {
+            val btnY = headerY + 7
+            if (mx in btnX..(btnX + btnW) && my in btnY..(btnY + 15)) {
                 playClickSound()
                 ToggleFollowPacket(profileUuid).sendToServer()
                 return true
             }
 
-            // Gameplay Interaction Bar (Battle | Trade | Chat)
-            var actionY = headerY + 42
-            val bio = profile.bio
-            if (bio.isNotBlank()) {
-                val lines = font.split(Component.literal(bio), CONTENT_WIDTH - 12)
-                actionY += lines.size * font.lineHeight + 4
+            // Calculate cursorY to find action bar buttons
+            var actionY = headerY + 64
+            if (profile.bio.isNotBlank()) {
+                val lines = font.split(Component.literal(profile.bio), CONTENT_WIDTH - 12)
+                actionY += lines.size * font.lineHeight + 6
             }
             if (profile.favoriteSpecies != null) {
-                actionY += 40
+                actionY += 44
             }
 
             val totalW = CONTENT_WIDTH - 12
             val gap = 4
-            val aBtnH = 14
+            val aBtnH = 15
             val ax = cardX + 6
 
-            if (my in actionY..(actionY + aBtnH)) {
-                if (profile.isMutualFollow) {
-                    val aBtnW = (totalW - gap * 2) / 3
-                    // 1. Battle Challenge
-                    if (mx in ax..(ax + aBtnW)) {
+            if (profile.isMutualFollow) {
+                val btnW = (totalW - gap) / 2
+                // Row 1: Battle & Trade
+                if (my in actionY..(actionY + aBtnH)) {
+                    if (mx in ax..(ax + btnW)) {
                         playClickSound()
                         ChallengeBattlePacket(profileUuid).sendToServer()
                         return true
                     }
-                    // 2. Trade Request
-                    val tx = ax + aBtnW + gap
-                    if (mx in tx..(tx + aBtnW)) {
+                    val tx = ax + btnW + gap
+                    if (mx in tx..(tx + btnW)) {
                         playClickSound()
                         ChallengeTradePacket(profileUuid).sendToServer()
                         return true
                     }
-                    // 3. Message / DM
-                    val cx = tx + aBtnW + gap
-                    if (mx in cx..(cx + aBtnW)) {
-                        playClickSound()
-                        minecraft?.setScreen(DmThreadScreen(color, smartphoneStack, profileUuid, profile.name))
-                        return true
-                    }
-                } else {
-                    // Only Message / DM button exists
-                    if (mx in ax..(ax + totalW)) {
-                        playClickSound()
-                        minecraft?.setScreen(DmThreadScreen(color, smartphoneStack, profileUuid, profile.name))
-                        return true
-                    }
+                }
+                // Row 2: Message / DM
+                val msgY = actionY + aBtnH + 3
+                if (my in msgY..(msgY + aBtnH) && mx in ax..(ax + totalW)) {
+                    playClickSound()
+                    minecraft?.setScreen(DmThreadScreen(color, smartphoneStack, profileUuid, profile.name))
+                    return true
+                }
+            } else {
+                // Row 1: Message / DM only
+                if (my in actionY..(actionY + aBtnH) && mx in ax..(ax + totalW)) {
+                    playClickSound()
+                    minecraft?.setScreen(DmThreadScreen(color, smartphoneStack, profileUuid, profile.name))
+                    return true
                 }
             }
         } else if (isOwnProfile) {
             val editBtnText = lang(if (editingBio) "save_bio" else "edit_bio")
-            val btnW = font.width(editBtnText) + 8
+            val btnW = font.width(editBtnText) + 10
             val btnX = cardX + CONTENT_WIDTH - btnW - 6
-            val btnY = headerY + 5
-            if (mx in btnX..(btnX + btnW) && my in btnY..(btnY + 14)) {
+            val btnY = headerY + 7
+            if (mx in btnX..(btnX + btnW) && my in btnY..(btnY + 15)) {
                 playClickSound()
                 if (editingBio) {
                     UpdateProfilePacket(bioInput.value, -1).sendToServer()
@@ -659,8 +719,14 @@ class SocialProfileScreen(
             }
 
             // Partner Pokémon button
-            val partnerCardY = headerY + 42 + (if (bioInput.value.isNotBlank() && !editingBio) font.split(Component.literal(bioInput.value), CONTENT_WIDTH - 12).size * font.lineHeight + 4 else 0)
-            if (mx in (cardX + 6)..(cardX + CONTENT_WIDTH - 6) && my in partnerCardY..(partnerCardY + 36)) {
+            var partnerCardY = headerY + 64
+            if (editingBio) {
+                partnerCardY += 22
+            } else if (profile?.bio?.isNotBlank() == true) {
+                val lines = font.split(Component.literal(profile.bio), CONTENT_WIDTH - 12)
+                partnerCardY += lines.size * font.lineHeight + 6
+            }
+            if (mx in (cardX + 6)..(cardX + CONTENT_WIDTH - 6) && my in partnerCardY..(partnerCardY + 38)) {
                 playClickSound()
                 pickingPartner = true
                 return true
@@ -669,7 +735,7 @@ class SocialProfileScreen(
 
         // Post card clicks
         val posts = SocialProfileCache.getPosts(profileUuid)
-        var cursorY = headerY + headerH + 22
+        var cursorY = headerY + headerH + 24
         posts.forEach { post ->
             val cardH = measureCard(post)
             if (mx in cardX..(cardX + CONTENT_WIDTH) && my in cursorY..(cursorY + cardH)) {
@@ -708,14 +774,17 @@ class SocialProfileScreen(
     }
 
     private fun measureCard(p: SocialPostView): Int {
-        var h = 20
-        if (p.text.isNotBlank()) h += font.split(Component.literal(p.text), CONTENT_WIDTH - 8).size * font.lineHeight + 4
-        h += 16
+        var h = 24
+        if (p.text.isNotBlank()) h += font.split(Component.literal(p.text), CONTENT_WIDTH - 12).size * font.lineHeight + 5
+        h += 18
         return h
     }
 
-    private fun isInBack(mouseX: Int, mouseY: Int): Boolean =
-        mouseX in (screenX + CONTENT_X + 2)..(screenX + CONTENT_X + 36) && mouseY in (screenY + TITLE_Y)..(screenY + TITLE_Y + 12)
+    private fun isInBack(mouseX: Int, mouseY: Int): Boolean {
+        val backW = font.width(lang("back")) + 8
+        return mouseX in (screenX + CONTENT_X)..(screenX + CONTENT_X + backW) &&
+                mouseY in (screenY + 24)..(screenY + LIST_START_Y)
+    }
 
     private fun relativeTime(timestamp: Long): String {
         val diffSec = ((System.currentTimeMillis() - timestamp) / 1000).coerceAtLeast(0)
@@ -743,11 +812,11 @@ class SocialProfileScreen(
     companion object {
         const val GUI_WIDTH = 211
         const val GUI_HEIGHT = 207
-        const val CONTENT_X = 27
-        const val CONTENT_WIDTH = 157
-        const val TITLE_Y = 28
-        const val LIST_START_Y = 46
+        const val CONTENT_X = 20
+        const val CONTENT_WIDTH = 166
+        const val TITLE_Y = 26
+        const val LIST_START_Y = 40
         const val LIST_END_Y = 194
-        const val CARD_GAP = 4
+        const val CARD_GAP = 6
     }
 }
