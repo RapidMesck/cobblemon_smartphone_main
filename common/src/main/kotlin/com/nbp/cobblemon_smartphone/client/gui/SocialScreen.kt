@@ -17,6 +17,8 @@ import com.nbp.cobblemon_smartphone.network.packet.DeletePostPacket
 import com.nbp.cobblemon_smartphone.network.packet.LikePostPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.VotePollPacket
+import com.nbp.cobblemon_smartphone.network.packet.ReportContentPacket
+import com.nbp.cobblemon_smartphone.social.ReportTargetType
 import com.nbp.cobblemon_smartphone.social.SocialPollView
 import com.nbp.cobblemon_smartphone.social.DmThreadSummary
 import com.nbp.cobblemon_smartphone.social.SocialNotificationType
@@ -385,22 +387,48 @@ class SocialScreen(
     }
 
     private fun formatPostText(text: String): Component {
-        if (!text.contains('@')) return Component.literal(text)
+        if (!text.contains('@') && !text.contains('#')) return Component.literal(text)
         val component = net.minecraft.network.chat.MutableComponent.create(net.minecraft.network.chat.contents.PlainTextContents.EMPTY)
-        val regex = Regex("""(?<=^|\s)@([a-zA-Z0-9_]{1,16})\b""")
+        val regex = Regex("""(?<=^|\s)([@#])([a-zA-Z0-9_]{1,24})\b""")
         var lastIdx = 0
         regex.findAll(text).forEach { match ->
             val start = match.range.first
             if (start > lastIdx) {
                 component.append(Component.literal(text.substring(lastIdx, start)))
             }
-            component.append(Component.literal(match.value).withStyle { it.withColor(ACCENT_COLOR).withBold(true) })
+            val prefix = match.groupValues[1]
+            val color = if (prefix == "@") ACCENT_COLOR else theme.colors.gold
+            component.append(Component.literal(match.value).withStyle { it.withColor(color).withBold(true) })
             lastIdx = match.range.last + 1
         }
         if (lastIdx < text.length) {
             component.append(Component.literal(text.substring(lastIdx)))
         }
         return component
+    }
+
+    private fun findClickedHashtag(post: SocialPostView, mx: Int, my: Int, cardX: Int, cardY: Int): String? {
+        if (!post.text.contains('#')) return null
+        val textX = cardX + CARD_PAD
+        var cursorY = cardY + CARD_PAD + HEADER_HEIGHT + TEXT_GAP + 1
+        val lines = wrappedLines(post.text)
+        val hashtags = com.nbp.cobblemon_smartphone.social.SocialTagHelper.extractHashtags(post.text)
+        if (hashtags.isEmpty()) return null
+
+        lines.forEach { line ->
+            if (my in cursorY..(cursorY + font.lineHeight) && mx in textX..(textX + CONTENT_WIDTH)) {
+                val sb = StringBuilder()
+                line.accept { _, _, cp -> sb.append(cp.toChar()); true }
+                val lineStr = sb.toString()
+                for (tag in hashtags) {
+                    if (lineStr.contains("#$tag", ignoreCase = true)) {
+                        return tag
+                    }
+                }
+            }
+            cursorY += font.lineHeight
+        }
+        return null
     }
 
     private fun wrappedLines(text: String) =
@@ -620,6 +648,10 @@ class SocialScreen(
                 if (hovered) DANGER_COLOR else CONTENT_DIM,
                 false
             )
+        } else {
+            val reportHovered = isInReportButton(mouseX, mouseY, x, y, height)
+            val flagX = x + CONTENT_WIDTH - CARD_PAD - 12
+            SocialUi.drawIcon(guiGraphics, SocialUi.Icon.FLAG, flagX, footerY + 2, if (reportHovered) DANGER_COLOR else CONTENT_DIM)
         }
     }
 
@@ -1125,6 +1157,12 @@ class SocialScreen(
                 Minecraft.getInstance().setScreen(DmNewScreen(color, smartphoneStack))
                 return true
             }
+            if (isInHashtagFilter(mx, my)) {
+                playClickSound()
+                SocialFeedCache.clearHashtag()
+                scrollY = 0
+                return true
+            }
 
             var y = screenY + LIST_START_Y - scrollY + 18
             SocialFeedCache.posts().forEach { post ->
@@ -1157,6 +1195,15 @@ class SocialScreen(
                     DeletePostPacket(post.id).sendToServer()
                     return true
                 }
+                if (!canDelete(post) && isInReportButton(mx, my, screenX + CONTENT_X, y, height)) {
+                    playClickSound()
+                    ReportContentPacket(ReportTargetType.POST, post.id, "Inappropriate content").sendToServer()
+                    Minecraft.getInstance().player?.displayClientMessage(
+                        Component.translatable("message.nbp.social.report_sent"),
+                        false
+                    )
+                    return true
+                }
                 val likeW = 12 + font.width(post.likeCount.toString())
                 if (isInCommentButton(mx, my, screenX + CONTENT_X, y, height, likeW)) {
                     playClickSound()
@@ -1167,6 +1214,13 @@ class SocialScreen(
                 if (clickedOption != null) {
                     playClickSound()
                     VotePollPacket(post.id, clickedOption).sendToServer()
+                    return true
+                }
+                val clickedTag = findClickedHashtag(post, mx, my, screenX + CONTENT_X, y)
+                if (clickedTag != null) {
+                    playClickSound()
+                    SocialFeedCache.setHashtag(clickedTag)
+                    scrollY = 0
                     return true
                 }
                 if (mx in (screenX + CONTENT_X)..(screenX + CONTENT_X + CONTENT_WIDTH) && my in y..(y + height)) {
@@ -1321,6 +1375,23 @@ class SocialScreen(
                 mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
     }
 
+    private fun isInHashtagFilter(mouseX: Int, mouseY: Int): Boolean {
+        val tag = SocialFeedCache.hashtag ?: return false
+        val (fx, y) = followingFilterPos()
+        val fw = followingFilterWidth()
+        val tagLabel = "#$tag ✕"
+        val tw = font.width(tagLabel) + 8
+        val tx = fx + fw + 4
+        return mouseX in tx..(tx + tw) && mouseY in y..(y + 12) &&
+            mouseY in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)
+    }
+
+    private fun isInReportButton(mouseX: Int, mouseY: Int, cardX: Int, cardY: Int, cardHeight: Int): Boolean {
+        val footerY = cardY + cardHeight - CARD_PAD - FOOTER_HEIGHT
+        val flagX = cardX + CONTENT_WIDTH - CARD_PAD - 14
+        return mouseX in flagX..(cardX + CONTENT_WIDTH - CARD_PAD) && mouseY in (footerY - 1)..(footerY + FOOTER_HEIGHT + 1)
+    }
+
     private fun renderFeedFilter(guiGraphics: GuiGraphics, y: Int, mouseX: Int, mouseY: Int) {
         val followingActive = SocialFeedCache.followingOnly
 
@@ -1360,8 +1431,25 @@ class SocialScreen(
         guiGraphics.drawString(font, lang("feed_following"), fx + 5, y + 2, fTc, false)
         if (followingActive) guiGraphics.fill(fx + 2, y + 10, fx + fw - 2, y + 11, theme.colors.gold)
 
-        // Explore Trainers Button (Right aligned)
+        // Hashtag Filter Pill if active
+        val activeTag = SocialFeedCache.hashtag
         val (ex, _) = exploreButtonPos()
+        if (activeTag != null) {
+            val tagLabel = "#$activeTag ✕"
+            val tw = font.width(tagLabel) + 8
+            val tx = fx + fw + 4
+            if (tx + tw < ex - 2) {
+                val tHovered = isInHashtagFilter(mouseX, mouseY)
+                guiGraphics.fill(tx, y, tx + tw, y + 12, if (tHovered) theme.colors.danger else theme.colors.gold)
+                guiGraphics.fill(tx, y, tx + tw, y + 1, BUTTON_BORDER_COLOR)
+                guiGraphics.fill(tx, y + 11, tx + tw, y + 12, BUTTON_BORDER_COLOR)
+                guiGraphics.fill(tx, y, tx + 1, y + 12, BUTTON_BORDER_COLOR)
+                guiGraphics.fill(tx + tw - 1, y, tx + tw, y + 12, BUTTON_BORDER_COLOR)
+                guiGraphics.drawString(font, tagLabel, tx + 4, y + 2, 0xFF000000.toInt(), false)
+            }
+        }
+
+        // Explore Trainers Button (Right aligned)
         val ew = exploreButtonWidth()
         val eHovered = isInExploreButton(mouseX, mouseY)
         val eBg = if (eHovered) theme.colors.primaryHover else theme.colors.surface
@@ -1544,6 +1632,8 @@ class SocialScreen(
                 Component.translatable("cobblemon_smartphone.tooltip.social_feed_global")
             tab == Tab.FEED && isInFollowingFilter(mouseX, mouseY) ->
                 Component.translatable("cobblemon_smartphone.tooltip.social_feed_following")
+            tab == Tab.FEED && isInHashtagFilter(mouseX, mouseY) ->
+                Component.translatable("cobblemon_smartphone.tooltip.social_clear_hashtag")
             tab == Tab.FEED && isInExploreButton(mouseX, mouseY) ->
                 Component.translatable("cobblemon_smartphone.tooltip.social_explore")
             tab == Tab.FEED -> findHoveredCardTooltip(mouseX, mouseY)
@@ -1586,8 +1676,14 @@ class SocialScreen(
             if (isInCommentButton(mouseX, mouseY, cardX, y, height, likeW)) {
                 return Component.translatable("cobblemon_smartphone.tooltip.social_comments")
             }
-            if (canDelete(post) && isInDeleteButton(mouseX, mouseY, cardX, y, height)) {
-                return Component.translatable("cobblemon_smartphone.tooltip.social_delete")
+            if (canDelete(post)) {
+                if (isInDeleteButton(mouseX, mouseY, cardX, y, height)) {
+                    return Component.translatable("cobblemon_smartphone.tooltip.social_delete")
+                }
+            } else {
+                if (isInReportButton(mouseX, mouseY, cardX, y, height)) {
+                    return Component.translatable("cobblemon_smartphone.tooltip.social_report")
+                }
             }
             y += height + CARD_GAP
         }

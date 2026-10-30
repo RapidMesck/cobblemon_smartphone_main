@@ -12,6 +12,8 @@ object SocialFeedCache {
 
     var followingOnly: Boolean = false
         private set
+    var hashtag: String? = null
+        private set
     var hasMore: Boolean = false
         private set
     var loading: Boolean = false
@@ -27,6 +29,19 @@ object SocialFeedCache {
         posts.clear()
         hasMore = false
         refresh()
+    }
+
+    fun setHashtag(tag: String?) {
+        val clean = tag?.removePrefix("#")?.trim()?.takeIf { it.isNotBlank() }
+        if (this.hashtag == clean) return
+        this.hashtag = clean
+        posts.clear()
+        hasMore = false
+        refresh()
+    }
+
+    fun clearHashtag() {
+        setHashtag(null)
     }
 
     fun accept(page: List<SocialPostView>, hasMore: Boolean, append: Boolean) {
@@ -45,7 +60,7 @@ object SocialFeedCache {
     /** Requests the newest page, replacing whatever is cached. */
     fun refresh() {
         loading = true
-        RequestFeedPagePacket(0L, followingOnly).sendToServer()
+        RequestFeedPagePacket(0L, followingOnly, hashtag).sendToServer()
     }
 
     /** Requests the next page of older posts. No-op while a request is already in flight. */
@@ -53,7 +68,7 @@ object SocialFeedCache {
         if (loading || !hasMore) return
         val oldest = posts.lastOrNull() ?: return refresh()
         loading = true
-        RequestFeedPagePacket(oldest.id, followingOnly).sendToServer()
+        RequestFeedPagePacket(oldest.id, followingOnly, hashtag).sendToServer()
     }
 
     /**

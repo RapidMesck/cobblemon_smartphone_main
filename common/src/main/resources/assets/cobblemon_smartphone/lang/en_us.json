@@ -88,6 +88,11 @@
   "commands.nbp.social.unbanned": "Unbanned %s from social (%s)",
   "commands.nbp.social.deleted": "Deleted post #%s",
   "commands.nbp.social.not_found": "No post with id #%s",
+  "commands.nbp.social.cleaned_photos": "Cleaned %d orphan photo file(s)",
+  "commands.nbp.social.no_reports": "No active reports",
+  "commands.nbp.social.cleared_reports": "Cleared %d report(s)",
+  "message.nbp.social.report_sent": "Report submitted to moderators",
+  "message.nbp.social.mod_alert": "[Social Moderation] New report from %s against %s #%d: \"%s\"",
 
   "message.nbp.quick_action.no_phone": "You don't have a smartphone",
   "message.nbp.quick_action.unassigned": "This quick action slot isn't assigned to an app",
@@ -309,6 +314,8 @@
   "cobblemon_smartphone.tooltip.social_explore": "Discover Trainers",
   "cobblemon_smartphone.tooltip.social_feed_global": "Global Feed",
   "cobblemon_smartphone.tooltip.social_feed_following": "Following Feed",
+  "cobblemon_smartphone.tooltip.social_report": "Report content",
+  "cobblemon_smartphone.tooltip.social_clear_hashtag": "Clear hashtag filter",
 
   "cobblemon_smartphone.pokeinfo.dimensions": "H: %sm  W: %skg",
   "cobblemon_smartphone.pokeinfo.hidden_ability_prefix": "(Hidden) ",

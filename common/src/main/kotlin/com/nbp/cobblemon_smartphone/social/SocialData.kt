@@ -39,6 +39,10 @@ class SocialData : SavedData() {
     /** Players an operator has banned from sending DMs. */
     private val dmBans = mutableSetOf<UUID>()
 
+    /** Reports submitted by users for moderation. */
+    private val reports = mutableListOf<SocialReport>()
+    private var nextReportId = 1L
+
     // --- Feed ---
 
     /** Posts newest-first. */
@@ -194,6 +198,15 @@ class SocialData : SavedData() {
                 thread.key.involves(viewer) && thread.messages.any { it.photo?.id == photoId }
             }
 
+    fun getAllReferencedPhotoIds(): Set<UUID> {
+        val set = mutableSetOf<UUID>()
+        posts.forEach { post -> post.photo?.let { set.add(it.id) } }
+        threads.values.forEach { thread ->
+            thread.messages.forEach { msg -> msg.photo?.let { set.add(it.id) } }
+        }
+        return set
+    }
+
     private fun enforceThreadRetention(thread: DmThread) {
         val max = CobblemonSmartphone.config.social.maxMessagesPerThread
         if (max <= 0) return
@@ -216,6 +229,44 @@ class SocialData : SavedData() {
     fun setDmBanned(uuid: UUID, banned: Boolean) {
         val changed = if (banned) dmBans.add(uuid) else dmBans.remove(uuid)
         if (changed) setDirty()
+    }
+
+    fun commentById(commentId: Long): SocialComment? =
+        posts.flatMap { it.comments }.firstOrNull { it.id == commentId }
+
+    fun addReport(
+        targetType: ReportTargetType,
+        targetId: Long,
+        reporterUuid: UUID,
+        reporterName: String,
+        authorUuid: UUID,
+        reason: String
+    ): SocialReport {
+        val report = SocialReport(
+            id = nextReportId++,
+            targetType = targetType,
+            targetId = targetId,
+            reporterUuid = reporterUuid,
+            reporterName = reporterName,
+            targetAuthorUuid = authorUuid,
+            reason = reason,
+            timestamp = System.currentTimeMillis()
+        )
+        reports.add(report)
+        while (reports.size > 100) {
+            reports.removeAt(0)
+        }
+        setDirty()
+        return report
+    }
+
+    fun reports(): List<SocialReport> = reports.toList()
+
+    fun clearReports(): Int {
+        val count = reports.size
+        reports.clear()
+        if (count > 0) setDirty()
+        return count
     }
 
     // --- Profiles ---
@@ -342,6 +393,11 @@ class SocialData : SavedData() {
         tag.put(NOTIFICATIONS_KEY, notifList)
         tag.putLong(NEXT_NOTIFICATION_ID_KEY, nextNotificationId)
 
+        val reportList = ListTag()
+        reports.forEach { reportList.add(it.toNbt()) }
+        tag.put(REPORTS_KEY, reportList)
+        tag.putLong(NEXT_REPORT_ID_KEY, nextReportId)
+
         tag.put(POST_BANS_KEY, uuidListTag(postBans))
         tag.put(DM_BANS_KEY, uuidListTag(dmBans))
         return tag
@@ -357,6 +413,8 @@ class SocialData : SavedData() {
         private const val PROFILES_KEY = "profiles"
         private const val NOTIFICATIONS_KEY = "notifications"
         private const val NEXT_NOTIFICATION_ID_KEY = "next_notification_id"
+        private const val REPORTS_KEY = "reports"
+        private const val NEXT_REPORT_ID_KEY = "next_report_id"
         private const val POST_BANS_KEY = "post_bans"
         private const val DM_BANS_KEY = "dm_bans"
 
@@ -395,6 +453,15 @@ class SocialData : SavedData() {
                 tag.getList(NOTIFICATIONS_KEY, Tag.TAG_COMPOUND.toInt()).forEach { element ->
                     SocialNotification.fromNbt(element as CompoundTag)?.let { notif ->
                         data.notifications.getOrPut(notif.targetUuid) { mutableListOf() }.add(notif)
+                    }
+                }
+            }
+
+            data.nextReportId = tag.getLong(NEXT_REPORT_ID_KEY).coerceAtLeast(1L)
+            if (tag.contains(REPORTS_KEY)) {
+                tag.getList(REPORTS_KEY, Tag.TAG_COMPOUND.toInt()).forEach { element ->
+                    SocialReport.fromNbt(element as CompoundTag)?.let { report ->
+                        data.reports.add(report)
                     }
                 }
             }

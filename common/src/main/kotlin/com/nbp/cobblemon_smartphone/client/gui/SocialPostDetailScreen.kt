@@ -17,10 +17,13 @@ import com.nbp.cobblemon_smartphone.network.packet.AddCommentPacket
 import com.nbp.cobblemon_smartphone.network.packet.DeleteCommentPacket
 import com.nbp.cobblemon_smartphone.network.packet.DeletePostPacket
 import com.nbp.cobblemon_smartphone.network.packet.LikePostPacket
+import com.nbp.cobblemon_smartphone.network.packet.ReportContentPacket
 import com.nbp.cobblemon_smartphone.network.packet.VotePollPacket
+import com.nbp.cobblemon_smartphone.social.ReportTargetType
 import com.nbp.cobblemon_smartphone.social.SocialCommentView
 import com.nbp.cobblemon_smartphone.social.SocialPollView
 import com.nbp.cobblemon_smartphone.social.SocialPostView
+import com.nbp.cobblemon_smartphone.social.SocialTagHelper
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
@@ -331,6 +334,10 @@ class SocialPostDetailScreen(
                 if (hovered) DANGER_COLOR else CONTENT_DIM,
                 false
             )
+        } else {
+            val reportHovered = isInReportPostButton(mouseX, mouseY, x, y, height)
+            val flagX = x + CONTENT_WIDTH - CARD_PAD - 12
+            SocialUi.drawIcon(guiGraphics, SocialUi.Icon.FLAG, flagX, footerY + 2, if (reportHovered) DANGER_COLOR else CONTENT_DIM)
         }
     }
 
@@ -379,6 +386,15 @@ class SocialPostDetailScreen(
                 x + CONTENT_WIDTH - 12,
                 y + height - 11,
                 if (trashHovered) DANGER_COLOR else CONTENT_DIM
+            )
+        } else {
+            val flagHovered = isInReportComment(mouseX, mouseY, x, y, height)
+            SocialUi.drawIcon(
+                guiGraphics,
+                SocialUi.Icon.FLAG,
+                x + CONTENT_WIDTH - 12,
+                y + height - 11,
+                if (flagHovered) DANGER_COLOR else CONTENT_DIM
             )
         }
     }
@@ -439,10 +455,26 @@ class SocialPostDetailScreen(
             return true
         }
 
-        // Delete post
+        // Delete or report post
         if (canDeletePost(post) && isInDeletePostButton(mx, my, screenX + CONTENT_X, cardY, postH)) {
             playClickSound()
             DeletePostPacket(post.id).sendToServer()
+            minecraft?.setScreen(SocialScreen(color, smartphoneStack))
+            return true
+        }
+        if (!canDeletePost(post) && isInReportPostButton(mx, my, screenX + CONTENT_X, cardY, postH)) {
+            playClickSound()
+            ReportContentPacket(ReportTargetType.POST, post.id, "Inappropriate content").sendToServer()
+            Minecraft.getInstance().player?.displayClientMessage(
+                Component.translatable("message.nbp.social.report_sent"),
+                false
+            )
+            return true
+        }
+        val clickedTag = findClickedHashtag(post.text, mx, my, screenX + CONTENT_X, cardY)
+        if (clickedTag != null) {
+            playClickSound()
+            SocialFeedCache.setHashtag(clickedTag)
             minecraft?.setScreen(SocialScreen(color, smartphoneStack))
             return true
         }
@@ -477,6 +509,15 @@ class SocialPostDetailScreen(
             if (canDeleteComment(comment) && isInDeleteComment(mx, my, screenX + CONTENT_X, cursorY, commentH)) {
                 playClickSound()
                 DeleteCommentPacket(post.id, comment.id).sendToServer()
+                return true
+            }
+            if (!canDeleteComment(comment) && isInReportComment(mx, my, screenX + CONTENT_X, cursorY, commentH)) {
+                playClickSound()
+                ReportContentPacket(ReportTargetType.COMMENT, comment.id, "Inappropriate content").sendToServer()
+                Minecraft.getInstance().player?.displayClientMessage(
+                    Component.translatable("message.nbp.social.report_sent"),
+                    false
+                )
                 return true
             }
             cursorY += commentH + COMMENT_GAP
@@ -636,22 +677,48 @@ class SocialPostDetailScreen(
     }
 
     private fun formatPostText(text: String): Component {
-        if (!text.contains('@')) return Component.literal(text)
+        if (!text.contains('@') && !text.contains('#')) return Component.literal(text)
         val component = net.minecraft.network.chat.MutableComponent.create(net.minecraft.network.chat.contents.PlainTextContents.EMPTY)
-        val regex = Regex("""(?<=^|\s)@([a-zA-Z0-9_]{1,16})\b""")
+        val regex = Regex("""(?<=^|\s)([@#])([a-zA-Z0-9_]{1,24})\b""")
         var lastIdx = 0
         regex.findAll(text).forEach { match ->
             val start = match.range.first
             if (start > lastIdx) {
                 component.append(Component.literal(text.substring(lastIdx, start)))
             }
-            component.append(Component.literal(match.value).withStyle { it.withColor(ACCENT_COLOR).withBold(true) })
+            val prefix = match.groupValues[1]
+            val color = if (prefix == "@") ACCENT_COLOR else theme.colors.gold
+            component.append(Component.literal(match.value).withStyle { it.withColor(color).withBold(true) })
             lastIdx = match.range.last + 1
         }
         if (lastIdx < text.length) {
             component.append(Component.literal(text.substring(lastIdx)))
         }
         return component
+    }
+
+    private fun findClickedHashtag(text: String, mx: Int, my: Int, cardX: Int, cardY: Int): String? {
+        if (!text.contains('#')) return null
+        val textX = cardX + CARD_PAD
+        var cursorY = cardY + CARD_PAD + HEADER_HEIGHT + TEXT_GAP + 1
+        val lines = wrappedLines(text)
+        val hashtags = SocialTagHelper.extractHashtags(text)
+        if (hashtags.isEmpty()) return null
+
+        lines.forEach { line ->
+            if (my in cursorY..(cursorY + font.lineHeight) && mx in textX..(textX + CONTENT_WIDTH)) {
+                val sb = StringBuilder()
+                line.accept { _, _, cp -> sb.append(cp.toChar()); true }
+                val lineStr = sb.toString()
+                for (tag in hashtags) {
+                    if (lineStr.contains("#$tag", ignoreCase = true)) {
+                        return tag
+                    }
+                }
+            }
+            cursorY += font.lineHeight
+        }
+        return null
     }
 
     private fun measureComment(c: SocialCommentView): Int {
@@ -680,7 +747,17 @@ class SocialPostDetailScreen(
             mouseY in (footerY + 1)..(footerY + FOOTER_HEIGHT)
     }
 
+    private fun isInReportPostButton(mouseX: Int, mouseY: Int, cardX: Int, cardY: Int, cardHeight: Int): Boolean {
+        val footerY = cardY + cardHeight - CARD_PAD - FOOTER_HEIGHT
+        val flagX = cardX + CONTENT_WIDTH - CARD_PAD - 14
+        return mouseX in flagX..(cardX + CONTENT_WIDTH - CARD_PAD) && mouseY in (footerY - 1)..(footerY + FOOTER_HEIGHT + 1)
+    }
+
     private fun isInDeleteComment(mouseX: Int, mouseY: Int, commentX: Int, commentY: Int, commentH: Int): Boolean =
+        mouseX in (commentX + CONTENT_WIDTH - 15)..(commentX + CONTENT_WIDTH - 2) &&
+            mouseY in (commentY + commentH - 14)..(commentY + commentH)
+
+    private fun isInReportComment(mouseX: Int, mouseY: Int, commentX: Int, commentY: Int, commentH: Int): Boolean =
         mouseX in (commentX + CONTENT_WIDTH - 15)..(commentX + CONTENT_WIDTH - 2) &&
             mouseY in (commentY + commentH - 14)..(commentY + commentH)
 
@@ -719,6 +796,37 @@ class SocialPostDetailScreen(
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         if (isInSend(mouseX, mouseY)) {
             guiGraphics.renderTooltip(font, Component.translatable("cobblemon_smartphone.tooltip.social_send_comment"), mouseX, mouseY)
+            return
+        }
+        val cardY = screenY + LIST_START_Y - scrollY
+        val postH = measureCard(post)
+        if (canDeletePost(post)) {
+            if (isInDeletePostButton(mouseX, mouseY, screenX + CONTENT_X, cardY, postH)) {
+                guiGraphics.renderTooltip(font, Component.translatable("cobblemon_smartphone.tooltip.social_delete"), mouseX, mouseY)
+                return
+            }
+        } else {
+            if (isInReportPostButton(mouseX, mouseY, screenX + CONTENT_X, cardY, postH)) {
+                guiGraphics.renderTooltip(font, Component.translatable("cobblemon_smartphone.tooltip.social_report"), mouseX, mouseY)
+                return
+            }
+        }
+        val comments = SocialCommentCache.commentsFor(post.id)
+        var cursorY = screenY + LIST_START_Y - scrollY + postH + 16
+        comments.forEach { comment ->
+            val commentH = measureComment(comment)
+            if (canDeleteComment(comment)) {
+                if (isInDeleteComment(mouseX, mouseY, screenX + CONTENT_X, cursorY, commentH)) {
+                    guiGraphics.renderTooltip(font, Component.translatable("cobblemon_smartphone.tooltip.social_delete"), mouseX, mouseY)
+                    return
+                }
+            } else {
+                if (isInReportComment(mouseX, mouseY, screenX + CONTENT_X, cursorY, commentH)) {
+                    guiGraphics.renderTooltip(font, Component.translatable("cobblemon_smartphone.tooltip.social_report"), mouseX, mouseY)
+                    return
+                }
+            }
+            cursorY += commentH + COMMENT_GAP
         }
     }
 

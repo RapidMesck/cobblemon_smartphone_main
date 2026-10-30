@@ -5,7 +5,7 @@ import net.minecraft.client.gui.GuiGraphics
 
 /** Small pixel-art primitives shared by every Social screen. */
 object SocialUi {
-    enum class Icon { FEED, MESSAGE, PLUS, BELL, SEND, PHONE, TRASH, HEART, BACK, CLOSE, SEARCH, USER }
+    enum class Icon { FEED, MESSAGE, PLUS, BELL, SEND, PHONE, TRASH, HEART, BACK, CLOSE, SEARCH, USER, FLAG }
 
     const val NAVY = 0xFF163A49.toInt()
     const val NAVY_LIGHT = 0xFF24576A.toInt()
@@ -88,6 +88,7 @@ object SocialUi {
             Icon.CLOSE -> { p(1, 1, 2, 2); p(6, 1, 2, 2); p(2, 2, 2, 2); p(5, 2, 2, 2); p(3, 3, 3, 3); p(2, 5, 2, 2); p(5, 5, 2, 2); p(1, 6, 2, 2); p(6, 6, 2, 2) }
             Icon.SEARCH -> { p(1, 1, 5, 1); p(0, 2, 1, 4); p(6, 2, 1, 4); p(1, 6, 5); p(6, 6, 1); p(7, 7, 1); p(8, 8) }
             Icon.USER -> { p(3, 0, 3, 3); p(2, 3, 5); p(1, 5, 7, 4) }
+            Icon.FLAG -> { p(1, 0, 1, 8); p(2, 0, 5, 4) }
         }
     }
 }

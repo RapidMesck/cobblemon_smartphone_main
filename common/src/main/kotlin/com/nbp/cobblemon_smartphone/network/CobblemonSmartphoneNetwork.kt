@@ -167,9 +167,11 @@ import com.nbp.cobblemon_smartphone.network.packet.MarkNotificationReadPacket
 import com.nbp.cobblemon_smartphone.network.packet.ChallengeBattlePacket
 import com.nbp.cobblemon_smartphone.network.packet.ChallengeTradePacket
 import com.nbp.cobblemon_smartphone.network.packet.VotePollPacket
+import com.nbp.cobblemon_smartphone.network.packet.ReportContentPacket
 import com.nbp.cobblemon_smartphone.network.handler.ChallengeBattleHandler
 import com.nbp.cobblemon_smartphone.network.handler.ChallengeTradeHandler
 import com.nbp.cobblemon_smartphone.network.handler.VotePollHandler
+import com.nbp.cobblemon_smartphone.network.handler.ReportContentHandler
 import com.nbp.cobblemon_smartphone.network.packet.OpenGpsScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenStructureCompassScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokeInfoScreenPacket
@@ -478,6 +480,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(ChallengeBattlePacket.ID, ChallengeBattlePacket::decode, ChallengeBattleHandler))
         list.add(PacketRegisterInfo(ChallengeTradePacket.ID, ChallengeTradePacket::decode, ChallengeTradeHandler))
         list.add(PacketRegisterInfo(VotePollPacket.ID, VotePollPacket::decode, VotePollHandler))
+        list.add(PacketRegisterInfo(ReportContentPacket.ID, ReportContentPacket::decode, ReportContentHandler))
 
         return list
     }

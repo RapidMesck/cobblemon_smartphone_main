@@ -103,6 +103,39 @@ object SocialPhotoManager {
         runCatching { Files.deleteIfExists(photoPath(server, id)) }
     }
 
+    /**
+     * Scans the server photo directory and removes any photo files not referenced in posts or DMs.
+     * Returns the count of deleted orphan files.
+     */
+    fun cleanupOrphans(server: MinecraftServer): Int {
+        val dir = server.getWorldPath(LevelResource.ROOT).resolve("cobblemon_smartphone").resolve("social_photos")
+        if (!Files.isDirectory(dir)) return 0
+
+        val referenced = SocialData.get(server).getAllReferencedPhotoIds()
+        val pendingUploads = uploads.keys + ready.keys
+        var deletedCount = 0
+
+        runCatching {
+            Files.list(dir).use { stream ->
+                stream.forEach { file ->
+                    val fileName = file.fileName.toString()
+                    if (fileName.endsWith(".jpg")) {
+                        val idStr = fileName.removeSuffix(".jpg")
+                        val id = runCatching { UUID.fromString(idStr) }.getOrNull()
+                        if (id != null && id !in referenced && id !in pendingUploads) {
+                            runCatching {
+                                if (Files.deleteIfExists(file)) {
+                                    deletedCount++
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return deletedCount
+    }
+
     private fun fail(player: ServerPlayer, id: UUID) {
         SocialPhotoUploadResultPacket(id, false, 0, 0).sendToPlayer(player)
     }

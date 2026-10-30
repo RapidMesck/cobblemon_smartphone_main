@@ -48,6 +48,18 @@ object SocialCommands {
                                 .executes { deletePost(it) }
                         )
                 )
+                .then(
+                    Commands.literal("cleanphotos")
+                        .executes { cleanPhotos(it) }
+                )
+                .then(
+                    Commands.literal("reports")
+                        .executes { listReports(it) }
+                )
+                .then(
+                    Commands.literal("clearreports")
+                        .executes { clearReports(it) }
+                )
         )
     }
 
@@ -78,5 +90,37 @@ object SocialCommands {
         }
         source.sendFailure(Component.translatable("commands.nbp.social.not_found", id))
         return 0
+    }
+
+    private fun cleanPhotos(context: CommandContext<CommandSourceStack>): Int {
+        val source = context.source
+        val server = source.server
+        val deleted = com.nbp.cobblemon_smartphone.social.SocialPhotoManager.cleanupOrphans(server)
+        source.sendSuccess({ Component.translatable("commands.nbp.social.cleaned_photos", deleted) }, true)
+        return deleted
+    }
+
+    private fun listReports(context: CommandContext<CommandSourceStack>): Int {
+        val source = context.source
+        val server = source.server
+        val reports = SocialData.get(server).reports()
+        if (reports.isEmpty()) {
+            source.sendSuccess({ Component.translatable("commands.nbp.social.no_reports") }, false)
+            return 0
+        }
+        source.sendSuccess({ Component.literal("=== Relatórios de Denúncia (${reports.size}) ===") }, false)
+        reports.forEach { r ->
+            val msg = "#${r.id} [${r.targetType}] Alvo #${r.targetId} | Por: ${r.reporterName} | Motivo: \"${r.reason}\""
+            source.sendSuccess({ Component.literal(msg) }, false)
+        }
+        return reports.size
+    }
+
+    private fun clearReports(context: CommandContext<CommandSourceStack>): Int {
+        val source = context.source
+        val server = source.server
+        val count = SocialData.get(server).clearReports()
+        source.sendSuccess({ Component.translatable("commands.nbp.social.cleared_reports", count) }, true)
+        return count
     }
 }

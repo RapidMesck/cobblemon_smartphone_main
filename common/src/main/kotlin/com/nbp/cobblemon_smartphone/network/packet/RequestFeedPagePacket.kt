@@ -11,14 +11,16 @@ import net.minecraft.network.RegistryFriendlyByteBuf
  */
 class RequestFeedPagePacket(
     val beforeId: Long,
-    val followingOnly: Boolean = false
+    val followingOnly: Boolean = false,
+    val hashtag: String? = null
 ) : CobblemonSmartphoneNetworkPacket<RequestFeedPagePacket> {
     companion object {
         val ID = smartphoneResource("request_feed_page")
         fun decode(buffer: RegistryFriendlyByteBuf): RequestFeedPagePacket {
             val beforeId = buffer.readVarLong()
             val followingOnly = if (buffer.isReadable) buffer.readBoolean() else false
-            return RequestFeedPagePacket(beforeId, followingOnly)
+            val hashtag = if (buffer.isReadable && buffer.readBoolean()) buffer.readUtf() else null
+            return RequestFeedPagePacket(beforeId, followingOnly, hashtag)
         }
     }
 
@@ -27,5 +29,7 @@ class RequestFeedPagePacket(
     override fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeVarLong(beforeId)
         buffer.writeBoolean(followingOnly)
+        buffer.writeBoolean(hashtag != null)
+        hashtag?.let { buffer.writeUtf(it) }
     }
 }
