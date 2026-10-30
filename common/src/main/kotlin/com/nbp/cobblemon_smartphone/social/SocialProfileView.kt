@@ -18,8 +18,12 @@ data class SocialProfileView(
     val followingCount: Int,
     val isOnline: Boolean,
     val isFollowedByMe: Boolean,
+    val isFollowingMe: Boolean = false,
     val skinUrl: String? = null
 ) {
+    val isMutualFollow: Boolean
+        get() = isFollowedByMe && isFollowingMe
+
     fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeUUID(uuid)
         buffer.writeUtf(name)
@@ -33,6 +37,7 @@ data class SocialProfileView(
         buffer.writeVarInt(followingCount)
         buffer.writeBoolean(isOnline)
         buffer.writeBoolean(isFollowedByMe)
+        buffer.writeBoolean(isFollowingMe)
         buffer.writeBoolean(skinUrl != null)
         skinUrl?.let { buffer.writeUtf(it) }
     }
@@ -55,6 +60,7 @@ data class SocialProfileView(
             followingCount = profile.following.size,
             isOnline = isOnline,
             isFollowedByMe = profile.followers.contains(viewerUuid),
+            isFollowingMe = profile.following.contains(viewerUuid),
             skinUrl = server?.let { SkinUrlResolver.resolve(it, profile.uuid) }
         )
 
@@ -70,6 +76,7 @@ data class SocialProfileView(
             val followingCount = buffer.readVarInt()
             val isOnline = buffer.readBoolean()
             val isFollowedByMe = buffer.readBoolean()
+            val isFollowingMe = buffer.readBoolean()
             val skinUrl = if (buffer.readBoolean()) buffer.readUtf() else null
             return SocialProfileView(
                 uuid = uuid,
@@ -82,6 +89,7 @@ data class SocialProfileView(
                 followingCount = followingCount,
                 isOnline = isOnline,
                 isFollowedByMe = isFollowedByMe,
+                isFollowingMe = isFollowingMe,
                 skinUrl = skinUrl
             )
         }

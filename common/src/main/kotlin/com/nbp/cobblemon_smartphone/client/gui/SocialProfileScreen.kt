@@ -301,46 +301,62 @@ class SocialProfileScreen(
     private fun renderActionBar(guiGraphics: GuiGraphics, profile: SocialProfileView, x: Int, y: Int, mouseX: Int, mouseY: Int) {
         val totalW = CONTENT_WIDTH - 12
         val gap = 4
-        val btnW = (totalW - gap * 2) / 3
         val btnH = 14
 
-        // 1. Battle Challenge Button
-        val bHovered = mouseX in x..(x + btnW) && mouseY in y..(y + btnH)
-        val bBg = if (bHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
-        guiGraphics.fill(x, y, x + btnW, y + btnH, bBg)
-        guiGraphics.fill(x, y, x + btnW, y + 1, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(x, y + btnH - 1, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(x, y, x + 1, y + btnH, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(x + btnW - 1, y, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
-        val bLabel = "⚔ " + lang("battle_action")
-        val bTrimmed = font.plainSubstrByWidth(bLabel, btnW - 4)
-        guiGraphics.drawString(font, bTrimmed, x + (btnW - font.width(bTrimmed)) / 2, y + 3, if (bHovered) NAME_COLOR else CONTENT_TEXT, false)
+        if (profile.isMutualFollow) {
+            val btnW = (totalW - gap * 2) / 3
 
-        // 2. Trade Request Button
-        val tx = x + btnW + gap
-        val tHovered = mouseX in tx..(tx + btnW) && mouseY in y..(y + btnH)
-        val tBg = if (tHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
-        guiGraphics.fill(tx, y, tx + btnW, y + btnH, tBg)
-        guiGraphics.fill(tx, y, tx + btnW, y + 1, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(tx, y + btnH - 1, tx + btnW, y + btnH, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(tx, y, tx + 1, y + btnH, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(tx + btnW - 1, y, tx + btnW, y + btnH, BUTTON_BORDER_COLOR)
-        val tLabel = "⇄ " + lang("trade_action")
-        val tTrimmed = font.plainSubstrByWidth(tLabel, btnW - 4)
-        guiGraphics.drawString(font, tTrimmed, tx + (btnW - font.width(tTrimmed)) / 2, y + 3, if (tHovered) NAME_COLOR else CONTENT_TEXT, false)
+            // 1. Battle Challenge Button
+            val bHovered = mouseX in x..(x + btnW) && mouseY in y..(y + btnH)
+            val bBg = if (bHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
+            guiGraphics.fill(x, y, x + btnW, y + btnH, bBg)
+            guiGraphics.fill(x, y, x + btnW, y + 1, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x, y + btnH - 1, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x, y, x + 1, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x + btnW - 1, y, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            val bLabel = "⚔ " + lang("battle_action")
+            val bTrimmed = font.plainSubstrByWidth(bLabel, btnW - 4)
+            guiGraphics.drawString(font, bTrimmed, x + (btnW - font.width(bTrimmed)) / 2, y + 3, if (bHovered) NAME_COLOR else CONTENT_TEXT, false)
 
-        // 3. Message / Chat Button
-        val cx = tx + btnW + gap
-        val mHovered = mouseX in cx..(cx + btnW) && mouseY in y..(y + btnH)
-        val mBg = if (mHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
-        guiGraphics.fill(cx, y, cx + btnW, y + btnH, mBg)
-        guiGraphics.fill(cx, y, cx + btnW, y + 1, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(cx, y + btnH - 1, cx + btnW, y + btnH, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(cx, y, cx + 1, y + btnH, BUTTON_BORDER_COLOR)
-        guiGraphics.fill(cx + btnW - 1, y, cx + btnW, y + btnH, BUTTON_BORDER_COLOR)
-        val mLabel = "✉ " + lang("message_action")
-        val mTrimmed = font.plainSubstrByWidth(mLabel, btnW - 4)
-        guiGraphics.drawString(font, mTrimmed, cx + (btnW - font.width(mTrimmed)) / 2, y + 3, if (mHovered) NAME_COLOR else CONTENT_TEXT, false)
+            // 2. Trade Request Button
+            val tx = x + btnW + gap
+            val tHovered = mouseX in tx..(tx + btnW) && mouseY in y..(y + btnH)
+            val tBg = if (tHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
+            guiGraphics.fill(tx, y, tx + btnW, y + btnH, tBg)
+            guiGraphics.fill(tx, y, tx + btnW, y + 1, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(tx, y + btnH - 1, tx + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(tx, y, tx + 1, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(tx + btnW - 1, y, tx + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            val tLabel = "⇄ " + lang("trade_action")
+            val tTrimmed = font.plainSubstrByWidth(tLabel, btnW - 4)
+            guiGraphics.drawString(font, tTrimmed, tx + (btnW - font.width(tTrimmed)) / 2, y + 3, if (tHovered) NAME_COLOR else CONTENT_TEXT, false)
+
+            // 3. Message / Chat Button
+            val cx = tx + btnW + gap
+            val mHovered = mouseX in cx..(cx + btnW) && mouseY in y..(y + btnH)
+            val mBg = if (mHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
+            guiGraphics.fill(cx, y, cx + btnW, y + btnH, mBg)
+            guiGraphics.fill(cx, y, cx + btnW, y + 1, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(cx, y + btnH - 1, cx + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(cx, y, cx + 1, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(cx + btnW - 1, y, cx + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            val mLabel = "✉ " + lang("message_action")
+            val mTrimmed = font.plainSubstrByWidth(mLabel, btnW - 4)
+            guiGraphics.drawString(font, mTrimmed, cx + (btnW - font.width(mTrimmed)) / 2, y + 3, if (mHovered) NAME_COLOR else CONTENT_TEXT, false)
+        } else {
+            // Only Message / DM button is available if not mutually following
+            val btnW = totalW
+            val mHovered = mouseX in x..(x + btnW) && mouseY in y..(y + btnH)
+            val mBg = if (mHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
+            guiGraphics.fill(x, y, x + btnW, y + btnH, mBg)
+            guiGraphics.fill(x, y, x + btnW, y + 1, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x, y + btnH - 1, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x, y, x + 1, y + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(x + btnW - 1, y, x + btnW, y + btnH, BUTTON_BORDER_COLOR)
+            val mLabel = "✉ " + lang("message_action")
+            val mTrimmed = font.plainSubstrByWidth(mLabel, btnW - 4)
+            guiGraphics.drawString(font, mTrimmed, x + (btnW - font.width(mTrimmed)) / 2, y + 3, if (mHovered) NAME_COLOR else CONTENT_TEXT, false)
+        }
     }
 
     private fun renderPartnerCard(
@@ -591,30 +607,39 @@ class SocialProfileScreen(
 
             val totalW = CONTENT_WIDTH - 12
             val gap = 4
-            val aBtnW = (totalW - gap * 2) / 3
             val aBtnH = 14
             val ax = cardX + 6
 
             if (my in actionY..(actionY + aBtnH)) {
-                // 1. Battle Challenge
-                if (mx in ax..(ax + aBtnW)) {
-                    playClickSound()
-                    ChallengeBattlePacket(profileUuid).sendToServer()
-                    return true
-                }
-                // 2. Trade Request
-                val tx = ax + aBtnW + gap
-                if (mx in tx..(tx + aBtnW)) {
-                    playClickSound()
-                    ChallengeTradePacket(profileUuid).sendToServer()
-                    return true
-                }
-                // 3. Message / DM
-                val cx = tx + aBtnW + gap
-                if (mx in cx..(cx + aBtnW)) {
-                    playClickSound()
-                    minecraft?.setScreen(DmThreadScreen(color, smartphoneStack, profileUuid, profile.name))
-                    return true
+                if (profile.isMutualFollow) {
+                    val aBtnW = (totalW - gap * 2) / 3
+                    // 1. Battle Challenge
+                    if (mx in ax..(ax + aBtnW)) {
+                        playClickSound()
+                        ChallengeBattlePacket(profileUuid).sendToServer()
+                        return true
+                    }
+                    // 2. Trade Request
+                    val tx = ax + aBtnW + gap
+                    if (mx in tx..(tx + aBtnW)) {
+                        playClickSound()
+                        ChallengeTradePacket(profileUuid).sendToServer()
+                        return true
+                    }
+                    // 3. Message / DM
+                    val cx = tx + aBtnW + gap
+                    if (mx in cx..(cx + aBtnW)) {
+                        playClickSound()
+                        minecraft?.setScreen(DmThreadScreen(color, smartphoneStack, profileUuid, profile.name))
+                        return true
+                    }
+                } else {
+                    // Only Message / DM button exists
+                    if (mx in ax..(ax + totalW)) {
+                        playClickSound()
+                        minecraft?.setScreen(DmThreadScreen(color, smartphoneStack, profileUuid, profile.name))
+                        return true
+                    }
                 }
             }
         } else if (isOwnProfile) {

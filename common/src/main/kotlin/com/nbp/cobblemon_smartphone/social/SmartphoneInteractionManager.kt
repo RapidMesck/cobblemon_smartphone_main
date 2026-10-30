@@ -70,6 +70,16 @@ object SmartphoneInteractionManager {
             return
         }
 
+        // Mutual follow requirement: both players must follow each other
+        val socialData = SocialData.get(server)
+        if (!socialData.isMutualFollow(sender.uuid, target.uuid)) {
+            sender.displayClientMessage(
+                Component.translatable("message.nbp.social.mutual_follow_required").withColor(ERROR_COLOR),
+                false
+            )
+            return
+        }
+
         // Check if either player is already in battle
         if (sender.isInBattle() || target.isInBattle()) {
             sender.displayClientMessage(
@@ -254,6 +264,16 @@ object SmartphoneInteractionManager {
         if (sender == null) {
             acceptingPlayer.displayClientMessage(
                 Component.translatable("message.nbp.social.target_offline").withColor(ERROR_COLOR),
+                false
+            )
+            return false
+        }
+
+        // Mutual follow requirement: both players must still follow each other
+        val socialData = SocialData.get(server)
+        if (!socialData.isMutualFollow(sender.uuid, acceptingPlayer.uuid)) {
+            acceptingPlayer.displayClientMessage(
+                Component.translatable("message.nbp.social.mutual_follow_required").withColor(ERROR_COLOR),
                 false
             )
             return false

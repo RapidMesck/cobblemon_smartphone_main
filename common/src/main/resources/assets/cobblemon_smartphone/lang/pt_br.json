@@ -330,6 +330,7 @@
   "message.nbp.social.request_declined_sender": "%s recusou o seu pedido.",
   "message.nbp.social.request_declined_receiver": "Você recusou o pedido de %s.",
   "message.nbp.social.already_trading": "Um dos treinadores já está em uma sessão de troca.",
+  "message.nbp.social.mutual_follow_required": "Você e este treinador precisam seguir um ao outro para batalhar ou trocar pelo smartphone!",
   "message.nbp.social.insufficient_pokemon_sender": "Você precisa de pelo menos um Pokémon consciente na sua equipe!",
   "message.nbp.social.insufficient_pokemon_target": "O outro treinador não possui Pokémon conscientes prontos para batalhar!",
   "message.nbp.social.no_pokemon_sender": "Você precisa de pelo menos um Pokémon na sua equipe para trocar!",

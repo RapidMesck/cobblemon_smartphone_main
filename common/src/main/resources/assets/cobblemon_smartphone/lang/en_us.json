@@ -556,6 +556,7 @@
   "message.nbp.social.request_declined_sender": "%s declined your request.",
   "message.nbp.social.request_declined_receiver": "You declined the request from %s.",
   "message.nbp.social.already_trading": "One of the trainers is already in a trade session.",
+  "message.nbp.social.mutual_follow_required": "You and this trainer must follow each other to battle or trade via smartphone!",
   "message.nbp.social.insufficient_pokemon_sender": "You need at least one conscious Pokémon in your party!",
   "message.nbp.social.insufficient_pokemon_target": "The other trainer does not have any conscious Pokémon ready for battle!",
   "message.nbp.social.no_pokemon_sender": "You need at least one Pokémon in your party to trade!",

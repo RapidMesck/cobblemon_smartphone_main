@@ -54,4 +54,36 @@ class SocialProfileTest {
         assertFalse(SocialRequestLimiter.allow(player, SocialRequestLimiter.Action.TOGGLE_FOLLOW, 2_600L))
         assertTrue(SocialRequestLimiter.allow(player, SocialRequestLimiter.Action.TOGGLE_FOLLOW, 3_000L))
     }
+
+    @Test
+    fun `mutual follow detection works correctly`() {
+        val viewerUuid = UUID.randomUUID()
+        val targetUuid = UUID.randomUUID()
+
+        // 1. Neither follows
+        val targetProfile = SocialProfile(
+            uuid = targetUuid,
+            name = "Red",
+            followers = mutableSetOf(),
+            following = mutableSetOf()
+        )
+        val view1 = SocialProfileView.of(targetProfile, viewerUuid, 0, true)
+        assertFalse(view1.isFollowedByMe)
+        assertFalse(view1.isFollowingMe)
+        assertFalse(view1.isMutualFollow)
+
+        // 2. Only viewer follows target
+        targetProfile.followers.add(viewerUuid)
+        val view2 = SocialProfileView.of(targetProfile, viewerUuid, 0, true)
+        assertTrue(view2.isFollowedByMe)
+        assertFalse(view2.isFollowingMe)
+        assertFalse(view2.isMutualFollow)
+
+        // 3. Both follow each other (mutual)
+        targetProfile.following.add(viewerUuid)
+        val view3 = SocialProfileView.of(targetProfile, viewerUuid, 0, true)
+        assertTrue(view3.isFollowedByMe)
+        assertTrue(view3.isFollowingMe)
+        assertTrue(view3.isMutualFollow)
+    }
 }

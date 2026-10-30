@@ -316,6 +316,11 @@ class SocialData : SavedData() {
         return profiles[targetUuid]?.followers?.contains(followerUuid) ?: false
     }
 
+    fun isMutualFollow(userA: UUID, userB: UUID): Boolean {
+        if (userA == userB) return false
+        return isFollowing(userA, userB) && isFollowing(userB, userA)
+    }
+
     fun profileByName(name: String): SocialProfile? =
         profiles.values.firstOrNull { it.name.equals(name, ignoreCase = true) }
 
