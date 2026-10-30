@@ -22,6 +22,7 @@ data class SmartphoneThemeColors(
     val textMuted: Int = 0xFF8AA5AD.toInt(),
     val textDark: Int = 0xFF1A1A2E.toInt(),
     val textDarkMuted: Int = 0xFF555555.toInt(),
+    val userName: Int = 0xFF5BD1DA.toInt(),
 
     // 5. Functional & Status Accents
     val gold: Int = 0xFFFFD700.toInt(),
@@ -57,6 +58,7 @@ data class SmartphoneThemeColors(
             textMuted = 0xFF686878.toInt(),
             textDark = 0xFFF0F0F5.toInt(),
             textDarkMuted = 0xFFA0A0B2.toInt(),
+            userName = 0xFF7CE3EB.toInt(),
             gold = 0xFFFFD700.toInt(),
             danger = 0xFFFF4444.toInt(),
             time = 0xFFA0A0B0.toInt(),
@@ -81,6 +83,7 @@ data class SmartphoneThemeColors(
             textMuted = 0xFFA87E6F.toInt(),
             textDark = 0xFFFED7AA.toInt(),
             textDarkMuted = 0xFFC29E8E.toInt(),
+            userName = 0xFFFFAA00.toInt(),
             gold = 0xFFFBBF24.toInt(),
             danger = 0xFFEF4444.toInt(),
             time = 0xFFFFAA00.toInt(),

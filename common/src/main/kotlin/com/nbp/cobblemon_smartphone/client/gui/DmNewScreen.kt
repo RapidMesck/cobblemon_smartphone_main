@@ -54,10 +54,11 @@ class DmNewScreen(
         SmartphoneHelper.contextColor = color
         lastCandidatesUpdate = 0L
 
-        searchBox = EditBox(font, screenX + CONTENT_X + 2, screenY + 39, CONTENT_WIDTH - 4, 14, Component.literal(""))
+        searchBox = EditBox(font, screenX + CONTENT_X + 4, screenY + 41, CONTENT_WIDTH - 8, 12, Component.literal(""))
         searchBox.setHint(Component.translatable("cobblemon_smartphone.social.search_trainers"))
         searchBox.setMaxLength(32)
-        searchBox.setBordered(true)
+        searchBox.setBordered(false)
+        searchBox.setTextColor(theme.colors.textDark)
         addRenderableWidget(searchBox)
     }
 
@@ -76,6 +77,7 @@ class DmNewScreen(
 
         val minecraft = Minecraft.getInstance()
         val selfId = minecraft.player?.uuid ?: return emptyList()
+        val selfName = minecraft.player?.gameProfile?.name
         val connection = minecraft.connection ?: return emptyList()
 
         val allPlayers = connection.onlinePlayers
@@ -84,7 +86,11 @@ class DmNewScreen(
         val source = if (hasTabFakePlayers) allPlayers else connection.listedOnlinePlayers
 
         val result = source
-            .filter { it.profile.id != selfId && !FakePlayerFilter.isFakePlayer(it) }
+            .filter {
+                it.profile.id != selfId &&
+                (selfName == null || !it.profile.name.equals(selfName, ignoreCase = true)) &&
+                !FakePlayerFilter.isFakePlayer(it)
+            }
             .distinctBy { it.profile.id }
             .sortedBy { it.profile.name.lowercase() }
 
@@ -128,7 +134,16 @@ class DmNewScreen(
             false
         )
 
-        super.render(guiGraphics, mouseX, mouseY, delta)
+        val sx = screenX + CONTENT_X + 1
+        val sy = screenY + 39
+        val sw = CONTENT_WIDTH - 2
+        val sh = 16
+        guiGraphics.fill(sx, sy, sx + sw, sy + sh, theme.colors.surface)
+        guiGraphics.fill(sx, sy, sx + sw, sy + 1, theme.colors.primaryBorder)
+        guiGraphics.fill(sx, sy + sh - 1, sx + sw, sy + sh, theme.colors.primaryBorder)
+        guiGraphics.fill(sx, sy + 1, sx + 1, sy + sh, theme.colors.primaryBorder)
+        guiGraphics.fill(sx + sw - 1, sy, sx + sw, sy + sh, theme.colors.primaryBorder)
+        searchBox.render(guiGraphics, mouseX, mouseY, delta)
 
         guiGraphics.enableScissor(
             screenX + CONTENT_X,
@@ -199,10 +214,14 @@ class DmNewScreen(
             var y = screenY + LIST_START_Y - scrollY
             filteredCandidates().forEach { info ->
                 if (isInRow(mx, my, y)) {
-                    playClickSound()
-                    Minecraft.getInstance().setScreen(
-                        DmThreadScreen(color, smartphoneStack, info.profile.id, info.profile.name)
-                    )
+                    val selfId = Minecraft.getInstance().player?.uuid
+                    val selfName = Minecraft.getInstance().player?.gameProfile?.name
+                    if (info.profile.id != selfId && (selfName == null || !info.profile.name.equals(selfName, ignoreCase = true))) {
+                        playClickSound()
+                        Minecraft.getInstance().setScreen(
+                            DmThreadScreen(color, smartphoneStack, info.profile.id, info.profile.name)
+                        )
+                    }
                     return true
                 }
                 y += ROW_HEIGHT + ROW_GAP

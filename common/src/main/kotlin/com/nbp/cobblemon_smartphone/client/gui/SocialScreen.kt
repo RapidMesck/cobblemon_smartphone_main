@@ -633,7 +633,7 @@ class SocialScreen(
             cursorY,
             HEAD_SIZE
         )
-        guiGraphics.drawString(font, post.authorName, textX + HEAD_SIZE + 4, cursorY + 2, NAME_COLOR, false)
+        guiGraphics.drawString(font, post.authorName, textX + HEAD_SIZE + 4, cursorY + 2, theme.colors.userName, false)
 
         val age = relativeTime(post.timestamp)
         guiGraphics.drawString(
@@ -641,7 +641,7 @@ class SocialScreen(
             age,
             x + CONTENT_WIDTH - CARD_PAD - font.width(age),
             cursorY + 2,
-            NAME_COLOR,
+            MUTED_COLOR,
             false
         )
         cursorY += HEADER_HEIGHT
@@ -757,7 +757,7 @@ class SocialScreen(
         var curY = y + 4
         val qLines = font.split(Component.literal(poll.question), w - 8)
         qLines.forEach { line ->
-            guiGraphics.drawString(font, line, x + 4, curY, NAME_COLOR, false)
+            guiGraphics.drawString(font, line, x + 4, curY, CONTENT_TEXT, false)
             curY += font.lineHeight
         }
         curY += 4
@@ -1255,8 +1255,11 @@ class SocialScreen(
                 val authorHitW = HEAD_SIZE + 4 + font.width(post.authorName)
                 if (mx in (screenX + CONTENT_X + CARD_PAD)..(screenX + CONTENT_X + CARD_PAD + authorHitW) &&
                     my in (y + CARD_PAD)..(y + CARD_PAD + HEADER_HEIGHT)) {
-                    playClickSound()
-                    Minecraft.getInstance().setScreen(DmThreadScreen(color, smartphoneStack, post.authorUuid, post.authorName))
+                    val me = Minecraft.getInstance().player
+                    if (me == null || post.authorUuid != me.uuid) {
+                        playClickSound()
+                        Minecraft.getInstance().setScreen(DmThreadScreen(color, smartphoneStack, post.authorUuid, post.authorName))
+                    }
                     return true
                 }
                 if (isInPokemonInfoButton(post, mx, my, screenX + CONTENT_X, y)) {

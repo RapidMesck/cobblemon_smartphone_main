@@ -148,12 +148,14 @@ class SmartphoneThemeTest {
         val baseColors = SmartphoneThemeColors.DEFAULT
         val parsedColors = SmartphoneThemeColors(
             primary = SmartphoneThemeColors.parseHex(colObj.get("primary")?.asString) ?: baseColors.primary,
-            surface = SmartphoneThemeColors.parseHex(colObj.get("surface")?.asString) ?: baseColors.surface
+            surface = SmartphoneThemeColors.parseHex(colObj.get("surface")?.asString) ?: baseColors.surface,
+            userName = SmartphoneThemeColors.parseHex(colObj.get("user_name")?.asString) ?: baseColors.userName
         )
 
         assertEquals(0xFFFF1122.toInt(), parsedColors.primary)
         assertEquals(SmartphoneThemeColors.DEFAULT.surface, parsedColors.surface)
         assertEquals(SmartphoneThemeColors.DEFAULT.gold, parsedColors.gold)
+        assertEquals(SmartphoneThemeColors.DEFAULT.userName, parsedColors.userName)
     }
 
     @Test
@@ -173,16 +175,19 @@ class SmartphoneThemeTest {
         assertEquals(0xFF22C55E.toInt(), def.batteryHigh)
         assertEquals(0xFFEAB308.toInt(), def.batteryMed)
         assertEquals(0xFFEF4444.toInt(), def.batteryLow)
+        assertEquals(0xFF5BD1DA.toInt(), def.userName)
 
         val rotom = SmartphoneThemeColors.ROTOM
         assertEquals(0xFFF97316.toInt(), rotom.batteryBorder)
         assertEquals(0xFF160B07.toInt(), rotom.batteryEmpty)
         assertEquals(0xFF2EB85C.toInt(), rotom.batteryHigh)
+        assertEquals(0xFFFFAA00.toInt(), rotom.userName)
 
         val dark = SmartphoneThemeColors.DARK
         assertEquals(0xFF5BD1DA.toInt(), dark.batteryBorder)
         assertEquals(0xFF111114.toInt(), dark.batteryEmpty)
         assertEquals(0xFF48BB78.toInt(), dark.batteryHigh)
+        assertEquals(0xFF7CE3EB.toInt(), dark.userName)
     }
 
     @Test
