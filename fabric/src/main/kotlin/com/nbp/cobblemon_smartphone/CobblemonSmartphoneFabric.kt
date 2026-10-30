@@ -17,6 +17,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneGpsItems
+import com.nbp.cobblemon_smartphone.network.packet.SyncThemePacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
@@ -26,6 +27,7 @@ import com.nbp.cobblemon_smartphone.util.MutedPlayersStorage
 import com.nbp.cobblemon_smartphone.util.QuickActionBindingsStorage
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.util.SocialMuteStorage
+import com.nbp.cobblemon_smartphone.util.ThemeStorage
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
@@ -92,6 +94,10 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
                 .sendToPlayer(handler.player)
             SyncSocialMutePacket(SocialMuteStorage.read(handler.player)).sendToPlayer(handler.player)
             SyncMutedPlayersPacket(MutedPlayersStorage.read(handler.player).toList()).sendToPlayer(handler.player)
+            val savedTheme = ThemeStorage.read(handler.player)
+            if (savedTheme.isNotBlank()) {
+                SyncThemePacket(savedTheme).sendToPlayer(handler.player)
+            }
             SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(handler.player)
             SyncEnergyConfigPacket.fromServerConfig().sendToPlayer(handler.player)
         }

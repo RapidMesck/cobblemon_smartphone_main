@@ -15,6 +15,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncQuickActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncThemePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneGpsItems
@@ -27,6 +28,7 @@ import com.nbp.cobblemon_smartphone.util.MutedPlayersStorage
 import com.nbp.cobblemon_smartphone.util.QuickActionBindingsStorage
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.util.SocialMuteStorage
+import com.nbp.cobblemon_smartphone.util.ThemeStorage
 import com.nbp.neoforge.compat.SmartphoneCompatManager
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
@@ -98,6 +100,10 @@ class CobblemonSmartphoneNeoForge : Implementation {
             }
             SyncSocialMutePacket(SocialMuteStorage.read(player)).sendToPlayer(player)
             SyncMutedPlayersPacket(MutedPlayersStorage.read(player).toList()).sendToPlayer(player)
+            val savedTheme = ThemeStorage.read(player)
+            if (savedTheme.isNotBlank()) {
+                SyncThemePacket(savedTheme).sendToPlayer(player)
+            }
             SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(player)
             SyncEnergyConfigPacket.fromServerConfig().sendToPlayer(player)
         }

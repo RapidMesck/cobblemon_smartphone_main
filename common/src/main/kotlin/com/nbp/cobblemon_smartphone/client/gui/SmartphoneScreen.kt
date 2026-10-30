@@ -11,6 +11,10 @@ import com.nbp.cobblemon_smartphone.energy.getEnergy
 import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
 import com.nbp.cobblemon_smartphone.energy.hasEnoughEnergy
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRegistry
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -45,6 +49,7 @@ class SmartphoneScreen(
         screenX = (width - GUI_WIDTH) / 2
         screenY = (height - GUI_HEIGHT) / 2
         PokedexAction.requestedPokedexType = color.toPokedexType()
+        minecraft?.resourceManager?.let { SmartphoneThemeRegistry.ensureLoaded(it) }
         // Set context so isEnabled() checks THIS smartphone's upgrades
         SmartphoneHelper.contextSmartphone = smartphoneStack
         SmartphoneHelper.contextColor = color
@@ -59,34 +64,35 @@ class SmartphoneScreen(
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         val matrices = guiGraphics.pose()
 
+        // Active theme resolution
+        val theme = SmartphoneThemeHelper.resolveCurrentTheme(currentSmartphone)
+
+        // Screen theme wallpaper background
+        SmartphoneThemeRenderer.renderTheme(guiGraphics, theme, screenX, screenY)
+
         // Smartphone frame background
         blitk(
             matrixStack = matrices,
-            texture = frameTexture,
+            texture = theme.getFrameTexture(color.getSmallScreenTexture()),
             x = screenX,
             y = screenY,
             width = GUI_WIDTH,
             height = GUI_HEIGHT
         )
 
-        // Screen content
-        blitk(
-            matrixStack = matrices,
-            texture = HOME_SCREEN_TEXTURE,
-            x = screenX,
-            y = screenY,
-            width = GUI_WIDTH,
-            height = GUI_HEIGHT
-        )
-
-        renderWorldTime(guiGraphics)
-        renderHeaderSettingsButton(guiGraphics, mouseX, mouseY)
+        renderWorldTime(guiGraphics, theme)
+        renderHeaderSettingsButton(guiGraphics, mouseX, mouseY, theme)
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = false, smartphoneStack)
 
         // Render actions as buttons
         pagedActions().forEachIndexed { index, action ->
             val (x, y) = getButtonPosition(index)
-            val texture = if (isHovered(mouseX, mouseY, x, y)) action.hoverTexture else action.texture
+            val hovered = isHovered(mouseX, mouseY, x, y)
+            val texture = if (hovered) {
+                theme.getAppHoverIcon(action.id, action.hoverTexture)
+            } else {
+                theme.getAppIcon(action.id, action.texture)
+            }
             blitk(
                 matrixStack = matrices,
                 texture = texture,
@@ -95,18 +101,18 @@ class SmartphoneScreen(
                 width = BUTTON_WIDTH,
                 height = BUTTON_HEIGHT
             )
-            renderBadge(guiGraphics, action.badgeCount(), x, y)
+            renderBadge(guiGraphics, action.badgeCount(), x, y, theme)
         }
 
         renderPageDots(guiGraphics)
-        renderFooterButtons(guiGraphics, mouseX, mouseY)
+        renderFooterButtons(guiGraphics, mouseX, mouseY, theme)
         renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (isInHeaderSettingsButton(mouseX.toInt(), mouseY.toInt())) {
             playClickSound()
-            Minecraft.getInstance().setScreen(SmartphoneSettingsScreen(color, smartphoneStack))
+            Minecraft.getInstance().setScreen(SmartphoneSettingsScreen(color, currentSmartphone ?: smartphoneStack))
             return true
         }
 
@@ -205,7 +211,7 @@ class SmartphoneScreen(
     }
 
     /** Notification badge on an app icon's top-right corner. Nothing is drawn when [count] is 0. */
-    private fun renderBadge(guiGraphics: GuiGraphics, count: Int, buttonX: Int, buttonY: Int) {
+    private fun renderBadge(guiGraphics: GuiGraphics, count: Int, buttonX: Int, buttonY: Int, theme: SmartphoneTheme) {
         if (count <= 0) return
         val font = Minecraft.getInstance().font
         val label = if (count > BADGE_MAX) "$BADGE_MAX+" else count.toString()
@@ -214,17 +220,17 @@ class SmartphoneScreen(
         val badgeX = screenX + buttonX + BUTTON_WIDTH - badgeWidth
         val badgeY = screenY + buttonY
 
-        guiGraphics.fill(badgeX, badgeY, badgeX + badgeWidth, badgeY + badgeHeight, BADGE_BG_COLOR)
+        guiGraphics.fill(badgeX, badgeY, badgeX + badgeWidth, badgeY + badgeHeight, theme.colors.danger)
 
         val matrices = guiGraphics.pose()
         matrices.pushPose()
         matrices.translate((badgeX + BADGE_PADDING).toDouble(), (badgeY + BADGE_PADDING / 2.0), 0.0)
         matrices.scale(BADGE_SCALE, BADGE_SCALE, 1f)
-        guiGraphics.drawString(font, label, 0, 0, BADGE_TEXT_COLOR, false)
+        guiGraphics.drawString(font, label, 0, 0, theme.colors.textPrimary, false)
         matrices.popPose()
     }
 
-    private fun renderWorldTime(guiGraphics: GuiGraphics) {
+    private fun renderWorldTime(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
         val minecraft = Minecraft.getInstance()
         val dayTime = minecraft.level?.dayTime ?: return
         val ticksToday = Math.floorMod(dayTime, TICKS_PER_DAY)
@@ -240,15 +246,15 @@ class SmartphoneScreen(
             0.0
         )
         guiGraphics.pose().scale(TIME_SCALE, TIME_SCALE, 1f)
-        guiGraphics.drawString(minecraft.font, timeText, 0, 0, TIME_COLOR, false)
+        guiGraphics.drawString(minecraft.font, timeText, 0, 0, theme.timeColor, false)
         guiGraphics.pose().popPose()
     }
 
-    private fun renderHeaderSettingsButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+    private fun renderHeaderSettingsButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, theme: SmartphoneTheme) {
         val hovered = isInHeaderSettingsButton(mouseX, mouseY)
         val textureY = if (hovered) HEADER_SETTINGS_SIZE else 0
         guiGraphics.blit(
-            SETTINGS_BUTTON_TEXTURE,
+            theme.getSettingsButtonTexture(),
             screenX + HEADER_SETTINGS_X,
             screenY + HEADER_SETTINGS_Y,
             0f,
@@ -265,10 +271,10 @@ class SmartphoneScreen(
                 mouseY >= screenY + HEADER_SETTINGS_Y && mouseY <= screenY + HEADER_SETTINGS_Y + HEADER_SETTINGS_SIZE
     }
 
-    private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        renderFooterButton(guiGraphics, PREV_BUTTON_TEXTURE, FOOTER_PREV_X, mouseX, mouseY)
-        renderFooterButton(guiGraphics, HOME_BUTTON_TEXTURE, FOOTER_HOME_X, mouseX, mouseY)
-        renderFooterButton(guiGraphics, NEXT_BUTTON_TEXTURE, FOOTER_NEXT_X, mouseX, mouseY)
+    private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, theme: SmartphoneTheme) {
+        renderFooterButton(guiGraphics, theme.getPrevButtonTexture(), FOOTER_PREV_X, mouseX, mouseY)
+        renderFooterButton(guiGraphics, theme.getHomeButtonTexture(), FOOTER_HOME_X, mouseX, mouseY)
+        renderFooterButton(guiGraphics, theme.getNextButtonTexture(), FOOTER_NEXT_X, mouseX, mouseY)
     }
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {

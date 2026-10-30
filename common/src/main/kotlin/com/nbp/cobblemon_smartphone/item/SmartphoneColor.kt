@@ -45,6 +45,13 @@ enum class SmartphoneColor(val modelName: String) {
         return ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "item/${modelName}_smartphone_3d")
     }
 
+    fun getSmallScreenTexture(): ResourceLocation {
+        return ResourceLocation.fromNamespaceAndPath(
+            "cobblemon_smartphone",
+            "textures/gui/smartphone_${modelName}.png"
+        )
+    }
+
     fun getLargeScreenTexture(): ResourceLocation {
         return ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone",

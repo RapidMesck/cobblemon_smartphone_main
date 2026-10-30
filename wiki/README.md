@@ -1,18 +1,22 @@
 # Cobblemon Smartphone
 
-Welcome to the Cobblemon Smartphone developer documentation. This mod provides a smartphone item for Cobblemon that can be extended with custom actions through two APIs:
+Welcome to the Cobblemon Smartphone developer documentation. This mod provides a smartphone item for Cobblemon that can be extended with custom actions and personalized with custom themes:
 
 - **Datapack API** — Add actions via JSON files in datapacks or resource packs. No coding required.
 - **Mod API** — Add actions programmatically from your own mod. Full control with Kotlin/Java.
+- **Theme System** — Customize wallpapers, frames, app icons, UI elements, and color palettes via resource packs.
+- **Theme Creator Studio** — Visual standalone HTML tool (`theme_creator.html`) to preview and generate themes and resource packs.
 
 ## Quick Start
 
 | I want to... | Use |
 |---|---|
+| Visually design & export a theme pack | [Theme Creator Studio](themes.md#theme-creator-studio-visual-web-tool) (`theme_creator.html`) |
 | Add a button that runs commands | [Datapack API](datapack-api.md) |
 | Open PC, Pokédex, healing, or another supported interface | [Datapack API](datapack-api.md#built-in-functions) |
 | Add an unsupported GUI or custom logic | [Mod API](mod-api.md) |
 | Require a smartphone upgrade to unlock an action | Both APIs support this |
+| Customize wallpapers, colors, frames, and icons | [Theme System](themes.md) |
 | Configure cooldowns, feature toggles, or upgrade checks | [Mod Configuration](#mod-configuration) |
 
 ## Supported Versions
@@ -68,6 +72,25 @@ SmartphoneActionRegistry.register(MyAction)
 ```
 
 → [Full Mod API Reference](mod-api.md)
+
+### Theme System
+
+Place JSON files in `assets/<namespace>/themes/<id>.json` or PNG images in `assets/<namespace>/textures/gui/themes/` inside any resource pack. No server reload or code required.
+
+```json
+{
+  "id": "mypack:neon",
+  "name": "Neon Cyber",
+  "wallpaper": "mypack:textures/gui/wallpapers/neon.png",
+  "large_wallpaper": "mypack:textures/gui/wallpapers/neon_large.png",
+  "colors": {
+    "primary": "#00FFCC",
+    "time": "#00FFCC"
+  }
+}
+```
+
+→ [Full Theme System Reference](themes.md)
 
 ## Upgrade System
 

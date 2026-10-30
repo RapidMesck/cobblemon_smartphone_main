@@ -5,8 +5,12 @@ import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.util.party
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.network.packet.CreatePostPacket
+import com.nbp.cobblemon_smartphone.network.packet.PushNotificationPacket
 import com.nbp.cobblemon_smartphone.social.PokemonAttachment
 import com.nbp.cobblemon_smartphone.social.SocialData
+import com.nbp.cobblemon_smartphone.social.SocialMentionHelper
+import com.nbp.cobblemon_smartphone.social.SocialNotificationType
+import com.nbp.cobblemon_smartphone.social.SocialNotificationView
 import com.nbp.cobblemon_smartphone.social.SocialPostView
 import com.nbp.cobblemon_smartphone.social.SocialPhotoManager
 import com.nbp.cobblemon_smartphone.network.packet.FeedPostUpdatePacket
@@ -54,14 +58,42 @@ object CreatePostHandler : ServerNetworkPacketHandler<CreatePostPacket> {
             val text = packet.text.trim().take(maxLength)
             val attachment = resolveAttachment(player, packet)
             val photo = SocialPhotoManager.claim(player, packet.photoId)
-            if (text.isEmpty() && attachment == null && photo == null) {
+            val poll = if (!packet.pollQuestion.isNullOrBlank() && packet.pollOptions.size >= 2) {
+                val cleanedQuestion = packet.pollQuestion.trim().take(120)
+                val cleanedOptions = packet.pollOptions.map { it.trim().take(50) }.filter { it.isNotBlank() }
+                if (cleanedOptions.size >= 2) {
+                    com.nbp.cobblemon_smartphone.social.SocialPoll(cleanedQuestion, cleanedOptions)
+                } else null
+            } else null
+
+            if (text.isEmpty() && attachment == null && photo == null && poll == null) {
                 player.error("message.nbp.social.empty_post")
                 result(player, packet, SocialMutationResultPacket.Status.EMPTY)
                 return@execute
             }
 
-            val post = data.addPost(player.uuid, player.gameProfile.name, text, attachment, photo)
+            val post = data.addPost(player.uuid, player.gameProfile.name, text, attachment, photo, poll)
             lastPost[player.uuid] = System.currentTimeMillis() / 1000
+
+            val mentions = SocialMentionHelper.extractMentions(text)
+            for (mentioned in mentions) {
+                val targetPlayer = server.playerList.getPlayerByName(mentioned)
+                val targetUuid = targetPlayer?.uuid ?: data.profileByName(mentioned)?.uuid
+                if (targetUuid != null && targetUuid != player.uuid) {
+                    val notif = data.addNotification(
+                        targetUuid = targetUuid,
+                        actorUuid = player.uuid,
+                        actorName = player.gameProfile.name,
+                        type = SocialNotificationType.MENTION,
+                        referenceId = post.id,
+                        message = text.take(60)
+                    )
+                    if (notif != null && targetPlayer != null) {
+                        PushNotificationPacket(SocialNotificationView.of(notif, server)).sendToPlayer(targetPlayer)
+                    }
+                }
+            }
+
             server.playerList.players.forEach { viewer ->
                 FeedPostUpdatePacket(0L, SocialPostView.of(post, viewer.uuid, server)).sendToPlayer(viewer)
             }

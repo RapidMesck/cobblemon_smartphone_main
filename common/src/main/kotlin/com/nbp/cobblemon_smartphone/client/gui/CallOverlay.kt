@@ -5,6 +5,9 @@ import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.client.social.CallState
 import com.nbp.cobblemon_smartphone.network.packet.CallActionPacket
 import com.nbp.cobblemon_smartphone.social.CallStatus
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeColors
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -34,6 +37,11 @@ object CallOverlay {
     // widget over the title/menu screens.
     private fun visible(): Boolean = !CallState.isIdle() && Minecraft.getInstance().player != null
 
+    private fun colors(): SmartphoneThemeColors =
+        Minecraft.getInstance().player?.let { SmartphoneHelper.getSmartphone(it) }
+            ?.let { SmartphoneThemeHelper.resolveCurrentTheme(it).colors }
+            ?: SmartphoneThemeColors.DEFAULT
+
     fun render(guiGraphics: GuiGraphics) {
         if (!visible()) return
         val minecraft = Minecraft.getInstance()
@@ -42,11 +50,12 @@ object CallOverlay {
         val window = minecraft.window
         val panel = panelRect(window.guiScaledWidth, window.guiScaledHeight)
         val font = minecraft.font
+        val colors = colors()
 
-        guiGraphics.fill(panel.x1 + 2, panel.y1 + 3, panel.x2 + 2, panel.y2 + 3, SocialUi.SHADOW)
-        guiGraphics.fill(panel.x1 - 1, panel.y1 - 1, panel.x2 + 1, panel.y2 + 1, SocialUi.CYAN)
-        guiGraphics.fill(panel.x1, panel.y1, panel.x2, panel.y2, SocialUi.NAVY)
-        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.PHONE, panel.x2 - PAD - 8, panel.y1 + PAD, SocialUi.GOLD)
+        guiGraphics.fill(panel.x1 + 2, panel.y1 + 3, panel.x2 + 2, panel.y2 + 3, colors.shadow)
+        guiGraphics.fill(panel.x1 - 1, panel.y1 - 1, panel.x2 + 1, panel.y2 + 1, colors.primaryBorder)
+        guiGraphics.fill(panel.x1, panel.y1, panel.x2, panel.y2, colors.headerNavy)
+        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.PHONE, panel.x2 - PAD - 8, panel.y1 + PAD, colors.gold)
 
         PlayerFaceRenderer.draw(
             guiGraphics,
@@ -56,21 +65,21 @@ object CallOverlay {
             HEAD_SIZE
         )
         val textX = panel.x1 + PAD + HEAD_SIZE + 4
-        guiGraphics.drawString(font, CallState.otherName, textX, panel.y1 + PAD, NAME_COLOR, false)
-        guiGraphics.drawString(font, statusLine(), textX, panel.y1 + PAD + 10, MUTED_COLOR, false)
+        guiGraphics.drawString(font, CallState.otherName, textX, panel.y1 + PAD, colors.textPrimary, false)
+        guiGraphics.drawString(font, statusLine(), textX, panel.y1 + PAD + 10, colors.textMuted, false)
         val mouse = guiMouse()
         buttons(panel).forEach { button ->
             val hovered = mouse != null && button.rect.has(mouse.first, mouse.second)
             val renderedLabel = font.plainSubstrByWidth(button.label, button.rect.x2 - button.rect.x1 - 16)
             guiGraphics.fill(button.rect.x1, button.rect.y1, button.rect.x2, button.rect.y2, if (hovered) button.color else dim(button.color))
             val icon = if (button.action == CallActionPacket.Action.ACCEPT) SocialUi.Icon.PHONE else SocialUi.Icon.CLOSE
-            SocialUi.drawIcon(guiGraphics, icon, button.rect.x1 + 3, button.rect.y1 + 2, SocialUi.WHITE)
+            SocialUi.drawIcon(guiGraphics, icon, button.rect.x1 + 3, button.rect.y1 + 2, colors.textPrimary)
             guiGraphics.drawString(
                 font,
                 renderedLabel,
                 button.rect.x1 + 14,
                 button.rect.y1 + (BUTTON_HEIGHT - font.lineHeight) / 2 + 1,
-                0xFFFFFFFF.toInt(),
+                colors.textPrimary,
                 false
             )
             renderKeyBadge(guiGraphics, button)
@@ -157,6 +166,7 @@ object CallOverlay {
     }
 
     private fun buttons(panel: Rect): List<CallButton> {
+        val colors = colors()
         val by1 = panel.y2 - PAD - BUTTON_HEIGHT
         val by2 = panel.y2 - PAD
         return when (CallState.status) {
@@ -166,13 +176,13 @@ object CallOverlay {
                 val ax1 = panel.x1 + PAD
                 val dx1 = ax1 + halfW + gap
                 listOf(
-                    CallButton(Rect(ax1, by1, ax1 + halfW, by2), lang("accept"), ACCEPT_COLOR, CallActionPacket.Action.ACCEPT, SmartphoneKeybinds.ANSWER_CALL),
-                    CallButton(Rect(dx1, by1, dx1 + halfW, by2), lang("decline"), DECLINE_COLOR, CallActionPacket.Action.DECLINE, SmartphoneKeybinds.DECLINE_CALL)
+                    CallButton(Rect(ax1, by1, ax1 + halfW, by2), lang("accept"), colors.success, CallActionPacket.Action.ACCEPT, SmartphoneKeybinds.ANSWER_CALL),
+                    CallButton(Rect(dx1, by1, dx1 + halfW, by2), lang("decline"), colors.danger, CallActionPacket.Action.DECLINE, SmartphoneKeybinds.DECLINE_CALL)
                 )
             }
             CallStatus.OUTGOING, CallStatus.IN_CALL -> {
                 val label = if (CallState.status == CallStatus.IN_CALL) lang("call_end") else lang("cancel")
-                listOf(CallButton(Rect(panel.x1 + PAD, by1, panel.x2 - PAD, by2), label, DECLINE_COLOR, CallActionPacket.Action.HANGUP, SmartphoneKeybinds.DECLINE_CALL))
+                listOf(CallButton(Rect(panel.x1 + PAD, by1, panel.x2 - PAD, by2), label, colors.danger, CallActionPacket.Action.HANGUP, SmartphoneKeybinds.DECLINE_CALL))
             }
             CallStatus.IDLE -> emptyList()
         }

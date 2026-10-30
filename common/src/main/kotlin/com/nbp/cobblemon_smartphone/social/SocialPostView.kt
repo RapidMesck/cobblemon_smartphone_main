@@ -21,7 +21,9 @@ data class SocialPostView(
     val photo: SocialPhotoRef?,
     val likeCount: Int,
     val likedByMe: Boolean,
-    val skinUrl: String? = null
+    val skinUrl: String? = null,
+    val commentCount: Int = 0,
+    val poll: SocialPollView? = null
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeVarLong(id)
@@ -60,6 +62,9 @@ data class SocialPostView(
         buffer.writeBoolean(likedByMe)
         buffer.writeBoolean(skinUrl != null)
         skinUrl?.let { buffer.writeUtf(it) }
+        buffer.writeVarInt(commentCount)
+        buffer.writeBoolean(poll != null)
+        poll?.encode(buffer)
     }
 
     companion object {
@@ -73,7 +78,9 @@ data class SocialPostView(
             photo = post.photo,
             likeCount = post.likes.size,
             likedByMe = post.isLikedBy(viewer),
-            skinUrl = server?.let { SkinUrlResolver.resolve(it, post.authorUuid) }
+            skinUrl = server?.let { SkinUrlResolver.resolve(it, post.authorUuid) },
+            commentCount = post.comments.size,
+            poll = post.poll?.let { SocialPollView.of(it, viewer) }
         )
 
         fun decode(buffer: RegistryFriendlyByteBuf): SocialPostView {
@@ -101,6 +108,11 @@ data class SocialPostView(
             val photo = if (buffer.readBoolean()) {
                 SocialPhotoRef(buffer.readUUID(), buffer.readVarInt(), buffer.readVarInt())
             } else null
+            val likeCount = buffer.readVarInt()
+            val likedByMe = buffer.readBoolean()
+            val skinUrl = if (buffer.readBoolean()) buffer.readUtf() else null
+            val commentCount = buffer.readVarInt()
+            val poll = if (buffer.readBoolean()) SocialPollView.decode(buffer) else null
             return SocialPostView(
                 id = id,
                 authorUuid = authorUuid,
@@ -109,9 +121,11 @@ data class SocialPostView(
                 timestamp = timestamp,
                 attachment = attachment,
                 photo = photo,
-                likeCount = buffer.readVarInt(),
-                likedByMe = buffer.readBoolean(),
-                skinUrl = if (buffer.readBoolean()) buffer.readUtf() else null
+                likeCount = likeCount,
+                likedByMe = likedByMe,
+                skinUrl = skinUrl,
+                commentCount = commentCount,
+                poll = poll
             )
         }
     }

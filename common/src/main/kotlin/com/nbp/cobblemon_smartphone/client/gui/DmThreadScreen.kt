@@ -23,6 +23,8 @@ import com.nbp.cobblemon_smartphone.network.packet.SendDmPacket
 import com.nbp.cobblemon_smartphone.social.CallStatus
 import com.nbp.cobblemon_smartphone.social.DmMessage
 import com.nbp.cobblemon_smartphone.network.packet.SocialMutationResultPacket
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -68,6 +70,20 @@ class DmThreadScreen(
     private val pendingPokemonModels = mutableListOf<PendingPokemonModel>()
     private var pokemonPopup: com.nbp.cobblemon_smartphone.social.PokemonAttachment? = null
 
+    private val theme get() = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+    private val NAME_COLOR get() = theme.colors.textPrimary
+    private val TEXT_COLOR get() = theme.colors.textSecondary
+    private val MUTED_COLOR get() = theme.colors.textMuted
+    private val CONTENT_TEXT get() = theme.colors.textDark
+    private val SECTION_CONTENT_BG get() = theme.colors.surface
+    private val OWN_BUBBLE_COLOR get() = theme.colors.primary
+    private val OTHER_BUBBLE_COLOR get() = theme.colors.surfaceAlt
+    private val ACCENT_COLOR get() = theme.colors.primary
+    private val BUTTON_BORDER_COLOR get() = theme.colors.primaryBorder
+    private val DM_ATTACHMENT_BG get() = theme.colors.surface
+    private val SHINY_COLOR get() = theme.colors.gold
+    private val DANGER_BUTTON_COLOR get() = theme.colors.danger
+
     private val messageCooldownSec get() = SocialClientSession.capabilities.messageCooldownSeconds
 
     override fun isPauseScreen(): Boolean = false
@@ -110,8 +126,9 @@ class DmThreadScreen(
         pendingPokemonModels.clear()
         val matrices = guiGraphics.pose()
 
-        blitk(matrixStack = matrices, texture = frameTexture, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
-        blitk(matrixStack = matrices, texture = SCREEN_TEXTURE, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
+        val theme = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+        SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
+        blitk(matrixStack = matrices, texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()), x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
 
         renderHeader(guiGraphics, mouseX, mouseY)
 
@@ -181,13 +198,13 @@ class DmThreadScreen(
 
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
-        guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + LIST_START_Y, SocialUi.NAVY)
+        guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + LIST_START_Y, theme.colors.headerNavy)
         guiGraphics.drawString(
             font,
             lang("back"),
             screenX + CONTENT_X + 2,
             screenY + TITLE_Y + 2,
-            if (isInBack(mouseX, mouseY)) ACCENT_COLOR else MUTED_COLOR,
+            if (isInBack(mouseX, mouseY)) theme.colors.gold else MUTED_COLOR,
             false
         )
 
@@ -214,18 +231,18 @@ class DmThreadScreen(
         val hovered = isInCallButton(mouseX, mouseY)
         val active = CallState.isBusyWith(otherUuid)
         val background = when {
-            active -> SocialUi.CYAN
-            hovered -> SocialUi.CYAN_HOVER
-            else -> SocialUi.SURFACE
+            active -> theme.colors.primary
+            hovered -> theme.colors.primaryHover
+            else -> theme.colors.surface
         }
-        guiGraphics.fill(x, y, x + CALL_BUTTON_WIDTH, y + CALL_BUTTON_HEIGHT, SocialUi.BORDER)
+        guiGraphics.fill(x, y, x + CALL_BUTTON_WIDTH, y + CALL_BUTTON_HEIGHT, theme.colors.primaryBorder)
         guiGraphics.fill(x + 1, y + 1, x + CALL_BUTTON_WIDTH - 1, y + CALL_BUTTON_HEIGHT - 1, background)
         guiGraphics.drawString(
             font,
             CALL_BUTTON_TEXT,
             x + (CALL_BUTTON_WIDTH - font.width(CALL_BUTTON_TEXT)) / 2,
             y + (CALL_BUTTON_HEIGHT - font.lineHeight) / 2 + 1,
-            if (active) SocialUi.WHITE else SocialUi.TEXT,
+            if (active) theme.colors.textPrimary else theme.colors.textDark,
             false
         )
     }
@@ -252,9 +269,9 @@ class DmThreadScreen(
         val boxWidth = (font.width(message) + CALL_NOTICE_PADDING_X * 2).coerceAtMost(CONTENT_WIDTH - 12)
         val x = screenX + CONTENT_X + (CONTENT_WIDTH - boxWidth) / 2
         val y = screenY + CALL_NOTICE_Y
-        guiGraphics.fill(x, y, x + boxWidth, y + CALL_NOTICE_HEIGHT, SocialUi.BORDER)
+        guiGraphics.fill(x, y, x + boxWidth, y + CALL_NOTICE_HEIGHT, theme.colors.primaryBorder)
         guiGraphics.fill(x + 1, y + 1, x + boxWidth - 1, y + CALL_NOTICE_HEIGHT - 1, CALL_NOTICE_BG)
-        guiGraphics.drawCenteredString(font, message, x + boxWidth / 2, y + 4, SocialUi.WHITE)
+        guiGraphics.drawCenteredString(font, message, x + boxWidth / 2, y + 4, theme.colors.textPrimary)
     }
 
     /** Only offered when this client actually has Simple Voice Chat and the server allows calls. */
@@ -284,7 +301,7 @@ class DmThreadScreen(
             hovered -> ACCENT_COLOR
             else -> SECTION_CONTENT_BG
         }
-        SocialUi.iconButton(guiGraphics, SocialUi.Icon.BELL, x, y, BELL_WIDTH, hovered, muted)
+        SocialUi.iconButton(guiGraphics, SocialUi.Icon.BELL, x, y, BELL_WIDTH, hovered, muted, colors = theme.colors)
         if (muted) {
             guiGraphics.fill(x + 1, y + 4, x + 11, y + 5, MUTE_SLASH_COLOR)
         }
@@ -468,7 +485,7 @@ class DmThreadScreen(
             RenderSystem.setShaderColor(POKEBALL_TINT_R, POKEBALL_TINT_G, POKEBALL_TINT_B, POKEBALL_TINT_ALPHA)
         }
         guiGraphics.blit(
-            if (own) POKEBALL_BACKGROUND_WHITE_TEXTURE else POKEBALL_BACKGROUND_TEXTURE,
+            if (own) POKEBALL_BACKGROUND_WHITE_TEXTURE else theme.getSocialPokeballTexture(),
             x + 1, y + 1, DM_MODEL_WIDTH - 2, DM_MODEL_HEIGHT - 2,
             0f, (frame * POKEBALL_FRAME_SIZE).toFloat(), POKEBALL_FRAME_SIZE, POKEBALL_FRAME_SIZE,
             POKEBALL_TEXTURE_WIDTH, POKEBALL_TEXTURE_HEIGHT
@@ -486,8 +503,8 @@ class DmThreadScreen(
         val px = popupX()
         val py = popupY()
         val height = popupHeight(attachment)
-        SocialUi.surface(guiGraphics, px, py, POPUP_WIDTH, height)
-        guiGraphics.fill(px + 1, py + 1, px + POPUP_WIDTH - 1, py + POPUP_HEADER_HEIGHT, SocialUi.NAVY_LIGHT)
+        SocialUi.surface(guiGraphics, px, py, POPUP_WIDTH, height, colors = theme.colors)
+        guiGraphics.fill(px + 1, py + 1, px + POPUP_WIDTH - 1, py + POPUP_HEADER_HEIGHT, theme.colors.headerNavyLight)
         guiGraphics.drawString(font, lang("pokemon_details"), px + POPUP_PAD, py + 5, NAME_COLOR, false)
         guiGraphics.drawString(
             font, "×", px + POPUP_WIDTH - POPUP_PAD - font.width("×"), py + 5,
@@ -611,7 +628,7 @@ class DmThreadScreen(
                 SocialUi.Icon.SEND,
                 x + (SEND_WIDTH - 8) / 2,
                 screenY + INPUT_Y + (INPUT_HEIGHT - 8) / 2,
-                if (enabled) SocialUi.TEXT else SocialUi.MUTED
+                if (enabled) theme.colors.textDark else MUTED_COLOR
             )
         }
     }
@@ -619,7 +636,7 @@ class DmThreadScreen(
     private fun renderAttachButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val x = screenX + CONTENT_X + 2
         val y = screenY + INPUT_Y + 3
-        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.PLUS, x, y, if (isInAttach(mouseX, mouseY)) ACCENT_COLOR else SocialUi.MUTED)
+        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.PLUS, x, y, if (isInAttach(mouseX, mouseY)) theme.colors.gold else MUTED_COLOR)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -856,23 +873,11 @@ class DmThreadScreen(
         private const val SCROLL_SPEED = 12
         private const val LOAD_MORE_THRESHOLD = 20
 
-        private const val NAME_COLOR = 0xFFFFFFFF.toInt()
-        private const val TEXT_COLOR = 0xFFE6FFFF.toInt()
-        private const val MUTED_COLOR = 0xFF8AA5AD.toInt()
-        private const val CONTENT_TEXT = 0xFF1A1A2E.toInt()
-        private const val SECTION_CONTENT_BG = 0xFFEFFDFF.toInt()
-        private const val OWN_BUBBLE_COLOR = 0xFF3A96B6.toInt()
-        private const val OTHER_BUBBLE_COLOR = 0xFFE0E8EC.toInt()
-        private const val ACCENT_COLOR = 0xFF3A96B6.toInt()
         private const val DISABLED_COLOR = 0xFFCCCCCC.toInt()
-        private const val DANGER_BUTTON_COLOR = 0xFFCC3333.toInt()
-        private const val BUTTON_BORDER_COLOR = 0xFF3A96B6.toInt()
-        private const val DM_ATTACHMENT_BG = 0xFFEAF6F8.toInt()
         private const val OWN_ATTACHMENT_BORDER = 0xFFFFFFFF.toInt()
         private const val OWN_ATTACHMENT_MUTED = 0xFFBFE5EF.toInt()
         private const val GENDER_MALE_COLOR = 0xFF408CFF.toInt()
         private const val GENDER_FEMALE_COLOR = 0xFFFF5C9A.toInt()
-        private const val SHINY_COLOR = 0xFFFFD84A.toInt()
         private const val POPUP_OVERLAY_COLOR = 0x88071322.toInt()
         private const val POPUP_Z = 1_000f
         private const val POPUP_Y = 62

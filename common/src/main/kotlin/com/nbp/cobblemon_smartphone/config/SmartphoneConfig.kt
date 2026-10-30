@@ -30,6 +30,7 @@ class SmartphoneConfig {
         val pokedexButton: Int = 1 // 1 segundo
         val socialPost: Int = 30  // 30 segundos entre posts
         val socialMessage: Int = 1 // 1 segundo entre mensagens privadas
+        val socialComment: Int = 5 // 5 segundos entre comentários
     }
 
     /**
@@ -46,6 +47,8 @@ class SmartphoneConfig {
         val messagePageSize: Int = 30
         val threadPageSize: Int = 30
         val callRingTimeoutSeconds: Int = 30
+        val maxCommentsPerPost: Int = 100
+        val maxCommentLength: Int = 200
     }
 
     class Gps {

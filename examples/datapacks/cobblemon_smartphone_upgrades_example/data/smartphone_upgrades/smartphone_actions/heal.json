@@ -1,0 +1,11 @@
+{
+  "id": "smartphone_upgrades:heal",
+  "texture": "cobblemon_smartphone:textures/gui/buttons/heal.png",
+  "hover_texture": "cobblemon_smartphone:textures/gui/buttons/heal_hover.png",
+  "functions": [
+    "heal_party"
+  ],
+  "require_upgrade": "upgrade_heal",
+  "cooldown_seconds": 60,
+  "order": 10
+}

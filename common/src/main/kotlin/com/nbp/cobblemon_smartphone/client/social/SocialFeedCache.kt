@@ -10,6 +10,8 @@ import com.nbp.cobblemon_smartphone.social.SocialPostView
 object SocialFeedCache {
     private val posts = mutableListOf<SocialPostView>()
 
+    var followingOnly: Boolean = false
+        private set
     var hasMore: Boolean = false
         private set
     var loading: Boolean = false
@@ -18,6 +20,14 @@ object SocialFeedCache {
     fun posts(): List<SocialPostView> = posts
 
     fun isEmpty(): Boolean = posts.isEmpty()
+
+    fun setFilter(followingOnly: Boolean) {
+        if (this.followingOnly == followingOnly) return
+        this.followingOnly = followingOnly
+        posts.clear()
+        hasMore = false
+        refresh()
+    }
 
     fun accept(page: List<SocialPostView>, hasMore: Boolean, append: Boolean) {
         if (append) {
@@ -35,7 +45,7 @@ object SocialFeedCache {
     /** Requests the newest page, replacing whatever is cached. */
     fun refresh() {
         loading = true
-        RequestFeedPagePacket(0L).sendToServer()
+        RequestFeedPagePacket(0L, followingOnly).sendToServer()
     }
 
     /** Requests the next page of older posts. No-op while a request is already in flight. */
@@ -43,7 +53,7 @@ object SocialFeedCache {
         if (loading || !hasMore) return
         val oldest = posts.lastOrNull() ?: return refresh()
         loading = true
-        RequestFeedPagePacket(oldest.id).sendToServer()
+        RequestFeedPagePacket(oldest.id, followingOnly).sendToServer()
     }
 
     /**
@@ -74,5 +84,6 @@ object SocialFeedCache {
         posts.clear()
         hasMore = false
         loading = false
+        followingOnly = false
     }
 }

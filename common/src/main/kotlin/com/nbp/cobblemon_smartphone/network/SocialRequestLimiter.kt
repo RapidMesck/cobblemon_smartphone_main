@@ -13,7 +13,15 @@ object SocialRequestLimiter {
         DELETE(500),
         MUTE(250),
         CALL_START(1_500),
-        CALL_ACTION(150)
+        CALL_ACTION(150),
+        COMMENT(500),
+        REQUEST_COMMENTS(200),
+        DELETE_COMMENT(500),
+        REQUEST_PROFILE(250),
+        UPDATE_PROFILE(1_000),
+        TOGGLE_FOLLOW(500),
+        REQUEST_NOTIFICATIONS(200),
+        MARK_NOTIFICATION_READ(150)
     }
 
     private data class Key(val player: UUID, val action: Action)

@@ -13,6 +13,8 @@ import com.nbp.cobblemon_smartphone.network.packet.SpeciesDetailResponsePacket
 import com.nbp.cobblemon_smartphone.client.PokeInfoClientState
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider
 import com.nbp.cobblemon_smartphone.util.PokeInfoLayout
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import net.minecraft.client.Minecraft
@@ -39,6 +41,12 @@ class PokeInfoDetailScreen(
             this(color, smartphoneStack, dexNumber.toString(), dexNumber)
 
     private val frameTexture get() = color.getLargeScreenTexture()
+    private val theme get() = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+    private val SECTION_TITLE_BG get() = theme.colors.primary
+    private val SECTION_CONTENT_BG get() = theme.colors.surface
+    private val CONTENT_TEXT get() = theme.colors.textDark
+    private val CONTENT_DIM get() = theme.colors.textDarkMuted
+    private val SECTION_TITLE_COLOR get() = theme.colors.textPrimary
     private var screenX = 0
     private var screenY = 0
     private var scrollY = 0
@@ -177,17 +185,11 @@ class PokeInfoDetailScreen(
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         val matrices = guiGraphics.pose()
 
+        val theme = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+        SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
         blitk(
             matrixStack = matrices,
-            texture = frameTexture,
-            x = screenX,
-            y = screenY,
-            width = GUI_WIDTH,
-            height = GUI_HEIGHT
-        )
-        blitk(
-            matrixStack = matrices,
-            texture = HOME_SCREEN_TEXTURE,
+            texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()),
             x = screenX,
             y = screenY,
             width = GUI_WIDTH,
@@ -1458,10 +1460,6 @@ class PokeInfoDetailScreen(
         private const val SECTION_PAD_BOTTOM = 4
         private const val TITLE_GAP = 13
         private const val CONTENT_GAP = 3
-        private const val SECTION_TITLE_BG = 0xFF3A96B6.toInt()
-        private const val SECTION_CONTENT_BG = 0xFFEFFDFF.toInt()
-        private const val CONTENT_TEXT = 0xFF1A1A2E.toInt()
-        private const val CONTENT_DIM = 0xFF555555.toInt()
         private const val CONTENT_GOLD = 0xFFB8860B.toInt()
         private const val CONTENT_WEAK = 0xFFCC3333.toInt()
         private const val CONTENT_COND = 0xFFCC6633.toInt()
@@ -1479,8 +1477,6 @@ class PokeInfoDetailScreen(
         private const val CAT_W = 20
         private const val PW_W = 22
         private const val AC_W = 22
-
-        private const val SECTION_TITLE_COLOR = 0xFFFFFFFF.toInt()
 
         private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone", "textures/gui/large_screen.png"
@@ -1608,7 +1604,7 @@ class PokeInfoDetailScreen(
             "dark" -> 0xFF705746.toInt()
             "steel" -> 0xFFB7B7CE.toInt()
             "fairy" -> 0xFFD685AD.toInt()
-            else -> CONTENT_TEXT
+            else -> 0xFF1A1A2E.toInt()
         }
 
         fun catchPercent(catchRate: Int): Int {

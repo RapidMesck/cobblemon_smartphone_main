@@ -4,6 +4,8 @@ import com.cobblemon.mod.common.api.gui.blitk
 import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.client.StructureCompassClientState
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.network.packet.RequestStructureListPacket
 import com.nbp.cobblemon_smartphone.network.packet.StructureListResponsePacket
 import com.nbp.cobblemon_smartphone.util.StructureDataProvider.StructureInfo
@@ -22,6 +24,12 @@ class StructureCompassScreen(
 ) : Screen(Component.translatable("cobblemon_smartphone.screen.structure_compass")) {
 
     private val frameTexture get() = color.getLargeScreenTexture()
+    private val theme get() = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+    private val SECTION_TITLE_BG get() = theme.colors.primary
+    private val SECTION_CONTENT_BG get() = theme.colors.surface
+    private val CARD_HEADER_HOVER_BG get() = theme.colors.primaryHover
+    private val CONTENT_TEXT get() = theme.colors.textDark
+    private val CONTENT_DIM get() = theme.colors.textDarkMuted
     private var screenX = 0
     private var screenY = 0
     private var scrollY = 0
@@ -91,17 +99,11 @@ class StructureCompassScreen(
         receiveStructureList()
         val matrices = guiGraphics.pose()
 
+        val theme = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+        SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
         blitk(
             matrixStack = matrices,
-            texture = frameTexture,
-            x = screenX,
-            y = screenY,
-            width = GUI_WIDTH,
-            height = GUI_HEIGHT
-        )
-        blitk(
-            matrixStack = matrices,
-            texture = HOME_SCREEN_TEXTURE,
+            texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()),
             x = screenX,
             y = screenY,
             width = GUI_WIDTH,
@@ -424,15 +426,9 @@ class StructureCompassScreen(
         private const val BACK_Y = 14
         private const val STOP_RIGHT_MARGIN = 43
 
-        private const val SECTION_TITLE_BG = 0xFF3A96B6.toInt()
-        private const val SECTION_CONTENT_BG = 0xFFEFFDFF.toInt()
-
         // Same palette PokeInfoDetailScreen uses for its section boxes, reused here so the
         // structure cards read as the same kind of "field" instead of a flat translucent tint.
-        private const val CONTENT_TEXT = 0xFF1A1A2E.toInt()
-        private const val CONTENT_DIM = 0xFF555555.toInt()
         private const val CONTENT_GOLD = 0xFFB8860B.toInt()
-        private const val CARD_HEADER_HOVER_BG = 0xFF4FB4D6.toInt()
         private const val CARD_HEADER_DISABLED_BG = 0xFF33474F.toInt()
         private const val CARD_CONTENT_DISABLED_BG = 0xFFB9C4C6.toInt()
         private const val CARD_TEXT_DISABLED = 0xFF7A8688.toInt()

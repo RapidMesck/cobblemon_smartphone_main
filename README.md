@@ -274,4 +274,5 @@ If the upgrade's addition item comes from another mod, no code changes are neede
 
 - [Datapack API](wiki/datapack-api.md) — Add actions via JSON
 - [Mod API](wiki/mod-api.md) — Add actions programmatically
+- [Theme System & Creator Studio](wiki/themes.md) — Resource pack theme specification & standalone HTML Theme Creator Studio (`theme_creator.html`)
 - [Overview & Upgrade Recipes](wiki/README.md) — Index and smithing recipe format

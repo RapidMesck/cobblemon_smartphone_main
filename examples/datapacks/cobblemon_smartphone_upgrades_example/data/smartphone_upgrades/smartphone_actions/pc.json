@@ -1,0 +1,11 @@
+{
+  "id": "smartphone_upgrades:pc",
+  "texture": "cobblemon_smartphone:textures/gui/buttons/pc.png",
+  "hover_texture": "cobblemon_smartphone:textures/gui/buttons/pc_hover.png",
+  "functions": [
+    "open_pc"
+  ],
+  "require_upgrade": "upgrade_pc",
+  "cooldown_seconds": 5,
+  "order": 20
+}

@@ -49,12 +49,13 @@ object SmartphoneKeybinds {
     fun handleKeybinds() {
             val player = Minecraft.getInstance().player ?: return
 
-            // Verifica se o jogador tem um smartphone no inventário
-            val smartphone = player.inventory.items.firstOrNull { it.item is SmartphoneItem }
-            if (smartphone != null) {
-                val smartphoneItem = smartphone.item as SmartphoneItem
-                Minecraft.getInstance().setScreen(SmartphoneScreen(smartphoneItem.getColor()))
-                player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.5f, 1f)
+        // Verifica se o jogador tem um smartphone no inventário
+        val smartphone = player.inventory.items.firstOrNull { it.item is SmartphoneItem }
+            ?: (if (player.offhandItem.item is SmartphoneItem) player.offhandItem else null)
+        if (smartphone != null) {
+            val smartphoneItem = smartphone.item as SmartphoneItem
+            Minecraft.getInstance().setScreen(SmartphoneScreen(smartphoneItem.getColor(), smartphone))
+            player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.5f, 1f)
         }
     }
 }

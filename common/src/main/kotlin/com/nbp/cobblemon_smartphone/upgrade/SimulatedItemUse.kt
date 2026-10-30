@@ -5,8 +5,11 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.context.UseOnContext
+import net.minecraft.world.phys.BlockHitResult
 
 object SimulatedItemUse {
 
@@ -79,6 +82,40 @@ object SimulatedItemUse {
                 id.path != "pokenav_item_old"
         }) { stack, p ->
             stack.item.use(p.level(), p, InteractionHand.MAIN_HAND)
+        }
+    }
+
+    /**
+     * Simulates using a CobbleNav PokeNav item on a block (e.g. PokeSnack) via smartphone upgrade.
+     * Matches any cobblenav:pokenav_item_* except pokenav_item_old.
+     */
+    fun useOnPokenav(context: UseOnContext): InteractionResult? {
+        val player = context.player ?: return null
+        val item = findItem { id ->
+            id.namespace == "cobblenav" &&
+                id.path.startsWith("pokenav_item_") &&
+                id.path != "pokenav_item_old"
+        } ?: return null
+
+        val original = player.getItemInHand(context.hand).copy()
+        val temp = ItemStack(item)
+
+        return try {
+            player.setItemInHand(context.hand, temp)
+            val hitResult = BlockHitResult(
+                context.clickLocation,
+                context.clickedFace,
+                context.clickedPos,
+                context.isInside
+            )
+            val simContext = UseOnContext(player, context.hand, hitResult)
+            val result = temp.item.useOn(simContext)
+            if (result.consumesAction()) result else null
+        } catch (e: Exception) {
+            CobblemonSmartphone.LOGGER.warn("Simulated PokeNav useOn failed: {}", e.message)
+            null
+        } finally {
+            player.setItemInHand(context.hand, original)
         }
     }
 

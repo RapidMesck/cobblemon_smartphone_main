@@ -11,6 +11,8 @@ public interface PreferencesSaver {
     String QUICK_ACTIONS_KEY = "quick_actions";
     String SOCIAL_MUTED_KEY = "social_muted";
     String MUTED_PLAYERS_KEY = "muted_players";
+    String THEME_KEY = "theme";
+    String WALLPAPER_KEY = "wallpaper";
 
     CompoundTag cobblemonsmartphone$getSavedPreferences();
 }

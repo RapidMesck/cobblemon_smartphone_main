@@ -1,0 +1,49 @@
+{
+  "id": "example_theme:neon",
+  "name": "Neon Cyber",
+  "wallpaper": "example_theme:textures/gui/wallpapers/neon.png",
+  "large_wallpaper": "example_theme:textures/gui/wallpapers/neon_large.png",
+  "frame": "example_theme:textures/gui/frame.png",
+  "large_frame": "example_theme:textures/gui/large_frame.png",
+  "elements": {
+    "home_button": "example_theme:textures/gui/elements/home_button.png",
+    "prev_button": "example_theme:textures/gui/elements/prev_button.png",
+    "next_button": "example_theme:textures/gui/elements/next_button.png",
+    "settings_button": "example_theme:textures/gui/elements/settings_button.png",
+    "drag_handle": "example_theme:textures/gui/elements/drag_handle.png",
+    "view_select": "example_theme:textures/gui/elements/view_select.png",
+    "social_pokeball": "example_theme:textures/gui/elements/social_pokeball.png"
+  },
+  "app_icons": {
+    "cobblemon_smartphone:pokedex": {
+      "texture": "example_theme:textures/gui/apps/pokedex.png",
+      "hover": "example_theme:textures/gui/apps/pokedex_hover.png"
+    },
+    "cobblemon_smartphone:social": "example_theme:textures/gui/apps/social.png"
+  },
+  "colors": {
+    "primary": "#00FFCC",
+    "primary_hover": "#33FFDD",
+    "primary_border": "#00997A",
+    "surface": "#0D1117",
+    "surface_alt": "#161B22",
+    "surface_hover": "#21262D",
+    "header_navy": "#070B10",
+    "header_navy_light": "#0E1520",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#00FFCC",
+    "text_muted": "#58A6FF",
+    "text_dark": "#C9D1D9",
+    "text_dark_muted": "#8B949E",
+    "gold": "#FFD700",
+    "danger": "#FF4444",
+    "success": "#00FFAA",
+    "time": "#00FFCC",
+    "battery_border": "#00FFCC",
+    "battery_empty": "#070B10",
+    "battery_high": "#00FFAA",
+    "battery_med": "#FFCC00",
+    "battery_low": "#FF4444"
+  },
+  "order": 50
+}

@@ -12,6 +12,12 @@ import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveQuickActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveThemePacket
+import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRegistry
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
+import com.nbp.cobblemon_smartphone.theme.setTheme
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -48,6 +54,26 @@ class SmartphoneSettingsScreen(
     private var selectorX = 0
     private var selectorY = 0
 
+    enum class SettingsTab {
+        APPS,
+        THEMES
+    }
+
+    private var currentTab = SettingsTab.APPS
+    private var currentThemePage = 0
+    private var selectedThemeId: String = SmartphoneTheme.DEFAULT_ID
+
+    private val themes: List<SmartphoneTheme>
+        get() = SmartphoneThemeRegistry.getThemes()
+
+    private val maxThemePage: Int
+        get() = if (themes.isEmpty()) 0 else (themes.size - 1) / THEMES_PER_PAGE
+
+    private fun pagedThemes(): List<SmartphoneTheme> {
+        val from = currentThemePage * THEMES_PER_PAGE
+        return themes.drop(from).take(THEMES_PER_PAGE)
+    }
+
     private val maxPage get() = if (orderedIds.isEmpty()) 0 else (orderedIds.size - 1) / ACTIONS_PER_PAGE
 
     override fun isPauseScreen(): Boolean = false
@@ -55,7 +81,9 @@ class SmartphoneSettingsScreen(
     override fun init() {
         screenX = (width - GUI_WIDTH) / 2
         screenY = (height - GUI_HEIGHT) / 2
+        minecraft?.resourceManager?.let { SmartphoneThemeRegistry.ensureLoaded(it) }
         SmartphoneHelper.contextSmartphone = smartphoneStack
+        selectedThemeId = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack).id
     }
 
     override fun removed() {
@@ -65,6 +93,7 @@ class SmartphoneSettingsScreen(
         SaveQuickActionsPacket(slotBindings).sendToServer()
         SmartphoneHiddenActions.setHidden(hiddenIds.toList())
         SaveHiddenActionsPacket(hiddenIds.toList()).sendToServer()
+        SaveThemePacket(selectedThemeId).sendToServer()
         SmartphoneHelper.contextSmartphone = null
         super.removed()
     }
@@ -72,35 +101,42 @@ class SmartphoneSettingsScreen(
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         val matrices = guiGraphics.pose()
 
+        // Active theme resolution
+        val currentTheme = SmartphoneThemeRegistry.getTheme(selectedThemeId)
+        SmartphoneThemeRenderer.renderTheme(guiGraphics, currentTheme, screenX, screenY)
+
+        // Smartphone frame background
         blitk(
             matrixStack = matrices,
-            texture = frameTexture,
-            x = screenX,
-            y = screenY,
-            width = GUI_WIDTH,
-            height = GUI_HEIGHT
-        )
-        blitk(
-            matrixStack = matrices,
-            texture = HOME_SCREEN_TEXTURE,
+            texture = currentTheme.getFrameTexture(color.getSmallScreenTexture()),
             x = screenX,
             y = screenY,
             width = GUI_WIDTH,
             height = GUI_HEIGHT
         )
 
-        renderHint(guiGraphics)
-        renderBackButton(guiGraphics, mouseX, mouseY)
+        renderBackButton(guiGraphics, mouseX, mouseY, currentTheme)
+        renderTabs(guiGraphics, mouseX, mouseY, currentTheme)
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = false, smartphoneStack)
 
-        pagedIds().forEachIndexed { index, actionId ->
-            renderGridItem(guiGraphics, mouseX, mouseY, index, actionId)
+        if (currentTab == SettingsTab.APPS) {
+            renderHint(guiGraphics, currentTheme)
+            pagedIds().forEachIndexed { index, actionId ->
+                renderGridItem(guiGraphics, mouseX, mouseY, index, actionId, currentTheme)
+            }
+            renderPageDots(guiGraphics)
+            renderSelector(guiGraphics, mouseX, mouseY, currentTheme)
+            renderHoveredTooltip(guiGraphics, mouseX, mouseY)
+        } else {
+            renderThemeHint(guiGraphics, currentTheme)
+            pagedThemes().forEachIndexed { index, theme ->
+                renderThemeCard(guiGraphics, mouseX, mouseY, index, theme, currentTheme)
+            }
+            renderThemePageDots(guiGraphics)
+            renderThemeHoveredTooltip(guiGraphics, mouseX, mouseY)
         }
 
-        renderPageDots(guiGraphics)
-        renderFooterButtons(guiGraphics, mouseX, mouseY)
-        renderSelector(guiGraphics, mouseX, mouseY)
-        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
+        renderFooterButtons(guiGraphics, mouseX, mouseY, currentTheme)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -118,9 +154,21 @@ class SmartphoneSettingsScreen(
             return true
         }
 
+        // Tab switching
+        if (isInAppsTab(mx, my) && currentTab != SettingsTab.APPS) {
+            playClickSound()
+            currentTab = SettingsTab.APPS
+            return true
+        }
+        if (isInThemesTab(mx, my) && currentTab != SettingsTab.THEMES) {
+            playClickSound()
+            currentTab = SettingsTab.THEMES
+            return true
+        }
+
         if (isInFooterButton(mx, my, FOOTER_PREV_X)) {
             playClickSound()
-            changePage(-1)
+            if (currentTab == SettingsTab.APPS) changePage(-1) else changeThemePage(-1)
             return true
         }
         if (isInFooterButton(mx, my, FOOTER_HOME_X)) {
@@ -130,8 +178,25 @@ class SmartphoneSettingsScreen(
         }
         if (isInFooterButton(mx, my, FOOTER_NEXT_X)) {
             playClickSound()
-            changePage(1)
+            if (currentTab == SettingsTab.APPS) changePage(1) else changeThemePage(1)
             return true
+        }
+
+        if (currentTab == SettingsTab.THEMES) {
+            pagedThemes().forEachIndexed { index, theme ->
+                if (isInThemeCard(mx, my, index)) {
+                    playClickSound()
+                    selectedThemeId = theme.id
+                    smartphoneStack?.setTheme(theme.id)
+                    Minecraft.getInstance().player?.let { p ->
+                        SmartphoneHelper.getSmartphone(p)?.setTheme(theme.id)
+                    }
+                    SmartphoneThemeHelper.clientPreferredTheme = theme.id
+                    SaveThemePacket(theme.id).sendToServer()
+                    return true
+                }
+            }
+            return super.mouseClicked(mouseX, mouseY, button)
         }
 
         pagedIds().forEachIndexed { index, actionId ->
@@ -156,7 +221,7 @@ class SmartphoneSettingsScreen(
     }
 
     override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, dragX: Double, dragY: Double): Boolean {
-        if (draggingIndex == -1) return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
+        if (currentTab != SettingsTab.APPS || draggingIndex == -1) return super.mouseDragged(mouseX, mouseY, button, dragX, dragY)
 
         val mx = mouseX.toInt()
         val my = mouseY.toInt()
@@ -177,7 +242,7 @@ class SmartphoneSettingsScreen(
             return true
         }
 
-        if (my > screenY + GRID_START_Y + (GRID_ROWS - 1) * BUTTON_SPACING + BUTTON_HEIGHT && currentPage < maxPage) {
+        if (my > screenY + GRID_START_Y + (GRID_ROWS - 1) * BUTTON_SPACING_Y + BUTTON_HEIGHT && currentPage < maxPage) {
             val now = System.currentTimeMillis()
             if (now - lastPageFlipTime > 500) {
                 val boundaryIndex = (currentPage + 1) * ACTIONS_PER_PAGE
@@ -217,11 +282,21 @@ class SmartphoneSettingsScreen(
         verticalAmount: Double
     ): Boolean {
         if (draggingIndex != -1) return true
-        if (maxPage == 0 || verticalAmount == 0.0) {
-            return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
-        }
+        val amount = if (verticalAmount < 0.0) 1 else -1
 
-        return changePage(if (verticalAmount < 0.0) 1 else -1)
+        return if (currentTab == SettingsTab.APPS) {
+            if (maxPage == 0 || verticalAmount == 0.0) {
+                super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
+            } else {
+                changePage(amount)
+            }
+        } else {
+            if (maxThemePage == 0 || verticalAmount == 0.0) {
+                super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
+            } else {
+                changeThemePage(amount)
+            }
+        }
     }
 
     private fun moveAction(fromIndex: Int, toIndex: Int) {
@@ -237,6 +312,16 @@ class SmartphoneSettingsScreen(
         }
 
         currentPage = nextPage
+        return true
+    }
+
+    private fun changeThemePage(offset: Int): Boolean {
+        val nextPage = (currentThemePage + offset).coerceIn(0, maxThemePage)
+        if (nextPage == currentThemePage) {
+            return false
+        }
+
+        currentThemePage = nextPage
         return true
     }
 
@@ -257,7 +342,7 @@ class SmartphoneSettingsScreen(
     private fun gridPosition(index: Int): Pair<Int, Int> {
         val col = index % GRID_COLUMNS
         val row = index / GRID_COLUMNS
-        return GRID_START_X + col * BUTTON_SPACING to GRID_START_Y + row * BUTTON_SPACING
+        return GRID_START_X + col * BUTTON_SPACING_X to GRID_START_Y + row * BUTTON_SPACING_Y
     }
 
     private fun dragHandlePosition(index: Int): Pair<Int, Int> {
@@ -268,8 +353,8 @@ class SmartphoneSettingsScreen(
     private fun gridCellAt(mouseX: Int, mouseY: Int): Int {
         val relX = mouseX - screenX - GRID_START_X
         val relY = mouseY - screenY - GRID_START_Y
-        val col = relX / BUTTON_SPACING
-        val row = relY / BUTTON_SPACING
+        val col = relX / BUTTON_SPACING_X
+        val row = relY / BUTTON_SPACING_Y
 
         if (col !in 0 until GRID_COLUMNS || row !in 0 until GRID_ROWS) return -1
 
@@ -282,14 +367,21 @@ class SmartphoneSettingsScreen(
         return currentPage * ACTIONS_PER_PAGE + row * GRID_COLUMNS + col
     }
 
-    private fun renderGridItem(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, index: Int, actionId: String) {
+    private fun renderGridItem(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        index: Int,
+        actionId: String,
+        theme: SmartphoneTheme
+    ) {
         val action = actionById(actionId) ?: return
         val matrices = guiGraphics.pose()
         val (gx, gy) = gridPosition(index)
         val globalIndex = currentPage * ACTIONS_PER_PAGE + index
         val isDragging = globalIndex == draggingIndex
 
-        val texture = if (isDragging) action.hoverTexture else action.texture
+        val texture = if (isDragging) theme.getAppHoverIcon(action.id, action.hoverTexture) else theme.getAppIcon(action.id, action.texture)
 
         blitk(
             matrixStack = matrices,
@@ -300,12 +392,12 @@ class SmartphoneSettingsScreen(
             height = BUTTON_HEIGHT
         )
 
-        renderSlotBadge(guiGraphics, action.id, gx, gy)
-        renderDragHandle(guiGraphics, mouseX, mouseY, index, isDragging)
-        renderViewSelect(guiGraphics, action.id, index)
+        renderSlotBadge(guiGraphics, action.id, gx, gy, theme)
+        renderDragHandle(guiGraphics, mouseX, mouseY, index, isDragging, theme)
+        renderViewSelect(guiGraphics, action.id, index, theme)
     }
 
-    private fun renderSlotBadge(guiGraphics: GuiGraphics, actionId: String, gx: Int, gy: Int) {
+    private fun renderSlotBadge(guiGraphics: GuiGraphics, actionId: String, gx: Int, gy: Int, theme: SmartphoneTheme) {
         val slot = slotForAction(actionId) ?: return
         val label = (slot + 1).toString()
         val badgeWidth = (font.width(label) * SLOT_BADGE_SCALE).toInt() + SLOT_BADGE_PADDING * 2
@@ -313,13 +405,13 @@ class SmartphoneSettingsScreen(
         val badgeX = screenX + gx
         val badgeY = screenY + gy
 
-        guiGraphics.fill(badgeX, badgeY, badgeX + badgeWidth, badgeY + badgeHeight, SLOT_BADGE_BG)
+        guiGraphics.fill(badgeX, badgeY, badgeX + badgeWidth, badgeY + badgeHeight, theme.colors.primary)
         drawScaled(
             guiGraphics,
             label,
             badgeX + SLOT_BADGE_PADDING,
             badgeY + SLOT_BADGE_PADDING / 2,
-            SLOT_BADGE_TEXT,
+            theme.colors.textPrimary,
             SLOT_BADGE_SCALE
         )
     }
@@ -329,13 +421,14 @@ class SmartphoneSettingsScreen(
         mouseX: Int,
         mouseY: Int,
         index: Int,
-        isDragging: Boolean
+        isDragging: Boolean,
+        theme: SmartphoneTheme
     ) {
         val (dx, dy) = dragHandlePosition(index)
         val hovered = isInDragHandle(mouseX, mouseY, index) || isDragging
         val textureY = if (hovered) DRAG_HEIGHT else 0
         guiGraphics.blit(
-            DRAG_HANDLE_TEXTURE,
+            theme.getDragHandleTexture(),
             screenX + dx,
             screenY + dy,
             0f,
@@ -358,11 +451,11 @@ class SmartphoneSettingsScreen(
         return gx + BUTTON_WIDTH - VIEW_WIDTH - 4 to gy + BUTTON_HEIGHT - VIEW_HEIGHT - 4
     }
 
-    private fun renderViewSelect(guiGraphics: GuiGraphics, actionId: String, index: Int) {
+    private fun renderViewSelect(guiGraphics: GuiGraphics, actionId: String, index: Int, theme: SmartphoneTheme) {
         val (vx, vy) = viewSelectPosition(index)
         val textureY = if (hiddenIds.contains(actionId)) VIEW_HEIGHT else 0
         guiGraphics.blit(
-            VIEW_SELECT_TEXTURE,
+            theme.getViewSelectTexture(),
             screenX + vx,
             screenY + vy,
             0f,
@@ -400,10 +493,10 @@ class SmartphoneSettingsScreen(
         Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
     }
 
-    private fun renderHint(guiGraphics: GuiGraphics) {
+    private fun renderHint(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
         val hint = Component.translatable("cobblemon_smartphone.quick_actions.hint").string
         val width = (font.width(hint) * HINT_SCALE).toInt()
-        drawScaled(guiGraphics, hint, screenX + (GUI_WIDTH - width) / 2, screenY + HINT_Y, HINT_COLOR, HINT_SCALE)
+        drawScaled(guiGraphics, hint, screenX + (GUI_WIDTH - width) / 2, screenY + HINT_Y, theme.colors.textSecondary, HINT_SCALE)
     }
 
     private fun openSelector(actionId: String, index: Int) {
@@ -432,15 +525,15 @@ class SmartphoneSettingsScreen(
         selectorActionId = null
     }
 
-    private fun renderSelector(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+    private fun renderSelector(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, theme: SmartphoneTheme) {
         val actionId = selectorActionId ?: return
         val px = screenX + selectorX
         val py = screenY + selectorY
         val w = SELECTOR_WIDTH
         val h = selectorHeight()
 
-        guiGraphics.fill(px - 1, py - 1, px + w + 1, py + h + 1, SELECTOR_BORDER)
-        guiGraphics.fill(px, py, px + w, py + h, SELECTOR_BG)
+        guiGraphics.fill(px - 1, py - 1, px + w + 1, py + h + 1, theme.colors.primaryBorder)
+        guiGraphics.fill(px, py, px + w, py + h, theme.colors.surface)
 
         val currentSlot = slotForAction(actionId)
         for (row in 0 until selectorRowCount()) {
@@ -450,12 +543,12 @@ class SmartphoneSettingsScreen(
             val isCurrent = if (slot < 0) currentSlot == null else currentSlot == slot
 
             when {
-                isCurrent -> guiGraphics.fill(px, ry, px + w, ry + SELECTOR_ROW_HEIGHT, SELECTOR_ROW_CURRENT)
-                hovered -> guiGraphics.fill(px, ry, px + w, ry + SELECTOR_ROW_HEIGHT, SELECTOR_ROW_HOVER)
+                isCurrent -> guiGraphics.fill(px, ry, px + w, ry + SELECTOR_ROW_HEIGHT, theme.colors.primary)
+                hovered -> guiGraphics.fill(px, ry, px + w, ry + SELECTOR_ROW_HEIGHT, theme.colors.surfaceHover)
             }
 
             val label = selectorRowLabel(slot)
-            val textColor = if (isCurrent) SELECTOR_TEXT_CURRENT else SELECTOR_TEXT_COLOR
+            val textColor = if (isCurrent) theme.colors.textPrimary else theme.colors.textDark
             drawScaled(guiGraphics, label, px + SELECTOR_TEXT_X, ry + SELECTOR_TEXT_Y, textColor, SELECTOR_TEXT_SCALE)
         }
     }
@@ -485,9 +578,9 @@ class SmartphoneSettingsScreen(
                 mouseY >= screenY + BACK_Y - 2 && mouseY <= screenY + BACK_Y + 10
     }
 
-    private fun renderBackButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+    private fun renderBackButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, theme: SmartphoneTheme) {
         val backHover = isInBackButton(mouseX, mouseY)
-        val backColor = if (backHover) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
+        val backColor = if (backHover) theme.colors.gold else theme.colors.textPrimary
         drawScaled(
             guiGraphics,
             Component.translatable("cobblemon_smartphone.pokeinfo.back").string,
@@ -498,10 +591,151 @@ class SmartphoneSettingsScreen(
         )
     }
 
-    private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        renderFooterButton(guiGraphics, PREV_BUTTON_TEXTURE, FOOTER_PREV_X, mouseX, mouseY)
-        renderFooterButton(guiGraphics, HOME_BUTTON_TEXTURE, FOOTER_HOME_X, mouseX, mouseY)
-        renderFooterButton(guiGraphics, NEXT_BUTTON_TEXTURE, FOOTER_NEXT_X, mouseX, mouseY)
+    private fun isInAppsTab(mouseX: Int, mouseY: Int): Boolean {
+        return mouseX in (screenX + TAB_APPS_X)..(screenX + TAB_APPS_X + TAB_APPS_WIDTH) &&
+                mouseY in (screenY + TAB_Y)..(screenY + TAB_Y + TAB_HEIGHT)
+    }
+
+    private fun isInThemesTab(mouseX: Int, mouseY: Int): Boolean {
+        return mouseX in (screenX + TAB_THEMES_X)..(screenX + TAB_THEMES_X + TAB_THEMES_WIDTH) &&
+                mouseY in (screenY + TAB_Y)..(screenY + TAB_Y + TAB_HEIGHT)
+    }
+
+    private fun renderTabs(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, theme: SmartphoneTheme) {
+        val isAppsActive = currentTab == SettingsTab.APPS
+        val isThemesActive = currentTab == SettingsTab.THEMES
+
+        val appsHover = isInAppsTab(mouseX, mouseY)
+        val themesHover = isInThemesTab(mouseX, mouseY)
+
+        val activeBg = 0x44000000 or (theme.colors.primary and 0x00FFFFFF)
+
+        // Pill indicator background
+        if (isAppsActive) {
+            guiGraphics.fill(screenX + TAB_APPS_X, screenY + TAB_Y, screenX + TAB_APPS_X + TAB_APPS_WIDTH, screenY + TAB_Y + TAB_HEIGHT, activeBg)
+            guiGraphics.fill(screenX + TAB_APPS_X, screenY + TAB_Y + TAB_HEIGHT - 1, screenX + TAB_APPS_X + TAB_APPS_WIDTH, screenY + TAB_Y + TAB_HEIGHT, theme.colors.primary)
+        } else if (appsHover) {
+            guiGraphics.fill(screenX + TAB_APPS_X, screenY + TAB_Y, screenX + TAB_APPS_X + TAB_APPS_WIDTH, screenY + TAB_Y + TAB_HEIGHT, 0x22FFFFFF.toInt())
+        }
+
+        if (isThemesActive) {
+            guiGraphics.fill(screenX + TAB_THEMES_X, screenY + TAB_Y, screenX + TAB_THEMES_X + TAB_THEMES_WIDTH, screenY + TAB_Y + TAB_HEIGHT, activeBg)
+            guiGraphics.fill(screenX + TAB_THEMES_X, screenY + TAB_Y + TAB_HEIGHT - 1, screenX + TAB_THEMES_X + TAB_THEMES_WIDTH, screenY + TAB_Y + TAB_HEIGHT, theme.colors.primary)
+        } else if (themesHover) {
+            guiGraphics.fill(screenX + TAB_THEMES_X, screenY + TAB_Y, screenX + TAB_THEMES_X + TAB_THEMES_WIDTH, screenY + TAB_Y + TAB_HEIGHT, 0x22FFFFFF.toInt())
+        }
+
+        val appsColor = if (isAppsActive) theme.colors.textPrimary else if (appsHover) 0xDDFFFFFF.toInt() else theme.colors.textMuted
+        val themesColor = if (isThemesActive) theme.colors.textPrimary else if (themesHover) 0xDDFFFFFF.toInt() else theme.colors.textMuted
+
+        val appsText = Component.translatable("cobblemon_smartphone.settings.tab.apps").string
+        val themesText = Component.translatable("cobblemon_smartphone.settings.tab.themes").string
+
+        val appsW = (font.width(appsText) * 0.5f).toInt()
+        val themesW = (font.width(themesText) * 0.5f).toInt()
+
+        drawScaled(guiGraphics, appsText, screenX + TAB_APPS_X + (TAB_APPS_WIDTH - appsW) / 2, screenY + TAB_Y + 2, appsColor, 0.5f)
+        drawScaled(guiGraphics, themesText, screenX + TAB_THEMES_X + (TAB_THEMES_WIDTH - themesW) / 2, screenY + TAB_Y + 2, themesColor, 0.5f)
+    }
+
+    private fun themeCardPosition(index: Int): Pair<Int, Int> {
+        val col = index % CARD_COLUMNS
+        val row = index / CARD_COLUMNS
+        return CARD_START_X + col * CARD_SPACING_X to CARD_START_Y + row * CARD_SPACING_Y
+    }
+
+    private fun isInThemeCard(mouseX: Int, mouseY: Int, index: Int): Boolean {
+        val (cx, cy) = themeCardPosition(index)
+        return mouseX in (screenX + cx)..(screenX + cx + CARD_WIDTH) &&
+                mouseY in (screenY + cy)..(screenY + cy + CARD_HEIGHT)
+    }
+
+    private fun renderThemeCard(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        index: Int,
+        targetTheme: SmartphoneTheme,
+        activeTheme: SmartphoneTheme
+    ) {
+        val (cx, cy) = themeCardPosition(index)
+        val px = screenX + cx
+        val py = screenY + cy
+        val isSelected = targetTheme.id == selectedThemeId
+        val isHovered = mouseX in px..(px + CARD_WIDTH) && mouseY in py..(py + CARD_HEIGHT)
+
+        val borderColor = when {
+            isSelected -> activeTheme.colors.gold
+            isHovered -> activeTheme.colors.primary
+            else -> 0x66000000.toInt()
+        }
+        guiGraphics.fill(px - 1, py - 1, px + CARD_WIDTH + 1, py + CARD_HEIGHT + 1, borderColor)
+        guiGraphics.fill(px, py, px + CARD_WIDTH, py + CARD_HEIGHT, activeTheme.colors.headerNavy)
+
+        SmartphoneThemeRenderer.renderPreview(guiGraphics, targetTheme, px + 2, py + 2, 34, 40)
+
+        if (isSelected) {
+            guiGraphics.fill(px + 23, py + 2, px + 36, py + 12, 0xCC000000.toInt())
+            drawScaled(guiGraphics, "✓", px + 26, py + 3, activeTheme.colors.gold, 0.7f)
+        }
+
+        val nameText = targetTheme.name.string
+        val nameW = (font.width(nameText) * 0.45f).toInt()
+        val textX = px + (CARD_WIDTH - nameW) / 2
+        drawScaled(guiGraphics, nameText, textX, py + 44, if (isSelected) activeTheme.colors.gold else activeTheme.colors.textPrimary, 0.45f)
+    }
+
+    private fun renderThemeHint(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
+        val hint = Component.translatable("cobblemon_smartphone.theme.hint").string
+        val width = (font.width(hint) * HINT_SCALE).toInt()
+        drawScaled(guiGraphics, hint, screenX + (GUI_WIDTH - width) / 2, screenY + HINT_Y, theme.colors.textSecondary, HINT_SCALE)
+    }
+
+    private fun renderThemePageDots(guiGraphics: GuiGraphics) {
+        val totalDots = (maxThemePage + 1).coerceAtMost(MAX_VISIBLE_DOTS)
+        if (totalDots <= 1) return
+
+        val totalWidth = totalDots * DOT_SIZE + (totalDots - 1) * DOT_SPACING
+        val startX = DOT_CENTER_X - totalWidth / 2
+
+        for (i in 0 until totalDots) {
+            val active = i == currentThemePage
+            val yOffset = if (active) 0 else DOT_INACTIVE_Y_OFFSET
+            PageDotRenderer.draw(
+                guiGraphics = guiGraphics,
+                x = screenX + startX + i * (DOT_SIZE + DOT_SPACING),
+                y = screenY + DOT_Y + yOffset,
+                active = active
+            )
+        }
+    }
+
+    private fun renderThemeHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = false, smartphoneStack)) {
+            return
+        }
+
+        if (isInBackButton(mouseX, mouseY)) {
+            guiGraphics.renderTooltip(
+                font,
+                Component.translatable("cobblemon_smartphone.tooltip.back_to_phone"),
+                mouseX,
+                mouseY
+            )
+            return
+        }
+
+        pagedThemes().forEachIndexed { index, theme ->
+            if (isInThemeCard(mouseX, mouseY, index)) {
+                guiGraphics.renderTooltip(font, theme.name, mouseX, mouseY)
+            }
+        }
+    }
+
+    private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, theme: SmartphoneTheme) {
+        renderFooterButton(guiGraphics, theme.getPrevButtonTexture(), FOOTER_PREV_X, mouseX, mouseY)
+        renderFooterButton(guiGraphics, theme.getHomeButtonTexture(), FOOTER_HOME_X, mouseX, mouseY)
+        renderFooterButton(guiGraphics, theme.getNextButtonTexture(), FOOTER_NEXT_X, mouseX, mouseY)
     }
 
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -627,13 +861,21 @@ class SmartphoneSettingsScreen(
         private const val BACK_Y = 20
         private const val BACK_SCALE = 0.5f
 
+        private const val TAB_Y = 26
+        private const val TAB_HEIGHT = 10
+        private const val TAB_APPS_X = 22
+        private const val TAB_APPS_WIDTH = 40
+        private const val TAB_THEMES_X = 66
+        private const val TAB_THEMES_WIDTH = 42
+
         private const val GRID_COLUMNS = 2
         private const val GRID_ROWS = 3
         private const val ACTIONS_PER_PAGE = GRID_COLUMNS * GRID_ROWS
 
         private const val GRID_START_X = 26
-        private const val GRID_START_Y = 37
-        private const val BUTTON_SPACING = 43
+        private const val GRID_START_Y = 46
+        private const val BUTTON_SPACING_X = 43
+        private const val BUTTON_SPACING_Y = 41
         private const val BUTTON_WIDTH = 36
         private const val BUTTON_HEIGHT = 36
 
@@ -643,9 +885,8 @@ class SmartphoneSettingsScreen(
         private const val VIEW_WIDTH = 8
         private const val VIEW_HEIGHT = 8
 
-        private const val HINT_Y = 30
+        private const val HINT_Y = 38
         private const val HINT_SCALE = 0.5f
-        private const val HINT_COLOR = 0xE6FFFF
 
         private const val SLOT_BADGE_SCALE = 0.5f
         private const val SLOT_BADGE_PADDING = 2
@@ -655,13 +896,13 @@ class SmartphoneSettingsScreen(
         // Bounds the popup is clamped inside, matching where the app grid renders (which is
         // known to sit within the phone's lit screen). Derived from the grid/footer layout:
         //   LEFT   = GRID_START_X (26)
-        //   RIGHT  = GRID_START_X + BUTTON_SPACING + BUTTON_WIDTH (26 + 43 + 36 = 105)
-        //   TOP    = GRID_START_Y (37)
+        //   RIGHT  = GRID_START_X + BUTTON_SPACING_X + BUTTON_WIDTH (26 + 43 + 36 = 105)
+        //   TOP    = GRID_START_Y (46)
         //   BOTTOM = FOOTER_BUTTON_Y + FOOTER_BUTTON_SIZE (187 + 7 = 194)
         // Nudge these if the popup still touches the frame on any side.
         private const val SCREEN_CONTENT_LEFT = 26
         private const val SCREEN_CONTENT_RIGHT = 105
-        private const val SCREEN_CONTENT_TOP = 37
+        private const val SCREEN_CONTENT_TOP = 46
         private const val SCREEN_CONTENT_BOTTOM = 194
 
         // Extra gap (px) kept between the popup and the content edge. Includes room for the 1px border.
@@ -679,6 +920,16 @@ class SmartphoneSettingsScreen(
         private const val SELECTOR_TEXT_COLOR = 0xFF303030.toInt()
         private const val SELECTOR_TEXT_CURRENT = 0xFFFFFFFF.toInt()
 
+        private const val THEMES_PER_PAGE = 4
+        private const val CARD_COLUMNS = 2
+        private const val CARD_ROWS = 2
+        private const val CARD_WIDTH = 38
+        private const val CARD_HEIGHT = 52
+        private const val CARD_START_X = 24
+        private const val CARD_START_Y = 48
+        private const val CARD_SPACING_X = 44
+        private const val CARD_SPACING_Y = 56
+
         private const val FOOTER_PREV_X = 36
         private const val FOOTER_HOME_X = 62
         private const val FOOTER_NEXT_X = 88
@@ -688,34 +939,9 @@ class SmartphoneSettingsScreen(
 
         private const val MAX_VISIBLE_DOTS = 3
         private const val DOT_CENTER_X = GUI_WIDTH / 2
-        private const val DOT_Y = 169
+        private const val DOT_Y = 171
         private const val DOT_SIZE = 9
         private const val DOT_SPACING = 2
         private const val DOT_INACTIVE_Y_OFFSET = 1
-
-        private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/home_screen.png"
-        )
-        private val PREV_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/prev_button.png"
-        )
-        private val HOME_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/home_button.png"
-        )
-        private val NEXT_BUTTON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/next_button.png"
-        )
-        private val DRAG_HANDLE_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/drag_handle.png"
-        )
-        private val VIEW_SELECT_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/elements/view_select.png"
-        )
     }
 }

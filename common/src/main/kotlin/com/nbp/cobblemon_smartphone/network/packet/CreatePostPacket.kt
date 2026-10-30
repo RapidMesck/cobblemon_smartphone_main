@@ -20,21 +20,36 @@ class CreatePostPacket(
     val showEvs: Boolean,
     val showAbility: Boolean,
     val showNature: Boolean,
-    val photoId: UUID?
+    val photoId: UUID?,
+    val pollQuestion: String? = null,
+    val pollOptions: List<String> = emptyList()
 ) : CobblemonSmartphoneNetworkPacket<CreatePostPacket> {
     companion object {
         val ID = smartphoneResource("create_post")
-        fun decode(buffer: RegistryFriendlyByteBuf) = CreatePostPacket(
-            buffer.readVarLong(),
-            buffer.readUtf(4_096),
-            buffer.readVarInt(),
-            buffer.readBoolean(),
-            buffer.readBoolean(),
-            buffer.readBoolean(),
-            buffer.readBoolean(),
-            buffer.readBoolean(),
-            if (buffer.readBoolean()) buffer.readUUID() else null
-        )
+        fun decode(buffer: RegistryFriendlyByteBuf): CreatePostPacket {
+            val reqId = buffer.readVarLong()
+            val text = buffer.readUtf(4_096)
+            val attachSlot = buffer.readVarInt()
+            val showDetails = buffer.readBoolean()
+            val showIvs = buffer.readBoolean()
+            val showEvs = buffer.readBoolean()
+            val showAbility = buffer.readBoolean()
+            val showNature = buffer.readBoolean()
+            val photoId = if (buffer.readBoolean()) buffer.readUUID() else null
+            val hasPoll = buffer.readBoolean()
+            val (pollQuestion, pollOptions) = if (hasPoll) {
+                val q = buffer.readUtf()
+                val count = buffer.readVarInt()
+                val opts = (0 until count).map { buffer.readUtf() }
+                q to opts
+            } else {
+                null to emptyList()
+            }
+            return CreatePostPacket(
+                reqId, text, attachSlot, showDetails, showIvs, showEvs, showAbility, showNature, photoId,
+                pollQuestion, pollOptions
+            )
+        }
     }
 
     override val id = ID
@@ -50,5 +65,11 @@ class CreatePostPacket(
         buffer.writeBoolean(showNature)
         buffer.writeBoolean(photoId != null)
         photoId?.let(buffer::writeUUID)
+        buffer.writeBoolean(pollQuestion != null)
+        pollQuestion?.let {
+            buffer.writeUtf(it)
+            buffer.writeVarInt(pollOptions.size)
+            pollOptions.forEach { opt -> buffer.writeUtf(opt) }
+        }
     }
 }

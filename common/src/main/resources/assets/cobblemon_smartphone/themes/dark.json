@@ -1,0 +1,31 @@
+{
+  "id": "cobblemon_smartphone:dark",
+  "name": "theme.cobblemon_smartphone.dark",
+  "wallpaper": "cobblemon_smartphone:textures/gui/wallpapers/dark.png",
+  "large_wallpaper": "cobblemon_smartphone:textures/gui/wallpapers/dark_large.png",
+  "colors": {
+    "primary": "#D1DDDE",
+    "primary_hover": "#E4E9E9",
+    "primary_border": "#35454F",
+    "surface": "#1C1C22",
+    "surface_alt": "#22222A",
+    "surface_hover": "#2E2E38",
+    "header_navy": "#111114",
+    "header_navy_light": "#1A1A20",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#A0A0B0",
+    "text_muted": "#686878",
+    "text_dark": "#F0F0F5",
+    "text_dark_muted": "#A0A0B2",
+    "gold": "#FFD700",
+    "danger": "#FF4444",
+    "success": "#3AAA55",
+    "time": "#A0A0B0",
+    "battery_border": "#DADADA",
+    "battery_empty": "#111114",
+    "battery_high": "#48BB78",
+    "battery_med": "#E5B842",
+    "battery_low": "#E05252"
+  },
+  "order": 1
+}

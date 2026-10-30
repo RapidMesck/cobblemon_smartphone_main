@@ -1,0 +1,31 @@
+{
+  "id": "cobblemon_smartphone:rotom",
+  "name": "theme.cobblemon_smartphone.rotom",
+  "wallpaper": "cobblemon_smartphone:textures/gui/wallpapers/rotom.png",
+  "large_wallpaper": "cobblemon_smartphone:textures/gui/wallpapers/rotom_large.png",
+  "colors": {
+    "primary": "#EA580C",
+    "primary_hover": "#F97316",
+    "primary_border": "#9A3412",
+    "surface": "#24140E",
+    "surface_alt": "#2D1912",
+    "surface_hover": "#3B2218",
+    "header_navy": "#160B07",
+    "header_navy_light": "#23120C",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#FFAA00",
+    "text_muted": "#A87E6F",
+    "text_dark": "#FED7AA",
+    "text_dark_muted": "#C29E8E",
+    "gold": "#FBBF24",
+    "danger": "#EF4444",
+    "success": "#2EB85C",
+    "time": "#FFAA00",
+    "battery_border": "#F97316",
+    "battery_empty": "#160B07",
+    "battery_high": "#2EB85C",
+    "battery_med": "#FBBF24",
+    "battery_low": "#EF4444"
+  },
+  "order": 2
+}

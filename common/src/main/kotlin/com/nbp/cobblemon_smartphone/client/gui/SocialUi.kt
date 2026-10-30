@@ -1,5 +1,6 @@
 package com.nbp.cobblemon_smartphone.client.gui
 
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeColors
 import net.minecraft.client.gui.GuiGraphics
 
 /** Small pixel-art primitives shared by every Social screen. */
@@ -21,15 +22,36 @@ object SocialUi {
     const val SUCCESS = 0xFF43A968.toInt()
     const val GOLD = 0xFFF2C14E.toInt()
 
-    fun surface(g: GuiGraphics, x: Int, y: Int, width: Int, height: Int, hovered: Boolean = false) {
-        g.fill(x + 1, y + 2, x + width + 1, y + height + 2, SHADOW)
-        g.fill(x, y, x + width, y + height, BORDER)
-        g.fill(x + 1, y + 1, x + width - 1, y + height - 1, if (hovered) SURFACE_ALT else SURFACE)
+    fun surface(
+        g: GuiGraphics,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        hovered: Boolean = false,
+        colors: SmartphoneThemeColors = SmartphoneThemeColors.DEFAULT
+    ) {
+        g.fill(x + 1, y + 2, x + width + 1, y + height + 2, colors.shadow)
+        g.fill(x, y, x + width, y + height, colors.primaryBorder)
+        g.fill(x + 1, y + 1, x + width - 1, y + height - 1, if (hovered) colors.surfaceHover else colors.surface)
     }
 
-    fun iconButton(g: GuiGraphics, icon: Icon, x: Int, y: Int, size: Int, hovered: Boolean, active: Boolean = false) {
-        val bg = when { active -> CYAN; hovered -> CYAN_HOVER; else -> SURFACE }
-        g.fill(x, y, x + size, y + size, BORDER)
+    fun iconButton(
+        g: GuiGraphics,
+        icon: Icon,
+        x: Int,
+        y: Int,
+        size: Int,
+        hovered: Boolean,
+        active: Boolean = false,
+        colors: SmartphoneThemeColors = SmartphoneThemeColors.DEFAULT
+    ) {
+        val bg = when {
+            active -> colors.primary
+            hovered -> colors.primaryHover
+            else -> colors.surface
+        }
+        g.fill(x, y, x + size, y + size, colors.primaryBorder)
         g.fill(x + 1, y + 1, x + size - 1, y + size - 1, bg)
         val iconSize = if (icon == Icon.BELL || icon == Icon.PLUS || icon == Icon.PHONE || icon == Icon.SEND) 8 else 9
         drawIcon(
@@ -37,7 +59,7 @@ object SocialUi {
             icon,
             x + (size - iconSize) / 2,
             y + (size - iconSize) / 2,
-            if (active) WHITE else TEXT
+            if (active) colors.textPrimary else colors.textDark
         )
     }
 

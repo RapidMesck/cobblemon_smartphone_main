@@ -4,9 +4,12 @@ import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.api.gui.blitk
 import com.nbp.cobblemon_smartphone.client.social.FakePlayerFilter
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.components.PlayerFaceRenderer
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.multiplayer.PlayerInfo
@@ -15,23 +18,29 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 
 /**
- * Picks someone to start a conversation with.
- *
- * Entirely client-side: the online player list is already synced to every client, so no packet is
- * needed. Only online players are offered — you can keep talking to someone who logs off (their
- * thread stays in the list), but starting a brand new conversation with an offline player would
- * need a name lookup the client cannot do.
+ * Directory of trainers on the server. Allows searching online players in real-time,
+ * opening direct message conversations, or viewing their full Social profile.
  */
 class DmNewScreen(
     private val color: SmartphoneColor,
     private val smartphoneStack: ItemStack?
-) : Screen(Component.literal("New Message")) {
+) : Screen(Component.literal("Trainers")) {
 
     private val frameTexture get() = color.getLargeScreenTexture()
     private var screenX = 0
     private var screenY = 0
     private var scrollY = 0
     private var maxScroll = 0
+    private lateinit var searchBox: EditBox
+
+    private val theme get() = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+    private val NAME_COLOR get() = theme.colors.textPrimary
+    private val MUTED_COLOR get() = theme.colors.textMuted
+    private val ACCENT_COLOR get() = theme.colors.primary
+    private val CONTENT_TEXT get() = theme.colors.textDark
+    private val CONTENT_DIM get() = theme.colors.textDarkMuted
+    private val ROW_BG_COLOR get() = theme.colors.surface
+    private val ROW_HOVER_COLOR get() = theme.colors.surfaceHover
 
     override fun isPauseScreen(): Boolean = false
 
@@ -44,6 +53,12 @@ class DmNewScreen(
         SmartphoneHelper.contextSmartphone = smartphoneStack
         SmartphoneHelper.contextColor = color
         lastCandidatesUpdate = 0L
+
+        searchBox = EditBox(font, screenX + CONTENT_X + 2, screenY + 39, CONTENT_WIDTH - 4, 14, Component.literal(""))
+        searchBox.setHint(Component.translatable("cobblemon_smartphone.social.search_trainers"))
+        searchBox.setMaxLength(32)
+        searchBox.setBordered(true)
+        addRenderableWidget(searchBox)
     }
 
     override fun removed() {
@@ -66,12 +81,6 @@ class DmNewScreen(
         val allPlayers = connection.onlinePlayers
         val hasTabFakePlayers = allPlayers.any { FakePlayerFilter.isFakePlayer(it) }
 
-        // When TAB's Layout feature is active, it fills the tablist with fake slots (marked listed=true)
-        // and hides real players by setting them to listed=false.
-        // When fake players are detected, we inspect onlinePlayers so real players remain visible
-        // in contacts even if the layout plugin unlisted them.
-        // On normal servers without fake layout players, we use listedOnlinePlayers to respect
-        // vanilla unlisted players (e.g. spectator or vanish).
         val source = if (hasTabFakePlayers) allPlayers else connection.listedOnlinePlayers
 
         val result = source
@@ -83,25 +92,33 @@ class DmNewScreen(
         return result
     }
 
+    private fun filteredCandidates(): List<PlayerInfo> {
+        val query = if (::searchBox.isInitialized) searchBox.value.trim() else ""
+        val all = candidates()
+        if (query.isEmpty()) return all
+        return all.filter { it.profile.name.contains(query, ignoreCase = true) }
+    }
+
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         val matrices = guiGraphics.pose()
 
-        blitk(matrixStack = matrices, texture = frameTexture, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
-        blitk(matrixStack = matrices, texture = SCREEN_TEXTURE, x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
+        val theme = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+        SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
+        blitk(matrixStack = matrices, texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()), x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
 
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
 
-        guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + LIST_START_Y - 2, SocialUi.NAVY)
+        guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + 37, theme.colors.headerNavy)
         val back = lang("back")
         guiGraphics.drawString(
             font,
             back,
             screenX + CONTENT_X + 2,
             screenY + TITLE_Y,
-            if (isInBack(mouseX, mouseY)) ACCENT_COLOR else MUTED_COLOR,
+            if (isInBack(mouseX, mouseY)) theme.colors.gold else MUTED_COLOR,
             false
         )
-        val title = lang("new_message")
+        val title = lang("explore_trainers")
         guiGraphics.drawString(
             font,
             title,
@@ -111,6 +128,8 @@ class DmNewScreen(
             false
         )
 
+        super.render(guiGraphics, mouseX, mouseY, delta)
+
         guiGraphics.enableScissor(
             screenX + CONTENT_X,
             screenY + LIST_START_Y,
@@ -118,7 +137,7 @@ class DmNewScreen(
             screenY + LIST_END_Y
         )
 
-        val players = candidates()
+        val players = filteredCandidates()
         maxScroll = (players.size * (ROW_HEIGHT + ROW_GAP) - (LIST_END_Y - LIST_START_Y)).coerceAtLeast(0)
         scrollY = scrollY.coerceIn(0, maxScroll)
 
@@ -132,7 +151,7 @@ class DmNewScreen(
 
         if (players.isEmpty()) {
             val message = lang("nobody_online")
-            SocialUi.drawIcon(guiGraphics, SocialUi.Icon.USER, screenX + CONTENT_X + CONTENT_WIDTH / 2 - 4, screenY + 103, SocialUi.MUTED)
+            SocialUi.drawIcon(guiGraphics, SocialUi.Icon.USER, screenX + CONTENT_X + CONTENT_WIDTH / 2 - 4, screenY + 108, MUTED_COLOR)
             guiGraphics.drawString(
                 font,
                 message,
@@ -151,7 +170,7 @@ class DmNewScreen(
     private fun renderRow(guiGraphics: GuiGraphics, info: PlayerInfo, y: Int, mouseX: Int, mouseY: Int) {
         val x = screenX + CONTENT_X
         val hovered = isInRow(mouseX, mouseY, y)
-        SocialUi.surface(guiGraphics, x, y, CONTENT_WIDTH, ROW_HEIGHT, hovered)
+        SocialUi.surface(guiGraphics, x, y, CONTENT_WIDTH, ROW_HEIGHT, hovered, colors = theme.colors)
         PlayerFaceRenderer.draw(guiGraphics, info.skin, x + ROW_PAD, y + ROW_PAD, HEAD_SIZE)
         guiGraphics.drawString(
             font,
@@ -161,8 +180,19 @@ class DmNewScreen(
             CONTENT_TEXT,
             false
         )
-        guiGraphics.fill(x + CONTENT_WIDTH - 8, y + 7, x + CONTENT_WIDTH - 4, y + 11, SocialUi.SUCCESS)
+
+        // Online status dot
+        guiGraphics.fill(x + CONTENT_WIDTH - 24, y + 7, x + CONTENT_WIDTH - 20, y + 11, theme.colors.success)
+
+        // Mini Profile Button (User icon)
+        val profileHovered = isInProfileBtn(mouseX, mouseY, x, y)
+        val profileIconColor = if (profileHovered) theme.colors.gold else CONTENT_DIM
+        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.USER, x + CONTENT_WIDTH - 14, y + 4, profileIconColor)
     }
+
+    private fun isInProfileBtn(mouseX: Int, mouseY: Int, rowX: Int, rowY: Int): Boolean =
+        mouseX in (rowX + CONTENT_WIDTH - 18)..(rowX + CONTENT_WIDTH - 2) &&
+                mouseY in rowY..(rowY + ROW_HEIGHT)
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         val mx = mouseX.toInt()
@@ -170,18 +200,25 @@ class DmNewScreen(
 
         if (isInBack(mx, my)) {
             playClickSound()
-            Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack, startOnDms = true))
+            Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack, startOnDms = false))
             return true
         }
 
         if (my in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) {
             var y = screenY + LIST_START_Y - scrollY
-            candidates().forEach { info ->
+            filteredCandidates().forEach { info ->
                 if (isInRow(mx, my, y)) {
                     playClickSound()
-                    Minecraft.getInstance().setScreen(
-                        DmThreadScreen(color, smartphoneStack, info.profile.id, info.profile.name)
-                    )
+                    val rowX = screenX + CONTENT_X
+                    if (isInProfileBtn(mx, my, rowX, y)) {
+                        Minecraft.getInstance().setScreen(
+                            SocialProfileScreen(color, smartphoneStack, info.profile.id, info.profile.name)
+                        )
+                    } else {
+                        Minecraft.getInstance().setScreen(
+                            DmThreadScreen(color, smartphoneStack, info.profile.id, info.profile.name)
+                        )
+                    }
                     return true
                 }
                 y += ROW_HEIGHT + ROW_GAP
@@ -208,9 +245,18 @@ class DmNewScreen(
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, players: List<PlayerInfo>) {
         if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
 
+        val hoveredPlayer = findHoveredPlayer(mouseX, mouseY, players)
         val tooltip = when {
             isInBack(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_back_to_social")
-            findHoveredPlayer(mouseX, mouseY, players) != null -> Component.translatable("cobblemon_smartphone.tooltip.social_start_conversation")
+            hoveredPlayer != null -> {
+                val rowX = screenX + CONTENT_X
+                val rowY = findHoveredPlayerY(mouseX, mouseY, players)
+                if (rowY != null && isInProfileBtn(mouseX, mouseY, rowX, rowY)) {
+                    Component.translatable("cobblemon_smartphone.tooltip.social_view_profile")
+                } else {
+                    Component.translatable("cobblemon_smartphone.tooltip.social_start_conversation")
+                }
+            }
             else -> null
         } ?: return
         guiGraphics.renderTooltip(font, tooltip, mouseX, mouseY)
@@ -221,6 +267,16 @@ class DmNewScreen(
         var y = screenY + LIST_START_Y - scrollY
         for (info in players) {
             if (isInRow(mouseX, mouseY, y)) return info
+            y += ROW_HEIGHT + ROW_GAP
+        }
+        return null
+    }
+
+    private fun findHoveredPlayerY(mouseX: Int, mouseY: Int, players: List<PlayerInfo>): Int? {
+        if (mouseY !in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) return null
+        var y = screenY + LIST_START_Y - scrollY
+        for (info in players) {
+            if (isInRow(mouseX, mouseY, y)) return y
             y += ROW_HEIGHT + ROW_GAP
         }
         return null
@@ -240,7 +296,7 @@ class DmNewScreen(
         private const val CONTENT_X = 20
         private const val CONTENT_WIDTH = 171
         private const val TITLE_Y = 27
-        private const val LIST_START_Y = 41
+        private const val LIST_START_Y = 58
         private const val LIST_END_Y = 192
 
         private const val ROW_HEIGHT = 18
@@ -248,13 +304,6 @@ class DmNewScreen(
         private const val ROW_PAD = 4
         private const val HEAD_SIZE = 10
         private const val SCROLL_SPEED = 12
-
-        private const val NAME_COLOR = 0xFFFFFFFF.toInt()
-        private const val MUTED_COLOR = 0xFF8AA5AD.toInt()
-        private const val ACCENT_COLOR = 0xFF3A96B6.toInt()
-        private const val CONTENT_TEXT = 0xFF1A1A2E.toInt()
-        private const val ROW_BG_COLOR = 0xFFEFFDFF.toInt()
-        private const val ROW_HOVER_COLOR = 0xFFD0E8F5.toInt()
 
         private val SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
             "cobblemon_smartphone",

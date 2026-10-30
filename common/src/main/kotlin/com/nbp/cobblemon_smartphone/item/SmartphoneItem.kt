@@ -1,17 +1,24 @@
 package com.nbp.cobblemon_smartphone.item
 
 import com.cobblemon.mod.common.CobblemonSounds
+import com.cobblemon.mod.common.block.PokeSnackBlock
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.isModLoaded
 import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.cobblemon_smartphone.client.gui.SmartphoneScreen
+import com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper
 import com.nbp.cobblemon_smartphone.energy.getEnergy
 import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
+import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
+import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.InteractionResultHolder
@@ -70,6 +77,27 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
             val result = link.tryLink(context, stack)
             if (result != null) return result
         }
+
+        // PokéNav integration: right-clicking (or sneak-right-clicking) a placed PokéSnack block
+        if (CobblemonSmartphone.config.features.enablePokenav &&
+            isModLoaded("cobblenav") &&
+            stack.hasUpgrade("upgrade_pokenav")
+        ) {
+            val clickedBlock = context.level.getBlockState(context.clickedPos).block
+            val isSnack = clickedBlock is PokeSnackBlock ||
+                BuiltInRegistries.BLOCK.getKey(clickedBlock).path.contains("poke_snack")
+            if (isSnack || context.isSecondaryUseActive) {
+                val player = context.player
+                if (player is ServerPlayer && !SmartphoneEnergyHelper.checkAndConsumeEnergy(player, "cobblemon_smartphone:cobblenav_pokenav")) {
+                    return InteractionResult.FAIL
+                }
+                val result = SimulatedItemUse.useOnPokenav(context)
+                if (result != null && result.consumesAction()) {
+                    return result
+                }
+            }
+        }
+
         return InteractionResult.PASS
     }
 

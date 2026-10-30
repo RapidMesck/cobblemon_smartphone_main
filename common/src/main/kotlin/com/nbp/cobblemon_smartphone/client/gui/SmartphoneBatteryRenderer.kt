@@ -3,6 +3,7 @@ package com.nbp.cobblemon_smartphone.client.gui
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.energy.getEnergy
 import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
@@ -23,9 +24,9 @@ object SmartphoneBatteryRenderer {
 
     const val BORDER_COLOR = 0xFF5BD1DA.toInt()
     const val EMPTY_COLOR = 0xFF1D4A59.toInt()
-    const val FILL_COLOR_HIGH = 0xFF9EF7FC.toInt()
-    const val FILL_COLOR_MED = 0xFF6BE4EC.toInt()
-    const val FILL_COLOR_LOW = 0xFF48AFC5.toInt()
+    const val FILL_COLOR_HIGH = 0xFF22C55E.toInt()
+    const val FILL_COLOR_MED = 0xFFEAB308.toInt()
+    const val FILL_COLOR_LOW = 0xFFEF4444.toInt()
 
     fun resolveSmartphone(smartphoneStack: ItemStack?): ItemStack? {
         val player = Minecraft.getInstance().player ?: return smartphoneStack
@@ -58,23 +59,25 @@ object SmartphoneBatteryRenderer {
         val max = phone.getMaxEnergy()
         if (max <= 0) return
         val current = phone.getEnergy()
+        val theme = SmartphoneThemeHelper.resolveCurrentTheme(phone)
+        val colors = theme.colors
 
         val bx = screenX + if (isLargeScreen) LARGE_SCREEN_BATTERY_X else SMALL_SCREEN_BATTERY_X
         val by = screenY + if (isLargeScreen) LARGE_SCREEN_BATTERY_Y else SMALL_SCREEN_BATTERY_Y
 
         // Battery outer border (9x5 body)
         // Top and bottom horizontal borders
-        guiGraphics.fill(bx, by, bx + BATTERY_BODY_WIDTH, by + 1, BORDER_COLOR)
-        guiGraphics.fill(bx, by + BATTERY_HEIGHT - 1, bx + BATTERY_BODY_WIDTH, by + BATTERY_HEIGHT, BORDER_COLOR)
+        guiGraphics.fill(bx, by, bx + BATTERY_BODY_WIDTH, by + 1, colors.batteryBorder)
+        guiGraphics.fill(bx, by + BATTERY_HEIGHT - 1, bx + BATTERY_BODY_WIDTH, by + BATTERY_HEIGHT, colors.batteryBorder)
         // Left and right vertical borders
-        guiGraphics.fill(bx, by + 1, bx + 1, by + BATTERY_HEIGHT - 1, BORDER_COLOR)
-        guiGraphics.fill(bx + BATTERY_BODY_WIDTH - 1, by + 1, bx + BATTERY_BODY_WIDTH, by + BATTERY_HEIGHT - 1, BORDER_COLOR)
+        guiGraphics.fill(bx, by + 1, bx + 1, by + BATTERY_HEIGHT - 1, colors.batteryBorder)
+        guiGraphics.fill(bx + BATTERY_BODY_WIDTH - 1, by + 1, bx + BATTERY_BODY_WIDTH, by + BATTERY_HEIGHT - 1, colors.batteryBorder)
 
         // Battery tip ("bico da pilha") at the right end (1px wide, 3px high centered)
-        guiGraphics.fill(bx + BATTERY_BODY_WIDTH, by + 1, bx + BATTERY_TOTAL_WIDTH, by + BATTERY_HEIGHT - 1, BORDER_COLOR)
+        guiGraphics.fill(bx + BATTERY_BODY_WIDTH, by + 1, bx + BATTERY_TOTAL_WIDTH, by + BATTERY_HEIGHT - 1, colors.batteryBorder)
 
         // Empty cavity background (7px wide, 3px high)
-        guiGraphics.fill(bx + 1, by + 1, bx + BATTERY_BODY_WIDTH - 1, by + BATTERY_HEIGHT - 1, EMPTY_COLOR)
+        guiGraphics.fill(bx + 1, by + 1, bx + BATTERY_BODY_WIDTH - 1, by + BATTERY_HEIGHT - 1, colors.batteryEmpty)
 
         // Dynamic charge fill inside the cavity
         val ratio = (current.toFloat() / max).coerceIn(0f, 1f)
@@ -83,9 +86,9 @@ object SmartphoneBatteryRenderer {
 
         if (fillWidth > 0) {
             val fillColor = when {
-                ratio > 0.5f -> FILL_COLOR_HIGH
-                ratio > 0.2f -> FILL_COLOR_MED
-                else -> FILL_COLOR_LOW
+                ratio > 0.5f -> colors.batteryHigh
+                ratio > 0.2f -> colors.batteryMed
+                else -> colors.batteryLow
             }
             guiGraphics.fill(bx + 1, by + 1, bx + 1 + fillWidth, by + BATTERY_HEIGHT - 1, fillColor)
         }

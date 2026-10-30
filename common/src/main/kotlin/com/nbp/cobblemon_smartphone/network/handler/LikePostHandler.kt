@@ -25,6 +25,24 @@ object LikePostHandler : ServerNetworkPacketHandler<LikePostPacket> {
                 server.playerList.players.forEach { viewer ->
                     FeedPostUpdatePacket(0L, SocialPostView.of(post, viewer.uuid, server)).sendToPlayer(viewer)
                 }
+
+                if (packet.liked && post.authorUuid != player.uuid) {
+                    val notif = data.addNotification(
+                        targetUuid = post.authorUuid,
+                        actorUuid = player.uuid,
+                        actorName = player.gameProfile.name,
+                        type = com.nbp.cobblemon_smartphone.social.SocialNotificationType.LIKE,
+                        referenceId = post.id
+                    )
+                    if (notif != null) {
+                        val authorPlayer = server.playerList.getPlayer(post.authorUuid)
+                        if (authorPlayer != null) {
+                            com.nbp.cobblemon_smartphone.network.packet.PushNotificationPacket(
+                                com.nbp.cobblemon_smartphone.social.SocialNotificationView.of(notif, server)
+                            ).sendToPlayer(authorPlayer)
+                        }
+                    }
+                }
             }
         }
     }

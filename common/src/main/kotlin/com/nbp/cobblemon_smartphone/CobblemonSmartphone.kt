@@ -171,6 +171,7 @@ object CobblemonSmartphone {
         registerDefaultActions()
         registerDefaultUpgrades()
         registerDefaultStorageLinks()
+        com.nbp.cobblemon_smartphone.social.SocialEvents.register()
     }
 
     fun getSmartphoneActionRegistry() = SmartphoneActionRegistry

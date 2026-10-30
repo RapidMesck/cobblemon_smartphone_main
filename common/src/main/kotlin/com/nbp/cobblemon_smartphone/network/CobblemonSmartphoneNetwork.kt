@@ -16,6 +16,7 @@ import com.nbp.cobblemon_smartphone.network.handler.RequestFeedPageHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestThreadListHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestThreadPageHandler
 import com.nbp.cobblemon_smartphone.network.handler.SendDmHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncThemeHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncUnreadHandler
 import com.nbp.cobblemon_smartphone.network.handler.ThreadListHandler
 import com.nbp.cobblemon_smartphone.network.handler.ThreadPageHandler
@@ -48,6 +49,7 @@ import com.nbp.cobblemon_smartphone.network.handler.SpeciesListResponseHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveActionOrderHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveHiddenActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveQuickActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SaveThemeHandler
 import com.nbp.cobblemon_smartphone.network.handler.MutePlayerHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveSocialMuteHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncMutedPlayersHandler
@@ -66,6 +68,18 @@ import com.nbp.cobblemon_smartphone.network.handler.UploadSocialPhotoHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestSocialPhotoHandler
 import com.nbp.cobblemon_smartphone.network.handler.SocialPhotoUploadResultHandler
 import com.nbp.cobblemon_smartphone.network.handler.SocialPhotoChunkHandler
+import com.nbp.cobblemon_smartphone.network.handler.AddCommentHandler
+import com.nbp.cobblemon_smartphone.network.handler.DeleteCommentHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestCommentsHandler
+import com.nbp.cobblemon_smartphone.network.handler.CommentsListHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestProfileHandler
+import com.nbp.cobblemon_smartphone.network.handler.UpdateProfileHandler
+import com.nbp.cobblemon_smartphone.network.handler.ToggleFollowHandler
+import com.nbp.cobblemon_smartphone.network.handler.ProfileResponseHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestNotificationsHandler
+import com.nbp.cobblemon_smartphone.network.handler.MarkNotificationReadHandler
+import com.nbp.cobblemon_smartphone.network.handler.NotificationListHandler
+import com.nbp.cobblemon_smartphone.network.handler.PushNotificationHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenGpsScreenHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenStructureCompassScreenHandler
 import com.nbp.cobblemon_smartphone.network.handler.OpenPokeInfoScreenHandler
@@ -117,10 +131,12 @@ import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesListPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveQuickActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveThemePacket
 import com.nbp.cobblemon_smartphone.network.packet.MutePlayerPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncMutedPlayersPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSocialMutePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncThemePacket
 import com.nbp.cobblemon_smartphone.network.packet.SpeciesDetailResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.SpeciesListResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
@@ -136,6 +152,24 @@ import com.nbp.cobblemon_smartphone.network.packet.UploadSocialPhotoPacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestSocialPhotoPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialPhotoUploadResultPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialPhotoChunkPacket
+import com.nbp.cobblemon_smartphone.network.packet.AddCommentPacket
+import com.nbp.cobblemon_smartphone.network.packet.DeleteCommentPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestCommentsPacket
+import com.nbp.cobblemon_smartphone.network.packet.CommentsListPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestProfilePacket
+import com.nbp.cobblemon_smartphone.network.packet.ProfileResponsePacket
+import com.nbp.cobblemon_smartphone.network.packet.UpdateProfilePacket
+import com.nbp.cobblemon_smartphone.network.packet.ToggleFollowPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestNotificationsPacket
+import com.nbp.cobblemon_smartphone.network.packet.NotificationListPacket
+import com.nbp.cobblemon_smartphone.network.packet.PushNotificationPacket
+import com.nbp.cobblemon_smartphone.network.packet.MarkNotificationReadPacket
+import com.nbp.cobblemon_smartphone.network.packet.ChallengeBattlePacket
+import com.nbp.cobblemon_smartphone.network.packet.ChallengeTradePacket
+import com.nbp.cobblemon_smartphone.network.packet.VotePollPacket
+import com.nbp.cobblemon_smartphone.network.handler.ChallengeBattleHandler
+import com.nbp.cobblemon_smartphone.network.handler.ChallengeTradeHandler
+import com.nbp.cobblemon_smartphone.network.handler.VotePollHandler
 import com.nbp.cobblemon_smartphone.network.packet.OpenGpsScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenStructureCompassScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokeInfoScreenPacket
@@ -226,6 +260,10 @@ object CobblemonSmartphoneNetwork {
         )
         list.add(PacketRegisterInfo(CallStatePacket.ID, CallStatePacket::decode, CallStateHandler))
         list.add(PacketRegisterInfo(CallOfflinePacket.ID, CallOfflinePacket::decode, CallOfflineHandler))
+        list.add(PacketRegisterInfo(CommentsListPacket.ID, CommentsListPacket::decode, CommentsListHandler))
+        list.add(PacketRegisterInfo(ProfileResponsePacket.ID, ProfileResponsePacket::decode, ProfileResponseHandler))
+        list.add(PacketRegisterInfo(NotificationListPacket.ID, NotificationListPacket::decode, NotificationListHandler))
+        list.add(PacketRegisterInfo(PushNotificationPacket.ID, PushNotificationPacket::decode, PushNotificationHandler))
         list.add(PacketRegisterInfo(SocialCapabilitiesPacket.ID, SocialCapabilitiesPacket::decode, SocialCapabilitiesHandler))
         list.add(PacketRegisterInfo(SocialMutationResultPacket.ID, SocialMutationResultPacket::decode, SocialMutationResultHandler))
         list.add(PacketRegisterInfo(FeedPostUpdatePacket.ID, FeedPostUpdatePacket::decode, FeedPostUpdateHandler))
@@ -233,6 +271,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(SocialPhotoUploadResultPacket.ID, SocialPhotoUploadResultPacket::decode, SocialPhotoUploadResultHandler))
         list.add(PacketRegisterInfo(SocialPhotoChunkPacket.ID, SocialPhotoChunkPacket::decode, SocialPhotoChunkHandler))
         list.add(PacketRegisterInfo(SyncSocialMutePacket.ID, SyncSocialMutePacket::decode, SyncSocialMuteHandler))
+        list.add(PacketRegisterInfo(SyncThemePacket.ID, SyncThemePacket::decode, SyncThemeHandler))
         list.add(PacketRegisterInfo(SyncEnergyConfigPacket.ID, SyncEnergyConfigPacket::decode, SyncEnergyConfigHandler))
         list.add(
             PacketRegisterInfo(
@@ -333,6 +372,7 @@ object CobblemonSmartphoneNetwork {
             )
         )
         list.add(PacketRegisterInfo(SaveActionOrderPacket.ID, SaveActionOrderPacket::decode, SaveActionOrderHandler))
+        list.add(PacketRegisterInfo(SaveThemePacket.ID, SaveThemePacket::decode, SaveThemeHandler))
         list.add(
             PacketRegisterInfo(
                 SaveHiddenActionsPacket.ID,
@@ -402,6 +442,14 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(RequestSocialPhotoPacket.ID, RequestSocialPhotoPacket::decode, RequestSocialPhotoHandler))
         list.add(PacketRegisterInfo(LikePostPacket.ID, LikePostPacket::decode, LikePostHandler))
         list.add(PacketRegisterInfo(DeletePostPacket.ID, DeletePostPacket::decode, DeletePostHandler))
+        list.add(PacketRegisterInfo(AddCommentPacket.ID, AddCommentPacket::decode, AddCommentHandler))
+        list.add(PacketRegisterInfo(DeleteCommentPacket.ID, DeleteCommentPacket::decode, DeleteCommentHandler))
+        list.add(PacketRegisterInfo(RequestCommentsPacket.ID, RequestCommentsPacket::decode, RequestCommentsHandler))
+        list.add(PacketRegisterInfo(RequestProfilePacket.ID, RequestProfilePacket::decode, RequestProfileHandler))
+        list.add(PacketRegisterInfo(UpdateProfilePacket.ID, UpdateProfilePacket::decode, UpdateProfileHandler))
+        list.add(PacketRegisterInfo(ToggleFollowPacket.ID, ToggleFollowPacket::decode, ToggleFollowHandler))
+        list.add(PacketRegisterInfo(RequestNotificationsPacket.ID, RequestNotificationsPacket::decode, RequestNotificationsHandler))
+        list.add(PacketRegisterInfo(MarkNotificationReadPacket.ID, MarkNotificationReadPacket::decode, MarkNotificationReadHandler))
         list.add(
             PacketRegisterInfo(
                 RequestThreadListPacket.ID,
@@ -427,6 +475,9 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(CallActionPacket.ID, CallActionPacket::decode, CallActionHandler))
         list.add(PacketRegisterInfo(SaveSocialMutePacket.ID, SaveSocialMutePacket::decode, SaveSocialMuteHandler))
         list.add(PacketRegisterInfo(MutePlayerPacket.ID, MutePlayerPacket::decode, MutePlayerHandler))
+        list.add(PacketRegisterInfo(ChallengeBattlePacket.ID, ChallengeBattlePacket::decode, ChallengeBattleHandler))
+        list.add(PacketRegisterInfo(ChallengeTradePacket.ID, ChallengeTradePacket::decode, ChallengeTradeHandler))
+        list.add(PacketRegisterInfo(VotePollPacket.ID, VotePollPacket::decode, VotePollHandler))
 
         return list
     }

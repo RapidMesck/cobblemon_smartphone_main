@@ -8,6 +8,8 @@ import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState
 import com.cobblemon.mod.common.entity.PoseType
 import com.cobblemon.mod.common.pokemon.RenderablePokemon
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.client.PokeInfoClientState
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesListPacket
 import com.nbp.cobblemon_smartphone.network.packet.SpeciesListResponsePacket
@@ -29,6 +31,9 @@ class PokeInfoScreen(
 ) : Screen(Component.translatable("cobblemon_smartphone.screen.pokeinfo")) {
 
     private val frameTexture get() = color.getLargeScreenTexture()
+    private val theme get() = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+    private val SECTION_TITLE_BG get() = theme.colors.primary
+    private val SECTION_CONTENT_BG get() = theme.colors.surface
     private var screenX = 0
     private var screenY = 0
     private var scrollY = 0
@@ -92,17 +97,11 @@ class PokeInfoScreen(
         receiveSpeciesList()
         val matrices = guiGraphics.pose()
 
+        val theme = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+        SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
         blitk(
             matrixStack = matrices,
-            texture = frameTexture,
-            x = screenX,
-            y = screenY,
-            width = GUI_WIDTH,
-            height = GUI_HEIGHT
-        )
-        blitk(
-            matrixStack = matrices,
-            texture = HOME_SCREEN_TEXTURE,
+            texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()),
             x = screenX,
             y = screenY,
             width = GUI_WIDTH,
@@ -111,7 +110,7 @@ class PokeInfoScreen(
 
         // Back button
         val backHover = isInBackButton(mouseX, mouseY)
-        val backColor = if (backHover) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
+        val backColor = if (backHover) theme.colors.gold else theme.colors.textPrimary
         guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, backColor, false)
 
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
@@ -119,7 +118,7 @@ class PokeInfoScreen(
         // Search box background
         val sx = screenX + SEARCH_X
         val sy = screenY + SEARCH_Y
-        guiGraphics.fill(sx, sy, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, SECTION_CONTENT_BG)
+        guiGraphics.fill(sx, sy, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, theme.colors.surface)
         guiGraphics.fill(sx, sy, sx + SEARCH_WIDTH, sy + 1, SECTION_TITLE_BG)
         guiGraphics.fill(sx, sy + SEARCH_HEIGHT - 1, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
         guiGraphics.fill(sx, sy, sx + 1, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
@@ -383,9 +382,6 @@ class PokeInfoScreen(
 
         private const val BACK_X = 20
         private const val BACK_Y = 14
-
-        private const val SECTION_TITLE_BG = 0xFF3A96B6.toInt()
-        private const val SECTION_CONTENT_BG = 0xFFEFFDFF.toInt()
 
         private const val SEARCH_X = 22
         private const val SEARCH_Y = 28
