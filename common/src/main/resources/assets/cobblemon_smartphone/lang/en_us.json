@@ -316,6 +316,10 @@
   "cobblemon_smartphone.tooltip.social_feed_following": "Following Feed",
   "cobblemon_smartphone.tooltip.social_report": "Report content",
   "cobblemon_smartphone.tooltip.social_clear_hashtag": "Clear hashtag filter",
+  "cobblemon_smartphone.tooltip.social_battle_challenge": "Challenge to Pokémon Battle",
+  "cobblemon_smartphone.tooltip.social_trade_challenge": "Request Pokémon Trade",
+  "cobblemon_smartphone.tooltip.social_follow": "Follow Trainer",
+  "cobblemon_smartphone.tooltip.social_unfollow": "Unfollow Trainer",
 
   "cobblemon_smartphone.pokeinfo.dimensions": "H: %sm  W: %skg",
   "cobblemon_smartphone.pokeinfo.hidden_ability_prefix": "(Hidden) ",

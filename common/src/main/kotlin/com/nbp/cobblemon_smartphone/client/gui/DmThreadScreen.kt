@@ -15,14 +15,18 @@ import com.nbp.cobblemon_smartphone.client.social.SocialDmCache
 import com.nbp.cobblemon_smartphone.client.social.SocialClientSession
 import com.nbp.cobblemon_smartphone.client.social.SocialMutationState
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
+import com.nbp.cobblemon_smartphone.client.social.SocialProfileCache
 import com.nbp.cobblemon_smartphone.compat.voicechat.VoiceChatBridge
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.CallActionPacket
+import com.nbp.cobblemon_smartphone.network.packet.ChallengeBattlePacket
+import com.nbp.cobblemon_smartphone.network.packet.ChallengeTradePacket
 import com.nbp.cobblemon_smartphone.network.packet.MutePlayerPacket
 import com.nbp.cobblemon_smartphone.network.packet.SendDmPacket
+import com.nbp.cobblemon_smartphone.network.packet.SocialMutationResultPacket
+import com.nbp.cobblemon_smartphone.network.packet.ToggleFollowPacket
 import com.nbp.cobblemon_smartphone.social.CallStatus
 import com.nbp.cobblemon_smartphone.social.DmMessage
-import com.nbp.cobblemon_smartphone.network.packet.SocialMutationResultPacket
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
@@ -86,6 +90,10 @@ class DmThreadScreen(
 
     private val messageCooldownSec get() = SocialClientSession.capabilities.messageCooldownSeconds
 
+    private val isOtherPlayer get() = Minecraft.getInstance().player?.uuid != otherUuid
+    private val hasActionBar get() = isOtherPlayer
+    private val listStartY get() = if (hasActionBar) ACTION_BAR_Y + ACTION_BAR_HEIGHT + 1 else 41
+
     override fun isPauseScreen(): Boolean = false
 
     override fun init() {
@@ -97,6 +105,9 @@ class DmThreadScreen(
         // Opening the thread requests its newest page and marks it read.
         if (SocialDmCache.openThreadWith != otherUuid) {
             SocialDmCache.openThread(otherUuid, otherName)
+        }
+        if (isOtherPlayer) {
+            SocialProfileCache.request(otherUuid)
         }
 
         input = EditBox(
@@ -131,26 +142,29 @@ class DmThreadScreen(
         blitk(matrixStack = matrices, texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()), x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
 
         renderHeader(guiGraphics, mouseX, mouseY)
+        if (hasActionBar) {
+            renderActionBar(guiGraphics, mouseX, mouseY)
+        }
 
         guiGraphics.enableScissor(
             screenX + CONTENT_X,
-            screenY + LIST_START_Y,
+            screenY + listStartY,
             screenX + CONTENT_X + CONTENT_WIDTH,
             screenY + LIST_END_Y
         )
 
         val messages = SocialDmCache.messages()
         val total = messages.sumOf { measureBubble(it) + BUBBLE_GAP }
-        maxScroll = (total - (LIST_END_Y - LIST_START_Y)).coerceAtLeast(0)
+        maxScroll = (total - (LIST_END_Y - listStartY)).coerceAtLeast(0)
         scrollY = scrollY.coerceIn(0, maxScroll)
 
         // Anchor to the bottom: with less content than the viewport, start at the top instead.
         var y = screenY + LIST_END_Y - total + scrollY
-        if (total < LIST_END_Y - LIST_START_Y) y = screenY + LIST_START_Y
+        if (total < LIST_END_Y - listStartY) y = screenY + listStartY
 
         messages.forEach { message ->
             val height = measureBubble(message)
-            if (y + height >= screenY + LIST_START_Y && y <= screenY + LIST_END_Y) {
+            if (y + height >= screenY + listStartY && y <= screenY + LIST_END_Y) {
                 renderBubble(guiGraphics, message, y)
             }
             y += height + BUBBLE_GAP
@@ -162,7 +176,7 @@ class DmThreadScreen(
                 font,
                 text,
                 screenX + CONTENT_X + (CONTENT_WIDTH - font.width(text)) / 2,
-                screenY + LIST_START_Y + (LIST_END_Y - LIST_START_Y) / 2 - font.lineHeight / 2,
+                screenY + listStartY + (LIST_END_Y - listStartY) / 2 - font.lineHeight / 2,
                 MUTED_COLOR,
                 false
             )
@@ -198,7 +212,7 @@ class DmThreadScreen(
 
     private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
-        guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + LIST_START_Y, theme.colors.headerNavy)
+        guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + ACTION_BAR_Y, theme.colors.headerNavy)
         guiGraphics.drawString(
             font,
             lang("back"),
@@ -223,6 +237,90 @@ class DmThreadScreen(
             NAME_COLOR,
             false
         )
+    }
+
+    private fun renderActionBar(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (!hasActionBar) return
+        val profile = SocialProfileCache.getProfile(otherUuid)
+        val isMutual = profile?.isMutualFollow == true
+        val isFollowed = profile?.isFollowedByMe == true
+
+        val barX = screenX + CONTENT_X
+        val barY = screenY + ACTION_BAR_Y
+        val barW = CONTENT_WIDTH
+        val barH = ACTION_BAR_HEIGHT
+
+        // Subheader background and bottom border
+        guiGraphics.fill(barX, barY, barX + barW, barY + barH, theme.colors.headerNavyLight)
+        guiGraphics.fill(barX, barY + barH - 1, barX + barW, barY + barH, BUTTON_BORDER_COLOR)
+
+        val btnY = barY + 2
+        val btnH = barH - 4
+
+        if (isMutual) {
+            // 3 Buttons: Follow, Battle, Trade
+            // 1. Follow button
+            val fX = barX + 3
+            val fW = 52
+            val fHovered = mouseX in fX..(fX + fW) && mouseY in btnY..(btnY + btnH)
+            val fBg = if (isFollowed) {
+                if (fHovered) theme.colors.danger else theme.colors.surface
+            } else {
+                if (fHovered) theme.colors.primaryHover else ACCENT_COLOR
+            }
+            guiGraphics.fill(fX, btnY, fX + fW, btnY + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(fX + 1, btnY + 1, fX + fW - 1, btnY + btnH - 1, fBg)
+            val fText = if (isFollowed) {
+                if (fHovered) lang("unfollow") else "✓ " + lang("feed_following")
+            } else {
+                "+ " + lang("follow")
+            }
+            val trimmedFText = font.plainSubstrByWidth(fText, fW - 4)
+            val fTextColor = if (isFollowed && !fHovered) CONTENT_TEXT else 0xFFFFFFFF.toInt()
+            guiGraphics.drawString(font, trimmedFText, fX + (fW - font.width(trimmedFText)) / 2, btnY + 2, fTextColor, false)
+
+            // 2. Battle button
+            val bX = fX + fW + 3
+            val bW = 54
+            val bHovered = mouseX in bX..(bX + bW) && mouseY in btnY..(btnY + btnH)
+            val bBg = if (bHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
+            guiGraphics.fill(bX, btnY, bX + bW, btnY + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(bX + 1, btnY + 1, bX + bW - 1, btnY + btnH - 1, bBg)
+            val bText = "⚔ " + lang("battle_action")
+            val trimmedBText = font.plainSubstrByWidth(bText, bW - 4)
+            guiGraphics.drawString(font, trimmedBText, bX + (bW - font.width(trimmedBText)) / 2, btnY + 2, if (bHovered) NAME_COLOR else CONTENT_TEXT, false)
+
+            // 3. Trade button
+            val tX = bX + bW + 3
+            val tW = barX + barW - 3 - tX
+            val tHovered = mouseX in tX..(tX + tW) && mouseY in btnY..(btnY + btnH)
+            val tBg = if (tHovered) theme.colors.primaryHover else SECTION_CONTENT_BG
+            guiGraphics.fill(tX, btnY, tX + tW, btnY + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(tX + 1, btnY + 1, tX + tW - 1, btnY + btnH - 1, tBg)
+            val tText = "⇄ " + lang("trade_action")
+            val trimmedTText = font.plainSubstrByWidth(tText, tW - 4)
+            guiGraphics.drawString(font, trimmedTText, tX + (tW - font.width(trimmedTText)) / 2, btnY + 2, if (tHovered) NAME_COLOR else CONTENT_TEXT, false)
+        } else {
+            // Not mutual: Only Follow button is shown
+            val fW = 80
+            val fX = barX + (barW - fW) / 2
+            val fHovered = mouseX in fX..(fX + fW) && mouseY in btnY..(btnY + btnH)
+            val fBg = if (isFollowed) {
+                if (fHovered) theme.colors.danger else theme.colors.surface
+            } else {
+                if (fHovered) theme.colors.primaryHover else ACCENT_COLOR
+            }
+            guiGraphics.fill(fX, btnY, fX + fW, btnY + btnH, BUTTON_BORDER_COLOR)
+            guiGraphics.fill(fX + 1, btnY + 1, fX + fW - 1, btnY + btnH - 1, fBg)
+            val fText = if (isFollowed) {
+                if (fHovered) lang("unfollow") else "✓ " + lang("feed_following")
+            } else {
+                "+ " + lang("follow")
+            }
+            val trimmedFText = font.plainSubstrByWidth(fText, fW - 4)
+            val fTextColor = if (isFollowed && !fHovered) CONTENT_TEXT else 0xFFFFFFFF.toInt()
+            guiGraphics.drawString(font, trimmedFText, fX + (fW - font.width(trimmedFText)) / 2, btnY + 2, fTextColor, false)
+        }
     }
 
     private fun renderCallButton(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -452,7 +550,7 @@ class DmThreadScreen(
     private fun renderPendingPokemonModels(guiGraphics: GuiGraphics) {
         pendingPokemonModels.forEach { pending ->
             val left = maxOf(pending.x + DM_MODEL_BOX_X + 1, screenX + CONTENT_X)
-            val top = maxOf(pending.y + DM_MODEL_BOX_Y + 1, screenY + LIST_START_Y)
+            val top = maxOf(pending.y + DM_MODEL_BOX_Y + 1, screenY + listStartY)
             val right = minOf(pending.x + DM_MODEL_BOX_X + DM_MODEL_WIDTH - 1, screenX + CONTENT_X + CONTENT_WIDTH)
             val bottom = minOf(pending.y + DM_MODEL_BOX_Y + DM_MODEL_HEIGHT - 1, screenY + LIST_END_Y)
             if (left >= right || top >= bottom) return@forEach
@@ -666,11 +764,26 @@ class DmThreadScreen(
             onCallButton()
             return true
         }
-        if (my in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) {
+        if (isInFollowButton(mx, my)) {
+            playClickSound()
+            ToggleFollowPacket(otherUuid).sendToServer()
+            return true
+        }
+        if (isInBattleButton(mx, my)) {
+            playClickSound()
+            ChallengeBattlePacket(otherUuid).sendToServer()
+            return true
+        }
+        if (isInTradeButton(mx, my)) {
+            playClickSound()
+            ChallengeTradePacket(otherUuid).sendToServer()
+            return true
+        }
+        if (my in (screenY + listStartY)..(screenY + LIST_END_Y)) {
             val messages = SocialDmCache.messages()
             val total = messages.sumOf { measureBubble(it) + BUBBLE_GAP }
             var y = screenY + LIST_END_Y - total + scrollY
-            if (total < LIST_END_Y - LIST_START_Y) y = screenY + LIST_START_Y
+            if (total < LIST_END_Y - listStartY) y = screenY + listStartY
             messages.forEach { message ->
                 if (isInDmPokemonMore(message, mx, my, y)) {
                     playClickSound()
@@ -798,12 +911,60 @@ class DmThreadScreen(
         mouseX in (screenX + CONTENT_X + 2)..(screenX + CONTENT_X + 2 + font.width(lang("back"))) &&
                 mouseY in (screenY + TITLE_Y + 2)..(screenY + TITLE_Y + 2 + font.lineHeight)
 
+    private fun isInFollowButton(mouseX: Int, mouseY: Int): Boolean {
+        if (!hasActionBar) return false
+        val profile = SocialProfileCache.getProfile(otherUuid)
+        val isMutual = profile?.isMutualFollow == true
+        val barX = screenX + CONTENT_X
+        val barY = screenY + ACTION_BAR_Y
+        val btnY = barY + 2
+        val btnH = ACTION_BAR_HEIGHT - 4
+        val (fX, fW) = if (isMutual) {
+            (barX + 3) to 52
+        } else {
+            (barX + (CONTENT_WIDTH - 80) / 2) to 80
+        }
+        return mouseX in fX..(fX + fW) && mouseY in btnY..(btnY + btnH)
+    }
+
+    private fun isInBattleButton(mouseX: Int, mouseY: Int): Boolean {
+        if (!hasActionBar) return false
+        val profile = SocialProfileCache.getProfile(otherUuid)
+        if (profile?.isMutualFollow != true) return false
+        val barX = screenX + CONTENT_X
+        val barY = screenY + ACTION_BAR_Y
+        val btnY = barY + 2
+        val btnH = ACTION_BAR_HEIGHT - 4
+        val bX = barX + 3 + 52 + 3
+        val bW = 54
+        return mouseX in bX..(bX + bW) && mouseY in btnY..(btnY + btnH)
+    }
+
+    private fun isInTradeButton(mouseX: Int, mouseY: Int): Boolean {
+        if (!hasActionBar) return false
+        val profile = SocialProfileCache.getProfile(otherUuid)
+        if (profile?.isMutualFollow != true) return false
+        val barX = screenX + CONTENT_X
+        val barY = screenY + ACTION_BAR_Y
+        val btnY = barY + 2
+        val btnH = ACTION_BAR_HEIGHT - 4
+        val tX = barX + 3 + 52 + 3 + 54 + 3
+        val tW = barX + CONTENT_WIDTH - 3 - tX
+        return mouseX in tX..(tX + tW) && mouseY in btnY..(btnY + btnH)
+    }
+
     private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
 
         val tooltip = when {
             isInBack(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_back_to_social")
             isInBellButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_mute_player")
+            isInFollowButton(mouseX, mouseY) -> {
+                val isFollowed = SocialProfileCache.getProfile(otherUuid)?.isFollowedByMe == true
+                Component.translatable(if (isFollowed) "cobblemon_smartphone.tooltip.social_unfollow" else "cobblemon_smartphone.tooltip.social_follow")
+            }
+            isInBattleButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_battle_challenge")
+            isInTradeButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_trade_challenge")
             callAvailable() && isInCallButton(mouseX, mouseY) -> {
                 val key = when {
                     CallState.isBusyWith(otherUuid) -> "social_call_end"
@@ -836,7 +997,8 @@ class DmThreadScreen(
         private const val CONTENT_X = 20
         private const val CONTENT_WIDTH = 171
         private const val TITLE_Y = 27
-        private const val LIST_START_Y = 41
+        private const val ACTION_BAR_Y = 41
+        private const val ACTION_BAR_HEIGHT = 16
         private const val LIST_END_Y = 170
 
         private const val INPUT_Y = 175

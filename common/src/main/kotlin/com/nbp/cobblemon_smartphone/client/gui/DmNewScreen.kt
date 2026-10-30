@@ -182,17 +182,8 @@ class DmNewScreen(
         )
 
         // Online status dot
-        guiGraphics.fill(x + CONTENT_WIDTH - 24, y + 7, x + CONTENT_WIDTH - 20, y + 11, theme.colors.success)
-
-        // Mini Profile Button (User icon)
-        val profileHovered = isInProfileBtn(mouseX, mouseY, x, y)
-        val profileIconColor = if (profileHovered) theme.colors.gold else CONTENT_DIM
-        SocialUi.drawIcon(guiGraphics, SocialUi.Icon.USER, x + CONTENT_WIDTH - 14, y + 4, profileIconColor)
+        guiGraphics.fill(x + CONTENT_WIDTH - 14, y + 7, x + CONTENT_WIDTH - 10, y + 11, theme.colors.success)
     }
-
-    private fun isInProfileBtn(mouseX: Int, mouseY: Int, rowX: Int, rowY: Int): Boolean =
-        mouseX in (rowX + CONTENT_WIDTH - 18)..(rowX + CONTENT_WIDTH - 2) &&
-                mouseY in rowY..(rowY + ROW_HEIGHT)
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         val mx = mouseX.toInt()
@@ -209,16 +200,9 @@ class DmNewScreen(
             filteredCandidates().forEach { info ->
                 if (isInRow(mx, my, y)) {
                     playClickSound()
-                    val rowX = screenX + CONTENT_X
-                    if (isInProfileBtn(mx, my, rowX, y)) {
-                        Minecraft.getInstance().setScreen(
-                            SocialProfileScreen(color, smartphoneStack, info.profile.id, info.profile.name)
-                        )
-                    } else {
-                        Minecraft.getInstance().setScreen(
-                            DmThreadScreen(color, smartphoneStack, info.profile.id, info.profile.name)
-                        )
-                    }
+                    Minecraft.getInstance().setScreen(
+                        DmThreadScreen(color, smartphoneStack, info.profile.id, info.profile.name)
+                    )
                     return true
                 }
                 y += ROW_HEIGHT + ROW_GAP
@@ -248,15 +232,7 @@ class DmNewScreen(
         val hoveredPlayer = findHoveredPlayer(mouseX, mouseY, players)
         val tooltip = when {
             isInBack(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_back_to_social")
-            hoveredPlayer != null -> {
-                val rowX = screenX + CONTENT_X
-                val rowY = findHoveredPlayerY(mouseX, mouseY, players)
-                if (rowY != null && isInProfileBtn(mouseX, mouseY, rowX, rowY)) {
-                    Component.translatable("cobblemon_smartphone.tooltip.social_view_profile")
-                } else {
-                    Component.translatable("cobblemon_smartphone.tooltip.social_start_conversation")
-                }
-            }
+            hoveredPlayer != null -> Component.translatable("cobblemon_smartphone.tooltip.social_start_conversation")
             else -> null
         } ?: return
         guiGraphics.renderTooltip(font, tooltip, mouseX, mouseY)
@@ -267,16 +243,6 @@ class DmNewScreen(
         var y = screenY + LIST_START_Y - scrollY
         for (info in players) {
             if (isInRow(mouseX, mouseY, y)) return info
-            y += ROW_HEIGHT + ROW_GAP
-        }
-        return null
-    }
-
-    private fun findHoveredPlayerY(mouseX: Int, mouseY: Int, players: List<PlayerInfo>): Int? {
-        if (mouseY !in (screenY + LIST_START_Y)..(screenY + LIST_END_Y)) return null
-        var y = screenY + LIST_START_Y - scrollY
-        for (info in players) {
-            if (isInRow(mouseX, mouseY, y)) return y
             y += ROW_HEIGHT + ROW_GAP
         }
         return null

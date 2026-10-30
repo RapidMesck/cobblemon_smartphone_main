@@ -433,7 +433,7 @@ class SocialPostDetailScreen(
         if (mx in (screenX + CONTENT_X + CARD_PAD)..(screenX + CONTENT_X + CARD_PAD + authorHitW) &&
             my in (cardY + CARD_PAD)..(cardY + CARD_PAD + HEADER_HEIGHT)) {
             playClickSound()
-            minecraft?.setScreen(SocialProfileScreen(color, smartphoneStack, post.authorUuid, post.authorName))
+            minecraft?.setScreen(DmThreadScreen(color, smartphoneStack, post.authorUuid, post.authorName))
             return true
         }
         if (isInLikeButton(mx, my, screenX + CONTENT_X, cardY, postH)) {
@@ -503,7 +503,7 @@ class SocialPostDetailScreen(
             if (mx in (screenX + CONTENT_X + 3)..(screenX + CONTENT_X + 3 + cAuthorHitW) &&
                 my in cursorY..(cursorY + HEADER_HEIGHT)) {
                 playClickSound()
-                minecraft?.setScreen(SocialProfileScreen(color, smartphoneStack, comment.authorUuid, comment.authorName))
+                minecraft?.setScreen(DmThreadScreen(color, smartphoneStack, comment.authorUuid, comment.authorName))
                 return true
             }
             if (canDeleteComment(comment) && isInDeleteComment(mx, my, screenX + CONTENT_X, cursorY, commentH)) {

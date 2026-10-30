@@ -559,11 +559,11 @@ class SocialScreen(
         guiGraphics.fill(barX, barY, barX + barW, barY + BOTTOM_BAR_HEIGHT, theme.colors.headerNavy)
         guiGraphics.fill(barX, barY, barX + barW, barY + 1, BUTTON_BORDER_COLOR)
 
-        val slotW = barW / 5
+        val slotW = barW / 4
 
-        for (i in 0..4) {
+        for (i in 0..3) {
             val sx = barX + i * slotW
-            val sw = if (i == 4) (barX + barW) - sx else slotW
+            val sw = if (i == 3) (barX + barW) - sx else slotW
             val hovered = mouseX in sx..(sx + sw) && mouseY in barY..(barY + BOTTOM_BAR_HEIGHT)
             val active = when (i) {
                 0 -> tab == Tab.FEED
@@ -581,7 +581,6 @@ class SocialScreen(
                 1 -> SocialUi.Icon.SEARCH
                 2 -> SocialUi.Icon.MESSAGE
                 3 -> SocialUi.Icon.BELL
-                4 -> SocialUi.Icon.USER
                 else -> SocialUi.Icon.FEED
             }
 
@@ -1143,12 +1142,6 @@ class SocialScreen(
                     switchTab(Tab.NOTIFICATIONS)
                     scrollY = 0
                 }
-                4 -> {
-                    val me = Minecraft.getInstance().player
-                    if (me != null) {
-                        Minecraft.getInstance().setScreen(SocialProfileScreen(color, smartphoneStack, me.uuid, me.gameProfile.name))
-                    }
-                }
             }
             return true
         }
@@ -1223,7 +1216,7 @@ class SocialScreen(
                     when (notif.type) {
                         SocialNotificationType.FOLLOW -> {
                             Minecraft.getInstance().setScreen(
-                                SocialProfileScreen(color, smartphoneStack, notif.actorUuid, notif.actorName)
+                                DmThreadScreen(color, smartphoneStack, notif.actorUuid, notif.actorName)
                             )
                         }
                         SocialNotificationType.LIKE,
@@ -1236,7 +1229,7 @@ class SocialScreen(
                                 )
                             } else {
                                 Minecraft.getInstance().setScreen(
-                                    SocialProfileScreen(color, smartphoneStack, notif.actorUuid, notif.actorName)
+                                    DmThreadScreen(color, smartphoneStack, notif.actorUuid, notif.actorName)
                                 )
                             }
                         }
@@ -1263,7 +1256,7 @@ class SocialScreen(
                 if (mx in (screenX + CONTENT_X + CARD_PAD)..(screenX + CONTENT_X + CARD_PAD + authorHitW) &&
                     my in (y + CARD_PAD)..(y + CARD_PAD + HEADER_HEIGHT)) {
                     playClickSound()
-                    Minecraft.getInstance().setScreen(SocialProfileScreen(color, smartphoneStack, post.authorUuid, post.authorName))
+                    Minecraft.getInstance().setScreen(DmThreadScreen(color, smartphoneStack, post.authorUuid, post.authorName))
                     return true
                 }
                 if (isInPokemonInfoButton(post, mx, my, screenX + CONTENT_X, y)) {
@@ -1386,8 +1379,8 @@ class SocialScreen(
         val barX = screenX + SCREEN_LEFT
         val barW = SCREEN_RIGHT - SCREEN_LEFT
         if (mouseY !in barY..(barY + BOTTOM_BAR_HEIGHT) || mouseX !in barX..(barX + barW)) return null
-        val slotW = barW / 5
-        return ((mouseX - barX) / slotW).coerceIn(0, 4)
+        val slotW = barW / 4
+        return ((mouseX - barX) / slotW).coerceIn(0, 3)
     }
 
     private fun isInThreadRow(mouseX: Int, mouseY: Int, rowY: Int): Boolean =
@@ -1598,7 +1591,6 @@ class SocialScreen(
                 1 -> "cobblemon_smartphone.tooltip.social_explore"
                 2 -> "cobblemon_smartphone.social.tab_dms"
                 3 -> "cobblemon_smartphone.social.tab_notifications"
-                4 -> "cobblemon_smartphone.tooltip.social_my_profile"
                 else -> ""
             }
             guiGraphics.renderTooltip(font, Component.translatable(key), mouseX, mouseY)
@@ -1623,7 +1615,7 @@ class SocialScreen(
             }
             tab == Tab.NOTIFICATIONS -> findHoveredNotification(mouseX, mouseY)?.let { notif ->
                 val key = when (notif.type) {
-                    SocialNotificationType.FOLLOW -> "social_view_profile"
+                    SocialNotificationType.FOLLOW -> "social_open_conversation"
                     SocialNotificationType.LIKE,
                     SocialNotificationType.COMMENT,
                     SocialNotificationType.MENTION -> "social_view_post"
