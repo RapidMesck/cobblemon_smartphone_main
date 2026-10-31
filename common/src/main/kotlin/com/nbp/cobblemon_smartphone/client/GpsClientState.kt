@@ -26,6 +26,10 @@ object GpsClientState {
     @Volatile var cachedBiomes: List<BiomeInfo>? = null
         private set
 
+    fun injectMockBiomes(biomes: List<BiomeInfo>) {
+        cachedBiomes = biomes
+    }
+
     enum class SearchStatus { IDLE, SEARCHING, FOUND, NOT_FOUND }
 
     @Volatile var tracking = false

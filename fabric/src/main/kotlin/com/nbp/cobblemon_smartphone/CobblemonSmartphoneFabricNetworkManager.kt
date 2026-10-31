@@ -27,6 +27,10 @@ object CobblemonSmartphoneFabricNetworkManager : NetworkManager {
     }
 
     override fun sendToServer(packet: NetworkPacket<*>) {
-        ClientPlayNetworking.send(packet)
+        runCatching {
+            if (ClientPlayNetworking.canSend(packet.type())) {
+                ClientPlayNetworking.send(packet)
+            }
+        }
     }
 }

@@ -149,6 +149,20 @@ loom {
             programArgs "--username", "PlayerB"
             vmArg "-Dcobblemonsmartphone.devInstance=mp"
         }
+        screenshotClient {
+            inherit client
+            runDir "runScreenshot"
+            programArgs "--username", "DevScreenshot"
+            vmArg "-Dsmartphone.screenshot=all"
+        }
+    }
+}
+
+tasks.withType(JavaExec).configureEach {
+    ["smartphone.screenshot", "smartphone.screenshot.dir"].each { key ->
+        if (System.getProperty(key) != null) {
+            systemProperty key, System.getProperty(key)
+        }
     }
 }
 

@@ -232,7 +232,7 @@ class SmartphoneScreen(
 
     private fun renderWorldTime(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
         val minecraft = Minecraft.getInstance()
-        val dayTime = minecraft.level?.dayTime ?: return
+        val dayTime = minecraft.level?.dayTime ?: 6000L
         val ticksToday = Math.floorMod(dayTime, TICKS_PER_DAY)
         val totalMinutes = ((ticksToday * MINUTES_PER_DAY / TICKS_PER_DAY) + DAWN_MINUTES) % MINUTES_PER_DAY
         val hours = totalMinutes / MINUTES_PER_HOUR

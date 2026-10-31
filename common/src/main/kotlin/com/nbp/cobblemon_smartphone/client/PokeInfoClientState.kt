@@ -25,6 +25,10 @@ object PokeInfoClientState {
         if (packet.requestId == expectedListRequestId) listResponse = packet
     }
 
+    fun injectMockList(species: List<com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider.SpeciesInfo>) {
+        listResponse = SpeciesListResponsePacket(expectedListRequestId, SpeciesListResponsePacket.Status.SUCCESS, species)
+    }
+
     fun consumeListResponse(requestId: Long): SpeciesListResponsePacket? {
         if (requestId != expectedListRequestId) return null
         val response = listResponse ?: return null
@@ -53,6 +57,10 @@ object PokeInfoClientState {
         if (matchesExpected(packet.requestId, packet.speciesId)) {
             detailResponse = packet
         }
+    }
+
+    fun injectMockDetail(details: List<com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider.SpeciesDetail>) {
+        detailResponse = SpeciesDetailResponsePacket(expectedDetailRequestId, expectedSpeciesId, SpeciesDetailResponsePacket.Status.SUCCESS, details)
     }
 
     fun consumeDetailResponse(requestId: Long): SpeciesDetailResponsePacket? {

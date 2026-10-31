@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.client
 
 import com.nbp.cobblemon_smartphone.CobblemonSmartphoneFabricNetworkManager
+import com.nbp.cobblemon_smartphone.client.dev.GuiScreenshotHarness
 import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
 import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
 import com.nbp.cobblemon_smartphone.client.gui.StructureCompassOverlay
@@ -72,6 +73,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             SocialPhotoClient.tick()
             GpsClientState.tick()
             StructureCompassClientState.tick()
+            GuiScreenshotHarness.tick(client)
         })
 
         HudRenderCallback.EVENT.register(HudRenderCallback { guiGraphics, _ ->

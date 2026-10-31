@@ -25,6 +25,10 @@ object StructureCompassClientState {
     @Volatile var cachedStructures: List<StructureInfo>? = null
         private set
 
+    fun injectMockStructures(structures: List<StructureInfo>) {
+        cachedStructures = structures
+    }
+
     enum class SearchStatus { IDLE, SEARCHING, FOUND, NOT_FOUND }
 
     @Volatile var tracking = false
