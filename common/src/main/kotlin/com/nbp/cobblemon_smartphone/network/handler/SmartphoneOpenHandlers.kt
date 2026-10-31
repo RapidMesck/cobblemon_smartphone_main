@@ -46,8 +46,8 @@ object SyncRotomSocialSessionHandler : ClientNetworkPacketHandler<SyncRotomSocia
     override fun handle(packet: SyncRotomSocialSessionPacket, client: Minecraft) {
         client.execute {
             RotomClientManager.onServerSocialSession(
-                player1Uuid = packet.player1Uuid,
-                player2Uuid = packet.player2Uuid,
+                sessionId = packet.sessionId,
+                participants = packet.participants,
                 active = packet.active,
                 anchorX = packet.anchorX,
                 anchorY = packet.anchorY,

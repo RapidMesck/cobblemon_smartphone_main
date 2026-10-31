@@ -32,6 +32,7 @@ object SmartphoneHelper {
     const val ROTOM_PHONE_ALT_TAG = "rotom_phone"
     const val ROTOM_ACCESSORY_TAG = "rotom_accessory"
     const val ROTOM_RIBBON_COLOR_TAG = "rotom_ribbon_color"
+    const val ROTOM_ACCESSORY_COLOR_TAG = "rotom_accessory_color"
 
     fun getDyeDisplayRgb(color: DyeColor): Int {
         return when (color) {
@@ -67,16 +68,19 @@ object SmartphoneHelper {
         } ?: DyeColor.PINK
     }
 
-    fun ItemStack.getRibbonDyeColor(): DyeColor? {
+    fun ItemStack.getAccessoryDyeColor(defaultColor: DyeColor = DyeColor.PINK): DyeColor {
         val dyed = this.get(DataComponents.DYED_COLOR)
         val customData = this.get(DataComponents.CUSTOM_DATA)
         if (customData != null) {
             val tag = customData.copyTag()
-            if (tag.contains(ROTOM_RIBBON_COLOR_TAG)) {
-                val colorName = tag.getString(ROTOM_RIBBON_COLOR_TAG)
+            val colorName = when {
+                tag.contains(ROTOM_ACCESSORY_COLOR_TAG) -> tag.getString(ROTOM_ACCESSORY_COLOR_TAG)
+                tag.contains(ROTOM_RIBBON_COLOR_TAG) -> tag.getString(ROTOM_RIBBON_COLOR_TAG)
+                else -> null
+            }
+            if (colorName != null) {
                 val byName = DyeColor.byName(colorName, null)
                 if (byName != null) {
-                    // Se o item foi tingido na bancada com outro corante, o DYED_COLOR mudou em relação à tag
                     if (dyed != null && (dyed.rgb() and 0xFFFFFF) != getDyeDisplayRgb(byName)) {
                         return findClosestDyeColor(dyed.rgb())
                     }
@@ -87,44 +91,64 @@ object SmartphoneHelper {
         if (dyed != null) {
             return findClosestDyeColor(dyed.rgb())
         }
-        return null
+        return defaultColor
     }
 
-    fun ItemStack.setRibbonDyeColor(color: DyeColor?) {
+    fun ItemStack.getRibbonDyeColor(): DyeColor? {
+        val customData = this.get(DataComponents.CUSTOM_DATA)
+        val hasTag = customData != null && (customData.copyTag().contains(ROTOM_ACCESSORY_COLOR_TAG) || customData.copyTag().contains(ROTOM_RIBBON_COLOR_TAG))
+        val dyed = this.get(DataComponents.DYED_COLOR)
+        if (!hasTag && dyed == null) return null
+        return getAccessoryDyeColor(DyeColor.PINK)
+    }
+
+    fun ItemStack.getBowtieDyeColor(): DyeColor? {
+        val customData = this.get(DataComponents.CUSTOM_DATA)
+        val hasTag = customData != null && (customData.copyTag().contains(ROTOM_ACCESSORY_COLOR_TAG) || customData.copyTag().contains(ROTOM_RIBBON_COLOR_TAG))
+        val dyed = this.get(DataComponents.DYED_COLOR)
+        if (!hasTag && dyed == null) return null
+        return getAccessoryDyeColor(DyeColor.LIGHT_BLUE)
+    }
+
+    fun ItemStack.setAccessoryDyeColor(color: DyeColor?) {
         val existingData = this.get(DataComponents.CUSTOM_DATA)
         val tag = existingData?.copyTag() ?: CompoundTag()
         if (color != null) {
+            tag.putString(ROTOM_ACCESSORY_COLOR_TAG, color.serializedName)
             tag.putString(ROTOM_RIBBON_COLOR_TAG, color.serializedName)
             this.set(DataComponents.DYED_COLOR, DyedItemColor(getDyeDisplayRgb(color), false))
         } else {
+            tag.remove(ROTOM_ACCESSORY_COLOR_TAG)
             tag.remove(ROTOM_RIBBON_COLOR_TAG)
             this.remove(DataComponents.DYED_COLOR)
         }
         this.set(DataComponents.CUSTOM_DATA, CustomData.of(tag))
     }
 
+    fun ItemStack.setRibbonDyeColor(color: DyeColor?) = setAccessoryDyeColor(color)
+
     fun getRibbonTintColor(stack: ItemStack): Int {
-        val color = stack.getRibbonDyeColor()
-        if (color != null) {
-            return (0xFF shl 24) or getDyeDisplayRgb(color)
-        }
-        val dyed = stack.get(DataComponents.DYED_COLOR)
-        if (dyed != null) {
-            return (0xFF shl 24) or (dyed.rgb() and 0xFFFFFF)
-        }
-        return (0xFF shl 24) or getDyeDisplayRgb(DyeColor.PINK)
+        val defaultColor = if (stack.item == CobblemonSmartphoneItems.ROTOM_BOWTIE) DyeColor.LIGHT_BLUE else DyeColor.PINK
+        val color = stack.getAccessoryDyeColor(defaultColor)
+        return (0xFF shl 24) or getDyeDisplayRgb(color)
     }
 
     fun createColoredRibbon(color: DyeColor): ItemStack {
         val stack = ItemStack(CobblemonSmartphoneItems.ROTOM_RIBBON)
-        stack.setRibbonDyeColor(color)
+        stack.setAccessoryDyeColor(color)
+        return stack
+    }
+
+    fun createColoredBowtie(color: DyeColor): ItemStack {
+        val stack = ItemStack(CobblemonSmartphoneItems.ROTOM_BOWTIE)
+        stack.setAccessoryDyeColor(color)
         return stack
     }
 
     fun createAccessoryStackFromPhone(phoneStack: ItemStack): ItemStack? {
         return when (phoneStack.getRotomAccessory()) {
             "bow" -> createColoredRibbon(phoneStack.getRibbonDyeColor() ?: DyeColor.PINK)
-            "tie" -> ItemStack(CobblemonSmartphoneItems.ROTOM_BOWTIE)
+            "tie" -> createColoredBowtie(phoneStack.getBowtieDyeColor() ?: DyeColor.LIGHT_BLUE)
             else -> null
         }
     }

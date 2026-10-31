@@ -4,7 +4,7 @@ import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.SetSmartphoneOpenStatePacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
-import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRibbonDyeColor
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setAccessoryDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomAccessory
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomPhone
 import net.minecraft.client.Minecraft
@@ -28,15 +28,10 @@ object RotomClientManager {
         val cachedStack: ItemStack?
     )
 
-    data class ClientFallbackPairState(
-        var nextCheckTimeMs: Long = 0L,
-        var lastSeenNearMs: Long = 0L,
-        var isFirstMeetingCheck: Boolean = true
-    )
-
     private val remoteRotomVisuals = ConcurrentHashMap<UUID, RemoteRotomVisual>()
-    private val activeSocialAnchors = ConcurrentHashMap<Pair<UUID, UUID>, RotomPlayerRenderLayer.Companion.SocialAnchor>()
-    private val fallbackPairStates = ConcurrentHashMap<Pair<UUID, UUID>, ClientFallbackPairState>()
+    private val activeSessions = ConcurrentHashMap<UUID, RotomPlayerRenderLayer.Companion.SocialAnchor>()
+    private val playerToSessionId = ConcurrentHashMap<UUID, UUID>()
+    private val fallbackCheckStates = ConcurrentHashMap<UUID, Long>()
     @Volatile
     private var serverSocialSyncReceived: Boolean = false
 
@@ -88,10 +83,9 @@ object RotomClientManager {
         stack.setRotomPhone(true)
         if (accessory.isNotBlank()) {
             stack.setRotomAccessory(accessory)
-            if (accessory == "bow") {
-                val dye = DyeColor.byName(ribbonColor, DyeColor.PINK) ?: DyeColor.PINK
-                stack.setRibbonDyeColor(dye)
-            }
+            val defaultColor = if (accessory == "bow") DyeColor.PINK else DyeColor.LIGHT_BLUE
+            val dye = DyeColor.byName(ribbonColor, defaultColor) ?: defaultColor
+            stack.setAccessoryDyeColor(dye)
         }
         remoteRotomVisuals[uuid] = RemoteRotomVisual(
             hasRotom = true,
@@ -113,9 +107,15 @@ object RotomClientManager {
         return remoteRotomVisuals[player.uuid]?.cachedStack
     }
 
+    fun hasActiveSessionFor(uuid: UUID): Boolean {
+        val sessId = playerToSessionId[uuid] ?: return false
+        val sess = activeSessions[sessId] ?: return false
+        return System.currentTimeMillis() < sess.endTimeMs
+    }
+
     fun onServerSocialSession(
-        player1Uuid: UUID,
-        player2Uuid: UUID,
+        sessionId: UUID,
+        participants: List<UUID>,
         active: Boolean,
         anchorX: Double,
         anchorY: Double,
@@ -126,9 +126,16 @@ object RotomClientManager {
         durationTicks: Int
     ) {
         serverSocialSyncReceived = true
-        val pairKey = if (player1Uuid < player2Uuid) Pair(player1Uuid, player2Uuid) else Pair(player2Uuid, player1Uuid)
         if (!active) {
-            activeSocialAnchors.remove(pairKey)
+            val old = activeSessions.remove(sessionId)
+            if (old != null) {
+                for (u in old.participants) {
+                    playerToSessionId.remove(u)
+                }
+            }
+            for (u in participants) {
+                playerToSessionId.remove(u)
+            }
             return
         }
         val now = System.currentTimeMillis()
@@ -136,8 +143,9 @@ object RotomClientManager {
         val dLen = kotlin.math.sqrt(dirX * dirX + dirZ * dirZ).coerceAtLeast(0.01)
         val uX = dirX / dLen
         val uZ = dirZ / dLen
-        activeSocialAnchors[pairKey] = RotomPlayerRenderLayer.Companion.SocialAnchor(
-            leaderUuid = pairKey.first,
+        val anchor = RotomPlayerRenderLayer.Companion.SocialAnchor(
+            sessionId = sessionId,
+            participants = participants,
             anchorX = anchorX,
             anchorY = anchorY,
             anchorZ = anchorZ,
@@ -150,43 +158,44 @@ object RotomClientManager {
             endTimeMs = now + (durationTicks * 50L).coerceAtLeast(12_000L),
             lastActiveTime = now
         )
+        activeSessions[sessionId] = anchor
+        for (u in participants) {
+            playerToSessionId[u] = sessionId
+        }
     }
 
     /**
      * Obtém (ou sorteia no modo fallback local) a sessão de interação social compartilhada
-     * entre dois jogadores próximos. Garante que ambos os Rotoms usem exatamente o mesmo Ponto Âncora.
+     * em grupo entre os jogadores próximos. Garante que todos os Rotoms compartilhem o mesmo Ponto Âncora.
      */
     fun getActiveSharedAnchor(
         player: Player,
-        nearbyPlayer: Player?,
+        nearbyPlayers: List<Player>,
         partialTick: Float,
         now: Long,
         isLocalScreenOpen: Boolean
     ): RotomPlayerRenderLayer.Companion.SocialAnchor? {
-        if (nearbyPlayer == null) return null
-
-        val p1 = if (player.uuid < nearbyPlayer.uuid) player else nearbyPlayer
-        val p2 = if (player.uuid < nearbyPlayer.uuid) nearbyPlayer else player
-        val pairKey = Pair(p1.uuid, p2.uuid)
-
-        val p1Open = if (p1 == Minecraft.getInstance().player) isLocalScreenOpen else isPlayerOpen(p1.uuid)
-        val p2Open = if (p2 == Minecraft.getInstance().player) isLocalScreenOpen else isPlayerOpen(p2.uuid)
-
-        val existing = activeSocialAnchors[pairKey]
-        if (existing != null) {
-            // Verifica se a sessão ainda é válida (tempo não expirou, ninguém abriu a tela, e não se afastaram > 7.5 blocos da âncora)
-            val d1Sqr = p1.distanceToSqr(existing.anchorX, existing.anchorY - 1.0, existing.anchorZ)
-            val d2Sqr = p2.distanceToSqr(existing.anchorX, existing.anchorY - 1.0, existing.anchorZ)
-            if (now < existing.endTimeMs && !p1Open && !p2Open && d1Sqr <= 56.25 && d2Sqr <= 56.25) {
-                existing.lastActiveTime = now
-                return existing
-            } else {
-                activeSocialAnchors.remove(pairKey)
-                val fb = fallbackPairStates.computeIfAbsent(pairKey) { ClientFallbackPairState() }
-                fb.nextCheckTimeMs = now + 18_000L
-                fb.lastSeenNearMs = now
-                fb.isFirstMeetingCheck = false
-                return null
+        val currentSessId = playerToSessionId[player.uuid]
+        if (currentSessId != null) {
+            val existing = activeSessions[currentSessId]
+            if (existing != null) {
+                val isLocalPlayer = (player == Minecraft.getInstance().player)
+                val isOpen = if (isLocalPlayer) isLocalScreenOpen else isPlayerOpen(player.uuid)
+                val distSqr = player.distanceToSqr(existing.anchorX, existing.anchorY - 1.0, existing.anchorZ)
+                if (now < existing.endTimeMs && !isOpen && distSqr <= 56.25) {
+                    existing.lastActiveTime = now
+                    return existing
+                } else {
+                    playerToSessionId.remove(player.uuid)
+                    val remaining = existing.participants.filter { it != player.uuid }
+                    if (remaining.size < 2) {
+                        activeSessions.remove(currentSessId)
+                        for (u in remaining) {
+                            playerToSessionId.remove(u)
+                        }
+                    }
+                    return null
+                }
             }
         }
 
@@ -195,66 +204,68 @@ object RotomClientManager {
             return null
         }
 
-        // Fallback determinístico no cliente (caso o servidor ainda não tenha enviado pacotes):
-        if (p1Open || p2Open) return null
-        val distSqr = p1.distanceToSqr(p2)
-        if (distSqr > 36.0) return null
+        // Fallback determinístico no cliente (caso jogando singleplayer / sem pacotes do servidor):
+        val isLocalPlayer = (player == Minecraft.getInstance().player)
+        if (isLocalPlayer && isLocalScreenOpen) return null
+        if (!isLocalPlayer && isPlayerOpen(player.uuid)) return null
 
-        val fb = fallbackPairStates.computeIfAbsent(pairKey) { ClientFallbackPairState() }
-        if (now - fb.lastSeenNearMs > 12_000L) {
-            fb.isFirstMeetingCheck = true
-            if (fb.nextCheckTimeMs < now + 1_500L) {
-                fb.nextCheckTimeMs = now + 1_500L
-            }
+        val validNearby = nearbyPlayers.filter { other ->
+            !isPlayerOpen(other.uuid) && other.distanceToSqr(player) <= 36.0
         }
-        fb.lastSeenNearMs = now
+        if (validNearby.isEmpty()) return null
 
-        if (now >= fb.nextCheckTimeMs) {
-            val gameTimeBucket = (player.level().gameTime / 100L)
-            val detSeed = pairKey.first.hashCode() xor pairKey.second.hashCode() xor gameTimeBucket.toInt()
-            val detRandom = Random(detSeed)
-            val chance = if (fb.isFirstMeetingCheck) 0.58f else 0.42f
-            fb.isFirstMeetingCheck = false
+        val cluster = (validNearby + player).distinctBy { it.uuid }.sortedBy { it.uuid }
+        if (cluster.size < 2) return null
 
-            if (detRandom.nextFloat() < chance) {
-                val x1 = Mth.lerp(partialTick.toDouble(), p1.xo, p1.x)
-                val y1 = Mth.lerp(partialTick.toDouble(), p1.yo, p1.y)
-                val z1 = Mth.lerp(partialTick.toDouble(), p1.zo, p1.z)
-                val x2 = Mth.lerp(partialTick.toDouble(), p2.xo, p2.x)
-                val y2 = Mth.lerp(partialTick.toDouble(), p2.yo, p2.y)
-                val z2 = Mth.lerp(partialTick.toDouble(), p2.zo, p2.z)
+        val leaderUuid = cluster.first().uuid
+        val nextCheck = fallbackCheckStates.getOrDefault(leaderUuid, 0L)
+        if (now < nextCheck) return null
 
-                val anchorX = (x1 + x2) * 0.5
-                val anchorY = (y1 + y2) * 0.5 + 1.35
-                val anchorZ = (z1 + z2) * 0.5
+        val gameTimeBucket = (player.level().gameTime / 120L)
+        val detSeed = leaderUuid.hashCode() xor gameTimeBucket.toInt()
+        val detRandom = Random(detSeed)
+        val chance = 0.48f
+        fallbackCheckStates[leaderUuid] = now + 7_000L
 
-                val dx = x2 - x1
-                val dz = z2 - z1
-                val dLen = kotlin.math.sqrt(dx * dx + dz * dz).coerceAtLeast(0.01)
-                val uX = dx / dLen
-                val uZ = dz / dLen
+        if (detRandom.nextFloat() < chance) {
+            val count = cluster.size.toDouble()
+            val anchorX = cluster.sumOf { Mth.lerp(partialTick.toDouble(), it.xo, it.x) } / count
+            val anchorY = (cluster.sumOf { Mth.lerp(partialTick.toDouble(), it.yo, it.y) } / count) + 1.35
+            val anchorZ = cluster.sumOf { Mth.lerp(partialTick.toDouble(), it.zo, it.z) } / count
 
-                val durationMs = detRandom.nextInt(4, 6) * 4000L
-                val anchor = RotomPlayerRenderLayer.Companion.SocialAnchor(
-                    leaderUuid = pairKey.first,
-                    anchorX = anchorX,
-                    anchorY = anchorY,
-                    anchorZ = anchorZ,
-                    dirX = uX,
-                    dirZ = uZ,
-                    perpX = -uZ,
-                    perpZ = uX,
-                    patternSeed = kotlin.math.abs(detSeed).coerceAtLeast(1),
-                    startGameTime = player.level().gameTime,
-                    endTimeMs = now + durationMs,
-                    lastActiveTime = now
-                )
-                activeSocialAnchors[pairKey] = anchor
-                return anchor
-            } else {
-                fb.nextCheckTimeMs = now + 6_000L
+            val p0 = cluster[0]
+            val p1 = cluster[1]
+            val dx = p1.x - p0.x
+            val dz = p1.z - p0.z
+            val dLen = kotlin.math.sqrt(dx * dx + dz * dz).coerceAtLeast(0.01)
+            val uX = dx / dLen
+            val uZ = dz / dLen
+
+            val sessId = UUID.nameUUIDFromBytes("fallback-$leaderUuid-$gameTimeBucket".toByteArray())
+            val durationMs = 18_000L
+            val participantUuids = cluster.map { it.uuid }
+            val anchor = RotomPlayerRenderLayer.Companion.SocialAnchor(
+                sessionId = sessId,
+                participants = participantUuids,
+                anchorX = anchorX,
+                anchorY = anchorY,
+                anchorZ = anchorZ,
+                dirX = uX,
+                dirZ = uZ,
+                perpX = -uZ,
+                perpZ = uX,
+                patternSeed = kotlin.math.abs(detSeed).coerceAtLeast(1),
+                startGameTime = player.level().gameTime,
+                endTimeMs = now + durationMs,
+                lastActiveTime = now
+            )
+            activeSessions[sessId] = anchor
+            for (u in participantUuids) {
+                playerToSessionId[u] = sessId
             }
+            return anchor
         }
+
         return null
     }
 
@@ -269,8 +280,9 @@ object RotomClientManager {
         val mc = Minecraft.getInstance()
         if (mc.player == null) {
             remoteRotomVisuals.clear()
-            activeSocialAnchors.clear()
-            fallbackPairStates.clear()
+            activeSessions.clear()
+            playerToSessionId.clear()
+            fallbackCheckStates.clear()
             serverSocialSyncReceived = false
             return
         }

@@ -78,11 +78,11 @@ class SyncRotomEquipStatePacket(
 
 /**
  * Sincroniza do servidor para os clientes o ponto âncora compartilhado e o início/fim
- * de uma interação social entre dois Rotom Phones.
+ * de uma interação social em grupo entre Rotom Phones.
  */
 class SyncRotomSocialSessionPacket(
-    val player1Uuid: UUID,
-    val player2Uuid: UUID,
+    val sessionId: UUID,
+    val participants: List<UUID>,
     val active: Boolean,
     val anchorX: Double,
     val anchorY: Double,
@@ -95,9 +95,15 @@ class SyncRotomSocialSessionPacket(
     companion object {
         val ID = smartphoneResource("sync_rotom_social_session")
         fun decode(buffer: RegistryFriendlyByteBuf): SyncRotomSocialSessionPacket {
+            val sessionId = buffer.readUUID()
+            val count = buffer.readVarInt()
+            val participants = ArrayList<UUID>(count)
+            for (i in 0 until count) {
+                participants.add(buffer.readUUID())
+            }
             return SyncRotomSocialSessionPacket(
-                player1Uuid = buffer.readUUID(),
-                player2Uuid = buffer.readUUID(),
+                sessionId = sessionId,
+                participants = participants,
                 active = buffer.readBoolean(),
                 anchorX = buffer.readDouble(),
                 anchorY = buffer.readDouble(),
@@ -113,8 +119,11 @@ class SyncRotomSocialSessionPacket(
     override val id = ID
 
     override fun encode(buffer: RegistryFriendlyByteBuf) {
-        buffer.writeUUID(player1Uuid)
-        buffer.writeUUID(player2Uuid)
+        buffer.writeUUID(sessionId)
+        buffer.writeVarInt(participants.size)
+        for (u in participants) {
+            buffer.writeUUID(u)
+        }
         buffer.writeBoolean(active)
         buffer.writeDouble(anchorX)
         buffer.writeDouble(anchorY)

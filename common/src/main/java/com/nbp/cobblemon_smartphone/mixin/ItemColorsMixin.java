@@ -17,7 +17,8 @@ public abstract class ItemColorsMixin {
         ItemColors itemColors = cir.getReturnValue();
         itemColors.register(
             (stack, tintIndex) -> tintIndex == 0 ? SmartphoneHelper.INSTANCE.getRibbonTintColor(stack) : -1,
-            CobblemonSmartphoneItems.INSTANCE.getROTOM_RIBBON()
+            CobblemonSmartphoneItems.INSTANCE.getROTOM_RIBBON(),
+            CobblemonSmartphoneItems.INSTANCE.getROTOM_BOWTIE()
         );
     }
 }

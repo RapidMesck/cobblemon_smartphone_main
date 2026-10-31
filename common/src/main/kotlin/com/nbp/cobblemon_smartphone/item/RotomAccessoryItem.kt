@@ -1,9 +1,10 @@
 package com.nbp.cobblemon_smartphone.item
 
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getBowtieDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRibbonDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRotomAccessory
-import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRibbonDyeColor
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setAccessoryDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomAccessory
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
@@ -30,6 +31,10 @@ class RotomAccessoryItem(
             val color = stack.getRibbonDyeColor() ?: DyeColor.PINK
             val colorName = Component.translatable("color.minecraft.${color.serializedName}")
             return Component.translatable("item.cobblemon_smartphone.rotom_ribbon.colored", baseName, colorName)
+        } else if (accessoryType == "tie") {
+            val color = stack.getBowtieDyeColor() ?: DyeColor.LIGHT_BLUE
+            val colorName = Component.translatable("color.minecraft.${color.serializedName}")
+            return Component.translatable("item.cobblemon_smartphone.rotom_bowtie.colored", baseName, colorName)
         }
         return baseName
     }
@@ -41,23 +46,28 @@ class RotomAccessoryItem(
     ): InteractionResultHolder<ItemStack> {
         val heldStack = player.getItemInHand(usedHand)
 
-        // Se estiver segurando um laço em uma mão e um corante do Minecraft na outra, tinge o laço diretamente
-        if (accessoryType == "bow") {
+        // Se estiver segurando um laço ou gravata borboleta em uma mão e um corante do Minecraft na outra, tinge o acessório diretamente
+        if (accessoryType == "bow" || accessoryType == "tie") {
             val otherHand = if (usedHand == InteractionHand.MAIN_HAND) InteractionHand.OFF_HAND else InteractionHand.MAIN_HAND
             val otherStack = player.getItemInHand(otherHand)
             val dyeItem = otherStack.item as? DyeItem
             if (dyeItem != null) {
                 val targetColor = dyeItem.dyeColor
-                val currentColor = heldStack.getRibbonDyeColor() ?: DyeColor.PINK
+                val defaultColor = if (accessoryType == "bow") DyeColor.PINK else DyeColor.LIGHT_BLUE
+                val currentColor = if (accessoryType == "bow") (heldStack.getRibbonDyeColor() ?: defaultColor) else (heldStack.getBowtieDyeColor() ?: defaultColor)
                 if (currentColor != targetColor) {
                     if (!level.isClientSide) {
                         if (heldStack.count == 1) {
-                            heldStack.setRibbonDyeColor(targetColor)
+                            heldStack.setAccessoryDyeColor(targetColor)
                         } else {
                             heldStack.shrink(1)
-                            val dyedRibbon = SmartphoneHelper.createColoredRibbon(targetColor)
-                            if (!player.inventory.add(dyedRibbon)) {
-                                player.drop(dyedRibbon, false)
+                            val dyedStack = if (accessoryType == "bow") {
+                                SmartphoneHelper.createColoredRibbon(targetColor)
+                            } else {
+                                SmartphoneHelper.createColoredBowtie(targetColor)
+                            }
+                            if (!player.inventory.add(dyedStack)) {
+                                player.drop(dyedStack, false)
                             }
                         }
                         if (!player.isCreative) {
@@ -108,7 +118,7 @@ class RotomAccessoryItem(
             if (!level.isClientSide) {
                 val returned = SmartphoneHelper.createAccessoryStackFromPhone(rotomPhone)
                 rotomPhone.setRotomAccessory(null)
-                rotomPhone.setRibbonDyeColor(null)
+                rotomPhone.setAccessoryDyeColor(null)
                 if (returned != null) {
                     if (!player.inventory.add(returned)) {
                         player.drop(returned, false)
@@ -131,10 +141,11 @@ class RotomAccessoryItem(
             return InteractionResultHolder.sidedSuccess(heldStack, level.isClientSide)
         }
 
-        val newRibbonColor = if (accessoryType == "bow") (heldStack.getRibbonDyeColor() ?: DyeColor.PINK) else null
-        val currentRibbonColor = if (currentAccessory == "bow") (rotomPhone.getRibbonDyeColor() ?: DyeColor.PINK) else null
+        val defaultColor = if (accessoryType == "bow") DyeColor.PINK else DyeColor.LIGHT_BLUE
+        val newColor = if (accessoryType == "bow") (heldStack.getRibbonDyeColor() ?: defaultColor) else (heldStack.getBowtieDyeColor() ?: defaultColor)
+        val currentAccColor = if (currentAccessory == "bow") (rotomPhone.getRibbonDyeColor() ?: DyeColor.PINK) else (rotomPhone.getBowtieDyeColor() ?: DyeColor.LIGHT_BLUE)
 
-        if (currentAccessory == accessoryType && (accessoryType != "bow" || currentRibbonColor == newRibbonColor)) {
+        if (currentAccessory == accessoryType && currentAccColor == newColor) {
             if (level.isClientSide) {
                 player.displayClientMessage(
                     Component.translatable("message.cobblemon_smartphone.already_has_accessory")
@@ -146,7 +157,7 @@ class RotomAccessoryItem(
         }
 
         if (!level.isClientSide) {
-            // Devolver o acessório anterior (preservando a cor do laço anterior)
+            // Devolver o acessório anterior (preservando a cor anterior)
             if (currentAccessory != null) {
                 val returned = SmartphoneHelper.createAccessoryStackFromPhone(rotomPhone)
                 if (returned != null) {
@@ -158,7 +169,7 @@ class RotomAccessoryItem(
 
             // Aplicar o novo acessório e cor no smartphone
             rotomPhone.setRotomAccessory(accessoryType)
-            rotomPhone.setRibbonDyeColor(newRibbonColor)
+            rotomPhone.setAccessoryDyeColor(newColor)
 
             if (!player.isCreative) {
                 heldStack.shrink(1)
@@ -201,16 +212,18 @@ class RotomAccessoryItem(
             else -> "tooltip.cobblemon_smartphone.rotom_accessory_remover.desc"
         }
         tooltipComponents.add(Component.translatable(tooltipKey).withStyle(ChatFormatting.GRAY))
-        if (accessoryType == "bow") {
-            val color = stack.getRibbonDyeColor() ?: DyeColor.PINK
+        if (accessoryType == "bow" || accessoryType == "tie") {
+            val defaultColor = if (accessoryType == "bow") DyeColor.PINK else DyeColor.LIGHT_BLUE
+            val color = if (accessoryType == "bow") (stack.getRibbonDyeColor() ?: defaultColor) else (stack.getBowtieDyeColor() ?: defaultColor)
             val colorName = Component.translatable("color.minecraft.${color.serializedName}")
+            val colorKey = if (accessoryType == "bow") "tooltip.cobblemon_smartphone.rotom_ribbon.color" else "tooltip.cobblemon_smartphone.rotom_bowtie.color"
+            val hintKey = if (accessoryType == "bow") "tooltip.cobblemon_smartphone.rotom_ribbon.dye_hint" else "tooltip.cobblemon_smartphone.rotom_bowtie.dye_hint"
+            val colorStyle = if (accessoryType == "bow") ChatFormatting.LIGHT_PURPLE else ChatFormatting.AQUA
             tooltipComponents.add(
-                Component.translatable("tooltip.cobblemon_smartphone.rotom_ribbon.color", colorName)
-                    .withStyle(ChatFormatting.LIGHT_PURPLE)
+                Component.translatable(colorKey, colorName).withStyle(colorStyle)
             )
             tooltipComponents.add(
-                Component.translatable("tooltip.cobblemon_smartphone.rotom_ribbon.dye_hint")
-                    .withStyle(ChatFormatting.DARK_GRAY)
+                Component.translatable(hintKey).withStyle(ChatFormatting.DARK_GRAY)
             )
         }
         tooltipComponents.add(Component.translatable("tooltip.cobblemon_smartphone.rotom_accessory.usage").withStyle(ChatFormatting.DARK_GRAY))

@@ -68,7 +68,9 @@ object CobblemonSmartphoneItems : RegistryProvider<Registry<Item>, ResourceKey<R
         for (color in DyeColor.entries) {
             entries.accept(SmartphoneHelper.createColoredRibbon(color))
         }
-        entries.accept(ROTOM_BOWTIE)
+        for (color in DyeColor.entries) {
+            entries.accept(SmartphoneHelper.createColoredBowtie(color))
+        }
         entries.accept(ROTOM_ACCESSORY_REMOVER)
     }
 }

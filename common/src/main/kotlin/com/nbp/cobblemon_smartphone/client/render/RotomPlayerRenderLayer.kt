@@ -86,7 +86,8 @@ class RotomPlayerRenderLayer(
         }
 
         data class SocialAnchor(
-            val leaderUuid: UUID,
+            val sessionId: UUID,
+            val participants: List<UUID>,
             var anchorX: Double = 0.0,
             var anchorY: Double = 0.0,
             var anchorZ: Double = 0.0,
@@ -98,7 +99,9 @@ class RotomPlayerRenderLayer(
             var startGameTime: Long = 0L,
             var endTimeMs: Long = 0L,
             var lastActiveTime: Long = 0L
-        )
+        ) {
+            val leaderUuid: UUID get() = participants.firstOrNull() ?: sessionId
+        }
 
         private val playerAnimStates = ConcurrentHashMap<UUID, RotomAnimState>()
 
@@ -111,6 +114,7 @@ class RotomPlayerRenderLayer(
         /**
          * Renderiza o próprio Rotom do jogador local em Primeira Pessoa diretamente no mundo.
          * Chamado pelo LevelRendererMixin logo após o loop de entidades quando a câmera está em primeira pessoa.
+         * Renderiza APENAS se o Rotom estiver fora do ombro se socializando com outros Rotoms!
          */
         @JvmStatic
         fun renderFirstPersonForLocalPlayer(
@@ -123,6 +127,15 @@ class RotomPlayerRenderLayer(
             val mc = Minecraft.getInstance()
             val player = mc.player ?: return
             if (player.isInvisible || player.isSleeping || player.isDeadOrDying || player.isSpectator) return
+
+            // Não renderiza em primeira pessoa se o Rotom estiver descansando no ombro!
+            // Renderiza APENAS se estiver ativamente em uma interação social ou no voo suave de transição.
+            val animState = playerAnimStates[player.uuid]
+            val hasActiveSession = RotomClientManager.hasActiveSessionFor(player.uuid)
+            val isTransitioningSocial = animState != null && animState.socialProgress > 0.001f
+            if (!hasActiveSession && !isTransitioningSocial) {
+                return
+            }
 
             val packedLight = mc.entityRenderDispatcher.getPackedLightCoords(player, partialTick)
             val limbSwing = player.walkAnimation.position(partialTick)
@@ -213,12 +226,13 @@ class RotomPlayerRenderLayer(
             val t = p * p * p * (p * (p * 6.0f - 15.0f) + 10.0f)
 
             // 1. Procurar outros jogadores próximos (até 8 blocos) que TAMBÉM tenham um Rotom Phone
-            val nearbyPlayer = player.level().getEntitiesOfClass(
+            val nearbyPlayers = player.level().getEntitiesOfClass(
                 Player::class.java,
                 player.boundingBox.inflate(8.0)
             ) { other ->
                 other != player && other.isAlive && !other.isInvisible && RotomClientManager.getEffectiveRotomPhone(other) != null
-            }.minByOrNull { it.distanceToSqr(player) }
+            }
+            val nearbyPlayer = nearbyPlayers.minByOrNull { it.distanceToSqr(player) }
 
             val bodyYaw = Mth.rotLerp(partialTick, player.yBodyRotO, player.yBodyRot)
             val targetGazeYaw: Float
@@ -353,7 +367,7 @@ class RotomPlayerRenderLayer(
 
             // 2. Consultar o gerenciador para obter o Ponto Âncora compartilhado (se houver uma interação ativa)
             val sharedAnchor = if (t < 0.1f) {
-                RotomClientManager.getActiveSharedAnchor(player, nearbyPlayer, partialTick, now, isScreenOpen)
+                RotomClientManager.getActiveSharedAnchor(player, nearbyPlayers, partialTick, now, isScreenOpen)
             } else {
                 null
             }
@@ -370,7 +384,7 @@ class RotomPlayerRenderLayer(
             }
             val socialT = animState.socialProgress * animState.socialProgress * (3f - 2f * animState.socialProgress)
 
-            // 3. Calcular a posição e rotação da coreografia no Ponto Âncora compartilhado
+            // 3. Calcular a posição e rotação da coreografia no Ponto Âncora compartilhado (suporta grupos de 2 ou mais Rotoms)
             val activeAnchor = animState.lastAnchor
             var targetDanceWorldX = 0.0
             var targetDanceWorldY = 0.0
@@ -380,18 +394,23 @@ class RotomPlayerRenderLayer(
             var rotRoll = 0.0f
 
             if (socialT > 0.001f && activeAnchor != null) {
-                val isLeader = (player.uuid == activeAnchor.leaderUuid)
-                val sideSign = if (isLeader) 1.0 else -1.0
-                val phaseOffset = if (isLeader) 0.0 else Math.PI
+                val participants = activeAnchor.participants
+                val totalCount = participants.size.coerceAtLeast(2)
+                val pIndex = participants.indexOf(player.uuid).let { if (it >= 0) it else 0 }
+                val participantAngle = (2.0 * Math.PI * pIndex) / totalCount.toDouble()
+                val altSign = if (pIndex % 2 == 0) 1.0 else -1.0
+                val sideSign = altSign
 
                 fun worldFacingYaw(wx: Double, wz: Double): Float {
                     return (Mth.atan2(wz, wx) * (180.0 / Math.PI)).toFloat() - 90.0f
                 }
 
-                val baseRadius = 0.40
-                val baseWorldX = activeAnchor.perpX * (baseRadius * sideSign)
-                val baseWorldZ = activeAnchor.perpZ * (baseRadius * sideSign)
-                val facePartnerWorldYaw = worldFacingYaw(-sideSign * activeAnchor.perpX, -sideSign * activeAnchor.perpZ)
+                val baseRadius = if (totalCount <= 2) 0.42 else (0.42 + 0.08 * (totalCount - 2)).coerceAtMost(0.85)
+                val cP = Math.cos(participantAngle)
+                val sP = Math.sin(participantAngle)
+                val baseWorldX = (activeAnchor.perpX * cP + activeAnchor.dirX * sP) * baseRadius
+                val baseWorldZ = (activeAnchor.perpZ * cP + activeAnchor.dirZ * sP) * baseRadius
+                val faceCenterWorldYaw = worldFacingYaw(-baseWorldX, -baseWorldZ)
 
                 val elapsedTicks = (player.level().gameTime - activeAnchor.startGameTime).coerceAtLeast(0L)
                 val sessionSec = (elapsedTicks + partialTick) / 20.0
@@ -415,14 +434,14 @@ class RotomPlayerRenderLayer(
                 var phaseOffX = baseWorldX
                 var phaseOffY = 0.0
                 var phaseOffZ = baseWorldZ
-                var phaseYaw = facePartnerWorldYaw
+                var phaseYaw = faceCenterWorldYaw
                 var phasePitch = 0.0f
                 var phaseRoll = 0.0f
 
                 when (currentPhase) {
                     0 -> {
-                        // INTERAÇÃO 1: CIRANDINHA ORBITAL (Voo em círculo inclinado como aviãozinho)
-                        val orbitAngle = (phaseTime / 4.0f) * (2.0 * Math.PI) + phaseOffset
+                        // INTERAÇÃO 1: CIRANDINHA ORBITAL (Voo em círculo inclinado em grupo como aviãozinho)
+                        val orbitAngle = (phaseTime / 4.0f) * (2.0 * Math.PI) + participantAngle
                         val cO = Math.cos(orbitAngle)
                         val sO = Math.sin(orbitAngle)
 
@@ -433,13 +452,16 @@ class RotomPlayerRenderLayer(
                         val tanX = -activeAnchor.perpX * sO + activeAnchor.dirX * cO
                         val tanZ = -activeAnchor.perpZ * sO + activeAnchor.dirZ * cO
                         val flightYaw = worldFacingYaw(tanX, tanZ)
-                        phaseYaw = facePartnerWorldYaw + Mth.wrapDegrees(flightYaw - facePartnerWorldYaw) * env
+                        phaseYaw = faceCenterWorldYaw + Mth.wrapDegrees(flightYaw - faceCenterWorldYaw) * env
                         phaseRoll = -20.0f * env
                         phasePitch = (Math.cos(orbitAngle * 2.0) * 6.0).toFloat() * env
                     }
                     1 -> {
-                        // INTERAÇÃO 2: MORTAIS / BACKFLIPS SINCRONIZADOS
+                        // INTERAÇÃO 2: MORTAIS / BACKFLIPS SINCRONIZADOS EM GRUPO
                         val sub = phaseTime % 2.0f
+                        phaseOffX = baseWorldX
+                        phaseOffZ = baseWorldZ
+                        phaseYaw = faceCenterWorldYaw
                         if (sub < 0.30f) {
                             val pPrep = sub / 0.30f
                             phaseOffY = (-Mth.sin(pPrep * Math.PI.toFloat()) * 0.05).toDouble()
@@ -449,15 +471,15 @@ class RotomPlayerRenderLayer(
                             val smoothFlip = pFlip * pFlip * (3.0f - 2.0f * pFlip)
                             phaseOffY = (Mth.sin(pFlip * Math.PI.toFloat()) * 0.38).toDouble()
                             phasePitch = smoothFlip * 360.0f
-                            phaseRoll = Mth.sin(pFlip * Math.PI.toFloat() * 2.0f) * 14.0f * sideSign.toFloat()
+                            phaseRoll = Mth.sin(pFlip * Math.PI.toFloat() * 2.0f) * 14.0f * altSign.toFloat()
                         } else {
                             val pLand = (sub - 1.65f) / 0.35f
                             phaseOffY = (-Mth.sin(pLand * Math.PI.toFloat()) * 0.03).toDouble()
                         }
                     }
                     2 -> {
-                        // INTERAÇÃO 3: OITO INFINITO / PERSEGUIÇÃO (Figure-8 Lemniscate Chase)
-                        val t8 = (phaseTime / 4.0f) * (2.0 * Math.PI) + phaseOffset
+                        // INTERAÇÃO 3: OITO INFINITO / PERSEGUIÇÃO EM FILA (Figure-8 Rollercoaster Train)
+                        val t8 = (phaseTime / 4.0f) * (2.0 * Math.PI) + participantAngle
                         val figPerp = Math.cos(t8) * (baseRadius * 1.20)
                         val figDir = Math.sin(2.0 * t8) * (baseRadius * 0.85)
 
@@ -465,7 +487,7 @@ class RotomPlayerRenderLayer(
                         val rawZ = activeAnchor.perpZ * figPerp + activeAnchor.dirZ * figDir
                         phaseOffX = Mth.lerp(env.toDouble(), baseWorldX, rawX)
                         phaseOffZ = Mth.lerp(env.toDouble(), baseWorldZ, rawZ)
-                        phaseOffY = Math.cos(2.0 * t8) * 0.09 * sideSign * env
+                        phaseOffY = Math.cos(2.0 * t8) * 0.09 * altSign * env
 
                         val velPerp = -Math.sin(t8) * (baseRadius * 1.20)
                         val velDir = 2.0 * Math.cos(2.0 * t8) * (baseRadius * 0.85)
@@ -473,13 +495,13 @@ class RotomPlayerRenderLayer(
                         val velWorldZ = activeAnchor.perpZ * velPerp + activeAnchor.dirZ * velDir
                         val flightYaw = worldFacingYaw(velWorldX, velWorldZ)
 
-                        phaseYaw = facePartnerWorldYaw + Mth.wrapDegrees(flightYaw - facePartnerWorldYaw) * env
+                        phaseYaw = faceCenterWorldYaw + Mth.wrapDegrees(flightYaw - faceCenterWorldYaw) * env
                         phaseRoll = (Math.sin(2.0 * t8) * 24.0).toFloat() * env
-                        phasePitch = (-Math.sin(2.0 * t8) * 10.0 * sideSign).toFloat() * env
+                        phasePitch = (-Math.sin(2.0 * t8) * 10.0 * altSign).toFloat() * env
                     }
                     3 -> {
-                        // INTERAÇÃO 4: ESPIRAL DUPLA / DNA (Double Helix Vertical Corkscrew)
-                        val helixAngle = (phaseTime / 4.0f) * (4.0 * Math.PI) + phaseOffset
+                        // INTERAÇÃO 4: ESPIRAL MULTI-HÉLICE / DNA (Multi-Helix Vertical Corkscrew)
+                        val helixAngle = (phaseTime / 4.0f) * (4.0 * Math.PI) + participantAngle
                         val climbWave = Math.sin((phaseTime / 4.0) * Math.PI)
                         val r = baseRadius * (1.0 - 0.30 * climbWave)
                         val cH = Math.cos(helixAngle)
@@ -493,7 +515,7 @@ class RotomPlayerRenderLayer(
                         val tanZ = -activeAnchor.perpZ * sH + activeAnchor.dirZ * cH
                         val flightYaw = worldFacingYaw(tanX, tanZ)
 
-                        phaseYaw = facePartnerWorldYaw + Mth.wrapDegrees(flightYaw - facePartnerWorldYaw) * env
+                        phaseYaw = faceCenterWorldYaw + Mth.wrapDegrees(flightYaw - faceCenterWorldYaw) * env
                         phasePitch = (-Math.cos((phaseTime / 4.0) * Math.PI) * 18.0).toFloat() * env
                         phaseRoll = -22.0f * env
                     }
@@ -503,55 +525,66 @@ class RotomPlayerRenderLayer(
                         val hop = kotlin.math.abs(Mth.sin(bounceCycle))
                         phaseOffY = (hop * hop * 0.24f * env).toDouble()
 
-                        val sway = Math.sin(phaseTime * Math.PI * 2.0) * 0.15 * sideSign * env
-                        phaseOffX = baseWorldX + activeAnchor.dirX * sway
-                        phaseOffZ = baseWorldZ + activeAnchor.dirZ * sway
+                        val tanPerpX = -sP
+                        val tanPerpZ = cP
+                        val tanWorldX = activeAnchor.perpX * tanPerpX + activeAnchor.dirX * tanPerpZ
+                        val tanWorldZ = activeAnchor.perpZ * tanPerpX + activeAnchor.dirZ * tanPerpZ
+                        val sway = Math.sin(phaseTime * Math.PI * 2.0) * 0.15 * altSign * env
+                        phaseOffX = baseWorldX + tanWorldX * sway
+                        phaseOffZ = baseWorldZ + tanWorldZ * sway
 
-                        phaseRoll = Mth.sin(bounceCycle) * 20.0f * sideSign.toFloat() * env
+                        phaseYaw = faceCenterWorldYaw
+                        phaseRoll = Mth.sin(bounceCycle) * 20.0f * altSign.toFloat() * env
                         phasePitch = -hop * 16.0f * env
                     }
                     5 -> {
-                        // INTERAÇÃO 6: ENCONTRÃO CARINHOSO NO CENTRO & PIRUETA 360°
+                        // INTERAÇÃO 6: ENCONTRÃO CARINHOSO NO CENTRO & PIRUETA 360° EM GRUPO
                         if (phaseTime < 2.0f) {
                             val approach = Math.sin((phaseTime / 2.0) * Math.PI)
                             val curR = baseRadius * (1.0 - approach * 0.72)
-                            phaseOffX = activeAnchor.perpX * (curR * sideSign)
-                            phaseOffZ = activeAnchor.perpZ * (curR * sideSign)
+                            val cA = Math.cos(participantAngle)
+                            val sA = Math.sin(participantAngle)
+                            phaseOffX = (activeAnchor.perpX * cA + activeAnchor.dirX * sA) * curR
+                            phaseOffZ = (activeAnchor.perpZ * cA + activeAnchor.dirZ * sA) * curR
                             phaseOffY = approach * 0.08
-                            phaseRoll = (approach * 22.0 * sideSign).toFloat()
+                            phaseYaw = faceCenterWorldYaw
+                            phaseRoll = (approach * 22.0 * altSign).toFloat()
                             phasePitch = (-approach * 10.0).toFloat()
                         } else {
                             val pSpin = ((phaseTime - 2.0f) / 1.65f).coerceIn(0.0f, 1.0f)
                             val smoothSpin = pSpin * pSpin * (3.0f - 2.0f * pSpin)
+                            phaseOffX = baseWorldX
+                            phaseOffZ = baseWorldZ
                             phaseOffY = Math.sin(pSpin * Math.PI) * 0.18
-                            phaseYaw = facePartnerWorldYaw + smoothSpin * 360.0f * sideSign.toFloat()
-                            phaseRoll = (Math.sin(pSpin * Math.PI * 2.0) * 12.0 * sideSign).toFloat()
+                            phaseYaw = faceCenterWorldYaw + smoothSpin * 360.0f * altSign.toFloat()
+                            phaseRoll = (Math.sin(pSpin * Math.PI * 2.0) * 12.0 * altSign).toFloat()
                         }
                     }
                     6 -> {
                         // INTERAÇÃO 7: GIRO PARAFUSO / AILERON BARREL ROLLS
                         val loopA = (phaseTime / 4.0) * (2.0 * Math.PI)
-                        val swayDir = Math.sin(loopA) * 0.14 * sideSign * env
+                        val swayDir = Math.sin(loopA) * 0.14 * altSign * env
                         phaseOffX = baseWorldX + activeAnchor.dirX * swayDir
                         phaseOffZ = baseWorldZ + activeAnchor.dirZ * swayDir
                         phaseOffY = (1.0 - Math.cos(loopA)) * 0.12 * env
+                        phaseYaw = faceCenterWorldYaw
 
                         val sub = phaseTime % 2.0f
                         if (sub in 0.25f..1.65f) {
                             val pRoll = (sub - 0.25f) / 1.40f
                             val smoothRoll = pRoll * pRoll * (3.0f - 2.0f * pRoll)
-                            phaseRoll = smoothRoll * 360.0f * sideSign.toFloat()
+                            phaseRoll = smoothRoll * 360.0f * altSign.toFloat()
                         }
                     }
                     else -> {
                         // INTERAÇÃO 8: PEGA-PEGA ZIG-ZAG (Playful Tag & Feints)
-                        val zig = Math.sin(phaseTime * Math.PI * 1.5) * 0.25 * env
-                        val zag = Math.cos(phaseTime * Math.PI * 3.0) * 0.11 * sideSign * env
-                        phaseOffX = activeAnchor.perpX * (baseRadius * sideSign + zag) + activeAnchor.dirX * zig
-                        phaseOffZ = activeAnchor.perpZ * (baseRadius * sideSign + zag) + activeAnchor.dirZ * zig
+                        val zig = Math.sin(phaseTime * Math.PI * 1.5) * 0.22 * env
+                        val zag = Math.cos(phaseTime * Math.PI * 3.0) * 0.10 * altSign * env
+                        phaseOffX = baseWorldX * (1.0 + zig) + activeAnchor.dirX * zag
+                        phaseOffZ = baseWorldZ * (1.0 + zig) + activeAnchor.dirZ * zag
                         phaseOffY = kotlin.math.abs(Math.sin(phaseTime * Math.PI * 3.0)) * 0.14 * env
 
-                        phaseYaw = facePartnerWorldYaw + (Math.cos(phaseTime * Math.PI * 1.5) * 28.0 * sideSign * env).toFloat()
+                        phaseYaw = faceCenterWorldYaw + (Math.cos(phaseTime * Math.PI * 1.5) * 28.0 * altSign * env).toFloat()
                         phaseRoll = (-Math.cos(phaseTime * Math.PI * 1.5) * 20.0 * env).toFloat()
                         phasePitch = (-Math.sin(phaseTime * Math.PI * 3.0) * 10.0 * env).toFloat()
                     }

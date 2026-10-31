@@ -13,10 +13,12 @@ import com.nbp.cobblemon_smartphone.rotom.RotomRadarConfig
 import com.nbp.cobblemon_smartphone.rotom.RotomRadarStorage
 import com.nbp.cobblemon_smartphone.rotom.RotomTarget
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getBowtieDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRibbonDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRotomAccessory
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.item.DyeColor
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
@@ -36,8 +38,8 @@ object RotomServerManager {
     )
 
     data class ServerSocialSession(
-        val player1Uuid: UUID,
-        val player2Uuid: UUID,
+        val sessionId: UUID,
+        val participants: MutableSet<UUID>,
         val anchorX: Double,
         val anchorY: Double,
         val anchorZ: Double,
@@ -48,15 +50,11 @@ object RotomServerManager {
         val endTimeMs: Long
     )
 
-    data class PairCooldownState(
-        var nextCheckTimeMs: Long = 0L,
-        var lastSeenNearMs: Long = 0L,
-        var isFirstMeetingCheck: Boolean = true
-    )
-
     private val equippedSnapshots = ConcurrentHashMap<UUID, EquippedRotomSnapshot>()
-    private val activeSocialSessions = ConcurrentHashMap<Pair<UUID, UUID>, ServerSocialSession>()
-    private val pairCooldownStates = ConcurrentHashMap<Pair<UUID, UUID>, PairCooldownState>()
+    private val activeSocialSessions = ConcurrentHashMap<UUID, ServerSocialSession>()
+    private val playerToSession = ConcurrentHashMap<UUID, UUID>()
+    private val playerCooldowns = ConcurrentHashMap<UUID, Long>()
+    private val clusterCheckCooldowns = ConcurrentHashMap<UUID, Long>()
 
     fun updatePlayerConfig(playerUuid: UUID, config: RotomRadarConfig) {
         playerConfigs[playerUuid] = config
@@ -97,11 +95,13 @@ object RotomServerManager {
             }
         }
 
-        // Envia sessões sociais ativas
+        // Envia sessões sociais ativas em grupo
+        val now = System.currentTimeMillis()
         for (session in activeSocialSessions.values) {
+            val remainingTicks = ((session.endTimeMs - now) / 50L).toInt().coerceAtLeast(20)
             SyncRotomSocialSessionPacket(
-                player1Uuid = session.player1Uuid,
-                player2Uuid = session.player2Uuid,
+                sessionId = session.sessionId,
+                participants = session.participants.toList(),
                 active = true,
                 anchorX = session.anchorX,
                 anchorY = session.anchorY,
@@ -109,7 +109,7 @@ object RotomServerManager {
                 dirX = session.dirX,
                 dirZ = session.dirZ,
                 patternSeed = session.patternSeed,
-                durationTicks = session.durationTicks
+                durationTicks = remainingTicks
             ).sendToPlayer(player)
         }
 
@@ -124,28 +124,56 @@ object RotomServerManager {
         equippedSnapshots.remove(player.uuid)
         val prefix = "${player.uuid}:"
         alertCooldowns.keys.removeIf { it.startsWith(prefix) }
+        playerCooldowns.remove(player.uuid)
 
-        // Encerra qualquer sessão social envolvendo o jogador que desconectou
-        val toRemove = activeSocialSessions.entries.filter {
-            it.key.first == player.uuid || it.key.second == player.uuid
-        }
-        for (entry in toRemove) {
-            activeSocialSessions.remove(entry.key)
-            val stopPacket = SyncRotomSocialSessionPacket(
-                player1Uuid = entry.value.player1Uuid,
-                player2Uuid = entry.value.player2Uuid,
-                active = false,
-                anchorX = entry.value.anchorX,
-                anchorY = entry.value.anchorY,
-                anchorZ = entry.value.anchorZ,
-                dirX = entry.value.dirX,
-                dirZ = entry.value.dirZ,
-                patternSeed = entry.value.patternSeed,
-                durationTicks = 0
-            )
-            for (other in player.server.playerList.players) {
-                if (other.uuid != player.uuid) {
-                    stopPacket.sendToPlayer(other)
+        // Encerra ou remove o jogador de qualquer sessão social ativa
+        val sessId = playerToSession.remove(player.uuid)
+        if (sessId != null) {
+            val session = activeSocialSessions[sessId]
+            if (session != null) {
+                session.participants.remove(player.uuid)
+                val now = System.currentTimeMillis()
+                if (session.participants.size < 2) {
+                    activeSocialSessions.remove(sessId)
+                    for (u in session.participants) {
+                        playerToSession.remove(u)
+                        playerCooldowns[u] = now + Random.nextLong(16_000L, 26_000L)
+                    }
+                    val stopPacket = SyncRotomSocialSessionPacket(
+                        sessionId = sessId,
+                        participants = session.participants.toList(),
+                        active = false,
+                        anchorX = session.anchorX,
+                        anchorY = session.anchorY,
+                        anchorZ = session.anchorZ,
+                        dirX = session.dirX,
+                        dirZ = session.dirZ,
+                        patternSeed = session.patternSeed,
+                        durationTicks = 0
+                    )
+                    for (other in player.server.playerList.players) {
+                        if (other.uuid != player.uuid) {
+                            stopPacket.sendToPlayer(other)
+                        }
+                    }
+                } else {
+                    val updatePacket = SyncRotomSocialSessionPacket(
+                        sessionId = sessId,
+                        participants = session.participants.toList(),
+                        active = true,
+                        anchorX = session.anchorX,
+                        anchorY = session.anchorY,
+                        anchorZ = session.anchorZ,
+                        dirX = session.dirX,
+                        dirZ = session.dirZ,
+                        patternSeed = session.patternSeed,
+                        durationTicks = ((session.endTimeMs - now) / 50L).toInt().coerceAtLeast(20)
+                    )
+                    for (other in player.server.playerList.players) {
+                        if (other.uuid != player.uuid) {
+                            updatePacket.sendToPlayer(other)
+                        }
+                    }
                 }
             }
         }
@@ -171,8 +199,9 @@ object RotomServerManager {
                 playersWithRotom.add(player)
                 val color = (stack.item as? SmartphoneItem)?.getColor()?.name ?: "RED"
                 val acc = stack.getRotomAccessory() ?: ""
-                val ribColor = stack.getRibbonDyeColor()?.serializedName ?: "pink"
-                EquippedRotomSnapshot(true, color, acc, ribColor)
+                val defaultColor = if (acc == "bow") DyeColor.PINK else DyeColor.LIGHT_BLUE
+                val accColor = (if (acc == "bow") stack.getRibbonDyeColor() else stack.getBowtieDyeColor()) ?: defaultColor
+                EquippedRotomSnapshot(true, color, acc, accColor.serializedName)
             } else {
                 EquippedRotomSnapshot(false, "", "", "")
             }
@@ -194,34 +223,44 @@ object RotomServerManager {
         }
 
         val playersByUuid = playersWithRotom.associateBy { it.uuid }
-        val busyPlayers = HashSet<UUID>()
 
-        // 2. Validar sessões sociais ativas (terminar se acabou o tempo, abriu o celular ou se afastou > 7.5 blocos da âncora)
-        val iterator = activeSocialSessions.entries.iterator()
-        while (iterator.hasNext()) {
-            val (pairKey, session) = iterator.next()
-            val p1 = playersByUuid[session.player1Uuid]
-            val p2 = playersByUuid[session.player2Uuid]
+        // 2. Validar sessões sociais ativas em grupo (terminar se expirou, abriu tela ou se afastou > 7.5 blocos)
+        val sessionIter = activeSocialSessions.entries.iterator()
+        while (sessionIter.hasNext()) {
+            val (sessionId, session) = sessionIter.next()
 
-            val valid = p1 != null && p2 != null &&
-                p1.serverLevel() == p2.serverLevel() &&
-                !openPlayers.contains(p1.uuid) && !openPlayers.contains(p2.uuid) &&
-                !p1.isSleeping && !p2.isSleeping &&
-                now < session.endTimeMs &&
-                p1.distanceToSqr(session.anchorX, session.anchorY - 1.0, session.anchorZ) <= 56.25 &&
-                p2.distanceToSqr(session.anchorX, session.anchorY - 1.0, session.anchorZ) <= 56.25
+            // Remove participantes que não são mais válidos
+            val invalidParticipants = mutableListOf<UUID>()
+            for (pUuid in session.participants) {
+                val p = playersByUuid[pUuid]
+                val valid = p != null &&
+                    !openPlayers.contains(pUuid) &&
+                    !p.isSleeping &&
+                    p.distanceToSqr(session.anchorX, session.anchorY - 1.0, session.anchorZ) <= 56.25
 
-            if (!valid) {
-                iterator.remove()
-                val cdState = pairCooldownStates.computeIfAbsent(pairKey) { PairCooldownState() }
-                // Cooldown de 16 a 26 segundos descansando no ombro antes de poder tentar interagir novamente
-                cdState.nextCheckTimeMs = now + Random.nextLong(16_000L, 26_000L)
-                cdState.lastSeenNearMs = now
-                cdState.isFirstMeetingCheck = false
+                if (!valid) {
+                    invalidParticipants.add(pUuid)
+                }
+            }
+
+            for (pUuid in invalidParticipants) {
+                session.participants.remove(pUuid)
+                playerToSession.remove(pUuid)
+                playerCooldowns[pUuid] = now + Random.nextLong(16_000L, 26_000L)
+            }
+
+            val isExpired = now >= session.endTimeMs
+            if (isExpired || session.participants.size < 2) {
+                // Sessão encerrada
+                sessionIter.remove()
+                for (pUuid in session.participants) {
+                    playerToSession.remove(pUuid)
+                    playerCooldowns[pUuid] = now + Random.nextLong(16_000L, 26_000L)
+                }
 
                 val stopPkt = SyncRotomSocialSessionPacket(
-                    player1Uuid = session.player1Uuid,
-                    player2Uuid = session.player2Uuid,
+                    sessionId = sessionId,
+                    participants = session.participants.toList(),
                     active = false,
                     anchorX = session.anchorX,
                     anchorY = session.anchorY,
@@ -234,95 +273,146 @@ object RotomServerManager {
                 for (target in players) {
                     stopPkt.sendToPlayer(target)
                 }
-            } else {
-                busyPlayers.add(session.player1Uuid)
-                busyPlayers.add(session.player2Uuid)
-                pairCooldownStates[pairKey]?.lastSeenNearMs = now
+            } else if (invalidParticipants.isNotEmpty()) {
+                // Participante saiu, mas a sessão continua com os outros!
+                val updatePkt = SyncRotomSocialSessionPacket(
+                    sessionId = sessionId,
+                    participants = session.participants.toList(),
+                    active = true,
+                    anchorX = session.anchorX,
+                    anchorY = session.anchorY,
+                    anchorZ = session.anchorZ,
+                    dirX = session.dirX,
+                    dirZ = session.dirZ,
+                    patternSeed = session.patternSeed,
+                    durationTicks = ((session.endTimeMs - now) / 50L).toInt().coerceAtLeast(20)
+                )
+                for (target in players) {
+                    updatePkt.sendToPlayer(target)
+                }
             }
         }
 
-        // 3. Verificar pares próximos que não estão interagindo e sortear chance periódica de dar trigger
-        for (i in 0 until playersWithRotom.size) {
-            val a = playersWithRotom[i]
-            if (busyPlayers.contains(a.uuid) || openPlayers.contains(a.uuid) || a.isSleeping) continue
+        // 3. Permitir que jogadores ociosos se juntem a sessões ativas existentes por perto!
+        for (session in activeSocialSessions.values) {
+            for (candidate in playersWithRotom) {
+                if (playerToSession.containsKey(candidate.uuid)) continue
+                if (openPlayers.contains(candidate.uuid) || candidate.isSleeping) continue
+                if (now < playerCooldowns.getOrDefault(candidate.uuid, 0L)) continue
 
-            for (j in i + 1 until playersWithRotom.size) {
-                val b = playersWithRotom[j]
-                if (busyPlayers.contains(b.uuid) || openPlayers.contains(b.uuid) || b.isSleeping) continue
-                if (a.serverLevel() != b.serverLevel()) continue
+                val distSqr = candidate.distanceToSqr(session.anchorX, session.anchorY - 1.0, session.anchorZ)
+                if (distSqr <= 30.25) { // Até 5.5 blocos da âncora ativa
+                    session.participants.add(candidate.uuid)
+                    playerToSession[candidate.uuid] = session.sessionId
 
-                val distSqr = a.distanceToSqr(b)
-                if (distSqr > 36.0) continue // Precisam estar a até 6 blocos para iniciar
-
-                val p1 = if (a.uuid < b.uuid) a else b
-                val p2 = if (a.uuid < b.uuid) b else a
-                val pairKey = Pair(p1.uuid, p2.uuid)
-
-                val cdState = pairCooldownStates.computeIfAbsent(pairKey) { PairCooldownState() }
-                // Se ficaram longe um do outro por mais de 12 segundos, trata como um novo encontro
-                if (now - cdState.lastSeenNearMs > 12_000L) {
-                    cdState.isFirstMeetingCheck = true
-                    if (cdState.nextCheckTimeMs < now + 1_500L) {
-                        cdState.nextCheckTimeMs = now + 1_500L // Breve olhar no ombro antes do primeiro sorteio
+                    val joinPkt = SyncRotomSocialSessionPacket(
+                        sessionId = session.sessionId,
+                        participants = session.participants.toList(),
+                        active = true,
+                        anchorX = session.anchorX,
+                        anchorY = session.anchorY,
+                        anchorZ = session.anchorZ,
+                        dirX = session.dirX,
+                        dirZ = session.dirZ,
+                        patternSeed = session.patternSeed,
+                        durationTicks = ((session.endTimeMs - now) / 50L).toInt().coerceAtLeast(20)
+                    )
+                    for (target in players) {
+                        joinPkt.sendToPlayer(target)
                     }
                 }
-                cdState.lastSeenNearMs = now
+            }
+        }
 
-                if (now >= cdState.nextCheckTimeMs) {
-                    val triggerChance = if (cdState.isFirstMeetingCheck) 0.58f else 0.42f
-                    cdState.isFirstMeetingCheck = false
+        // 4. Formar novas sessões em grupo a partir de jogadores ociosos próximos
+        val idlePlayers = playersWithRotom.filter { p ->
+            !playerToSession.containsKey(p.uuid) &&
+            !openPlayers.contains(p.uuid) &&
+            !p.isSleeping &&
+            now >= playerCooldowns.getOrDefault(p.uuid, 0L)
+        }
 
-                    if (Random.nextFloat() < triggerChance) {
-                        // Trigger de interação! Cria o ponto âncora compartilhado exato para ambos os jogadores
-                        val anchorX = (p1.x + p2.x) * 0.5
-                        val anchorY = (p1.y + p2.y) * 0.5 + 1.35
-                        val anchorZ = (p1.z + p2.z) * 0.5
+        if (idlePlayers.size >= 2) {
+            // Agrupar em componentes conectados de jogadores próximos (<= 6.0 blocos de distância)
+            val visited = HashSet<UUID>()
+            for (p in idlePlayers) {
+                if (visited.contains(p.uuid)) continue
+                val cluster = mutableListOf<ServerPlayer>()
+                val queue = ArrayDeque<ServerPlayer>()
+                queue.add(p)
+                visited.add(p.uuid)
 
-                        val dx = p2.x - p1.x
-                        val dz = p2.z - p1.z
-                        val dLen = kotlin.math.sqrt(dx * dx + dz * dz).coerceAtLeast(0.01)
-                        val dirX = dx / dLen
-                        val dirZ = dz / dLen
-
-                        val durationSec = Random.nextInt(4, 6) * 4 // 16s ou 20s (4 ou 5 fases completas de 4s)
-                        val durationTicks = durationSec * 20
-                        val patternSeed = Random.nextInt(1, 1_000_000)
-
-                        val session = ServerSocialSession(
-                            player1Uuid = p1.uuid,
-                            player2Uuid = p2.uuid,
-                            anchorX = anchorX,
-                            anchorY = anchorY,
-                            anchorZ = anchorZ,
-                            dirX = dirX,
-                            dirZ = dirZ,
-                            patternSeed = patternSeed,
-                            durationTicks = durationTicks,
-                            endTimeMs = now + durationSec * 1000L
-                        )
-                        activeSocialSessions[pairKey] = session
-                        busyPlayers.add(p1.uuid)
-                        busyPlayers.add(p2.uuid)
-
-                        val startPkt = SyncRotomSocialSessionPacket(
-                            player1Uuid = p1.uuid,
-                            player2Uuid = p2.uuid,
-                            active = true,
-                            anchorX = anchorX,
-                            anchorY = anchorY,
-                            anchorZ = anchorZ,
-                            dirX = dirX,
-                            dirZ = dirZ,
-                            patternSeed = patternSeed,
-                            durationTicks = durationTicks
-                        )
-                        for (target in players) {
-                            startPkt.sendToPlayer(target)
+                while (queue.isNotEmpty()) {
+                    val curr = queue.removeFirst()
+                    cluster.add(curr)
+                    for (other in idlePlayers) {
+                        if (!visited.contains(other.uuid) && curr.serverLevel() == other.serverLevel()) {
+                            if (curr.distanceToSqr(other) <= 36.0) {
+                                visited.add(other.uuid)
+                                queue.add(other)
+                            }
                         }
-                        break
-                    } else {
-                        // Não deu trigger desta vez: espera mais 5 a 8 segundos antes de tentar novamente
-                        cdState.nextCheckTimeMs = now + Random.nextLong(5_000L, 8_000L)
+                    }
+                }
+
+                if (cluster.size >= 2) {
+                    val clusterLeader = cluster.minByOrNull { it.uuid }!!.uuid
+                    val nextCheck = clusterCheckCooldowns.getOrDefault(clusterLeader, 0L)
+                    if (now >= nextCheck) {
+                        clusterCheckCooldowns[clusterLeader] = now + Random.nextLong(5_000L, 8_000L)
+                        // Chance de ~48% de iniciar a interação social em grupo
+                        if (Random.nextFloat() < 0.48f) {
+                            val count = cluster.size.toDouble()
+                            val anchorX = cluster.sumOf { it.x } / count
+                            val anchorY = (cluster.sumOf { it.y } / count) + 1.35
+                            val anchorZ = cluster.sumOf { it.z } / count
+
+                            val p0 = cluster[0]
+                            val p1 = cluster[1]
+                            val dx = p1.x - p0.x
+                            val dz = p1.z - p0.z
+                            val dLen = kotlin.math.sqrt(dx * dx + dz * dz).coerceAtLeast(0.01)
+                            val uX = dx / dLen
+                            val uZ = dz / dLen
+
+                            val sessionId = UUID.randomUUID()
+                            val durationSec = Random.nextInt(4, 6) * 4 // 16s ou 20s
+                            val durationTicks = durationSec * 20
+                            val participantUuids = cluster.map { it.uuid }.toMutableSet()
+                            val newSession = ServerSocialSession(
+                                sessionId = sessionId,
+                                participants = participantUuids,
+                                anchorX = anchorX,
+                                anchorY = anchorY,
+                                anchorZ = anchorZ,
+                                dirX = uX,
+                                dirZ = uZ,
+                                patternSeed = Random.nextInt(1, 1_000_000),
+                                durationTicks = durationTicks,
+                                endTimeMs = now + durationSec * 1000L
+                            )
+
+                            activeSocialSessions[sessionId] = newSession
+                            for (c in cluster) {
+                                playerToSession[c.uuid] = sessionId
+                            }
+
+                            val startPkt = SyncRotomSocialSessionPacket(
+                                sessionId = sessionId,
+                                participants = participantUuids.toList(),
+                                active = true,
+                                anchorX = anchorX,
+                                anchorY = anchorY,
+                                anchorZ = anchorZ,
+                                dirX = uX,
+                                dirZ = uZ,
+                                patternSeed = newSession.patternSeed,
+                                durationTicks = durationTicks
+                            )
+                            for (target in players) {
+                                startPkt.sendToPlayer(target)
+                            }
+                        }
                     }
                 }
             }
@@ -337,7 +427,8 @@ object RotomServerManager {
 
         if (tickCounter % 100 == 0) {
             alertCooldowns.entries.removeIf { it.value < now }
-            pairCooldownStates.entries.removeIf { now - it.value.lastSeenNearMs > 120_000L }
+            playerCooldowns.entries.removeIf { it.value < now }
+            clusterCheckCooldowns.entries.removeIf { it.value < now }
         }
 
         for (player in server.playerList.players) {
