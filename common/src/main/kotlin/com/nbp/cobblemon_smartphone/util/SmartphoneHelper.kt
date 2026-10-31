@@ -3,12 +3,15 @@ package com.nbp.cobblemon_smartphone.util
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
+import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.DyeColor
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.component.CustomData
+import net.minecraft.world.item.component.DyedItemColor
 
 object SmartphoneHelper {
     var getSmartphoneImpl: ((Player) -> ItemStack?)? = null
@@ -27,6 +30,104 @@ object SmartphoneHelper {
 
     const val ROTOM_PHONE_TAG = "is_rotom"
     const val ROTOM_PHONE_ALT_TAG = "rotom_phone"
+    const val ROTOM_ACCESSORY_TAG = "rotom_accessory"
+    const val ROTOM_RIBBON_COLOR_TAG = "rotom_ribbon_color"
+
+    fun getDyeDisplayRgb(color: DyeColor): Int {
+        return when (color) {
+            DyeColor.WHITE -> 0xF9FFFE
+            DyeColor.ORANGE -> 0xF9801D
+            DyeColor.MAGENTA -> 0xC74EBD
+            DyeColor.LIGHT_BLUE -> 0x3AB3DA
+            DyeColor.YELLOW -> 0xFED83D
+            DyeColor.LIME -> 0x80C71F
+            DyeColor.PINK -> 0xFF69B4
+            DyeColor.GRAY -> 0x555E62
+            DyeColor.LIGHT_GRAY -> 0xA8A8A2
+            DyeColor.CYAN -> 0x169C9C
+            DyeColor.PURPLE -> 0x8932B8
+            DyeColor.BLUE -> 0x3C44AA
+            DyeColor.BROWN -> 0x835432
+            DyeColor.GREEN -> 0x5E7C16
+            DyeColor.RED -> 0xE02E26
+            DyeColor.BLACK -> 0x2D2D32
+        }
+    }
+
+    fun findClosestDyeColor(rgb: Int): DyeColor {
+        val r = (rgb shr 16) and 0xFF
+        val g = (rgb shr 8) and 0xFF
+        val b = rgb and 0xFF
+        return DyeColor.entries.minByOrNull { dc ->
+            val c = getDyeDisplayRgb(dc)
+            val dr = r - ((c shr 16) and 0xFF)
+            val dg = g - ((c shr 8) and 0xFF)
+            val db = b - (c and 0xFF)
+            dr * dr + dg * dg + db * db
+        } ?: DyeColor.PINK
+    }
+
+    fun ItemStack.getRibbonDyeColor(): DyeColor? {
+        val dyed = this.get(DataComponents.DYED_COLOR)
+        val customData = this.get(DataComponents.CUSTOM_DATA)
+        if (customData != null) {
+            val tag = customData.copyTag()
+            if (tag.contains(ROTOM_RIBBON_COLOR_TAG)) {
+                val colorName = tag.getString(ROTOM_RIBBON_COLOR_TAG)
+                val byName = DyeColor.byName(colorName, null)
+                if (byName != null) {
+                    // Se o item foi tingido na bancada com outro corante, o DYED_COLOR mudou em relação à tag
+                    if (dyed != null && (dyed.rgb() and 0xFFFFFF) != getDyeDisplayRgb(byName)) {
+                        return findClosestDyeColor(dyed.rgb())
+                    }
+                    return byName
+                }
+            }
+        }
+        if (dyed != null) {
+            return findClosestDyeColor(dyed.rgb())
+        }
+        return null
+    }
+
+    fun ItemStack.setRibbonDyeColor(color: DyeColor?) {
+        val existingData = this.get(DataComponents.CUSTOM_DATA)
+        val tag = existingData?.copyTag() ?: CompoundTag()
+        if (color != null) {
+            tag.putString(ROTOM_RIBBON_COLOR_TAG, color.serializedName)
+            this.set(DataComponents.DYED_COLOR, DyedItemColor(getDyeDisplayRgb(color), false))
+        } else {
+            tag.remove(ROTOM_RIBBON_COLOR_TAG)
+            this.remove(DataComponents.DYED_COLOR)
+        }
+        this.set(DataComponents.CUSTOM_DATA, CustomData.of(tag))
+    }
+
+    fun getRibbonTintColor(stack: ItemStack): Int {
+        val color = stack.getRibbonDyeColor()
+        if (color != null) {
+            return (0xFF shl 24) or getDyeDisplayRgb(color)
+        }
+        val dyed = stack.get(DataComponents.DYED_COLOR)
+        if (dyed != null) {
+            return (0xFF shl 24) or (dyed.rgb() and 0xFFFFFF)
+        }
+        return (0xFF shl 24) or getDyeDisplayRgb(DyeColor.PINK)
+    }
+
+    fun createColoredRibbon(color: DyeColor): ItemStack {
+        val stack = ItemStack(CobblemonSmartphoneItems.ROTOM_RIBBON)
+        stack.setRibbonDyeColor(color)
+        return stack
+    }
+
+    fun createAccessoryStackFromPhone(phoneStack: ItemStack): ItemStack? {
+        return when (phoneStack.getRotomAccessory()) {
+            "bow" -> createColoredRibbon(phoneStack.getRibbonDyeColor() ?: DyeColor.PINK)
+            "tie" -> ItemStack(CobblemonSmartphoneItems.ROTOM_BOWTIE)
+            else -> null
+        }
+    }
 
     fun ItemStack.isRotomPhone(): Boolean {
         if (this.item !is SmartphoneItem) return false
@@ -41,6 +142,39 @@ object SmartphoneHelper {
         tag.putBoolean(ROTOM_PHONE_TAG, isRotom)
         tag.putBoolean(ROTOM_PHONE_ALT_TAG, isRotom)
         this.set(DataComponents.CUSTOM_DATA, CustomData.of(tag))
+    }
+
+    fun ItemStack.getRotomAccessory(): String? {
+        if (!this.isRotomPhone()) return null
+        val customData = this.get(DataComponents.CUSTOM_DATA) ?: return null
+        val tag = customData.copyTag()
+        if (!tag.contains(ROTOM_ACCESSORY_TAG)) return null
+        val acc = tag.getString(ROTOM_ACCESSORY_TAG)
+        return if (acc.isNotBlank()) acc else null
+    }
+
+    fun ItemStack.setRotomAccessory(accessory: String?) {
+        val existingData = this.get(DataComponents.CUSTOM_DATA)
+        val tag = existingData?.copyTag() ?: CompoundTag()
+        if (accessory != null && accessory.isNotBlank()) {
+            tag.putString(ROTOM_ACCESSORY_TAG, accessory)
+        } else {
+            tag.remove(ROTOM_ACCESSORY_TAG)
+        }
+        this.set(DataComponents.CUSTOM_DATA, CustomData.of(tag))
+    }
+
+    enum class RotomGender {
+        NONE, FEMALE, MALE
+    }
+
+    fun getRotomGender(player: Player): RotomGender {
+        val phone = getEquippedRotomPhone(player) ?: return RotomGender.NONE
+        return when (phone.getRotomAccessory()) {
+            "bow" -> RotomGender.FEMALE
+            "tie" -> RotomGender.MALE
+            else -> RotomGender.NONE
+        }
     }
 
     /**

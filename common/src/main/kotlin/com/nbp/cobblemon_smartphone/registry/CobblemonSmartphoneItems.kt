@@ -2,12 +2,14 @@ package com.nbp.cobblemon_smartphone.registry
 
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
 import net.minecraft.resources.ResourceKey
 import net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters
 import net.minecraft.world.item.CreativeModeTab.Output
+import net.minecraft.world.item.DyeColor
 import net.minecraft.world.item.Item
 
 object CobblemonSmartphoneItems : RegistryProvider<Registry<Item>, ResourceKey<Registry<Item>>, Item>() {
@@ -34,6 +36,10 @@ object CobblemonSmartphoneItems : RegistryProvider<Registry<Item>, ResourceKey<R
     val RED_SMARTPHONE = smartphoneItem(SmartphoneColor.RED)
     val BLACK_SMARTPHONE = smartphoneItem(SmartphoneColor.BLACK)
 
+    val ROTOM_RIBBON = add("rotom_ribbon", com.nbp.cobblemon_smartphone.item.RotomAccessoryItem("bow"))
+    val ROTOM_BOWTIE = add("rotom_bowtie", com.nbp.cobblemon_smartphone.item.RotomAccessoryItem("tie"))
+    val ROTOM_ACCESSORY_REMOVER = add("rotom_accessory_remover", com.nbp.cobblemon_smartphone.item.RotomAccessoryItem("remove", Item.Properties().stacksTo(1)))
+
     private fun smartphoneItem(model: SmartphoneColor): Item {
         return add(model.modelName + SmartphoneItem.BASE_REGISTRY_KEY, SmartphoneItem(model))
     }
@@ -58,5 +64,11 @@ object CobblemonSmartphoneItems : RegistryProvider<Registry<Item>, ResourceKey<R
         entries.accept(GREEN_SMARTPHONE)
         entries.accept(RED_SMARTPHONE)
         entries.accept(BLACK_SMARTPHONE)
+
+        for (color in DyeColor.entries) {
+            entries.accept(SmartphoneHelper.createColoredRibbon(color))
+        }
+        entries.accept(ROTOM_BOWTIE)
+        entries.accept(ROTOM_ACCESSORY_REMOVER)
     }
 }

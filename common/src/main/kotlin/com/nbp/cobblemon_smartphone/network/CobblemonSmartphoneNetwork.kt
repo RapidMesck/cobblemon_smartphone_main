@@ -176,11 +176,15 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenGpsScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenStructureCompassScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokeInfoScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.SetSmartphoneOpenStatePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomEquipStatePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomSocialSessionPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneOpenStatePacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveRotomRadarPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomRadarPacket
 import com.nbp.cobblemon_smartphone.network.packet.RotomAlertPacket
 import com.nbp.cobblemon_smartphone.network.handler.SetSmartphoneOpenStateHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomEquipStateHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomSocialSessionHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncSmartphoneOpenStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveRotomRadarHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomRadarHandler
@@ -201,6 +205,8 @@ object CobblemonSmartphoneNetwork {
             )
         )
         list.add(PacketRegisterInfo(SyncSmartphoneOpenStatePacket.ID, SyncSmartphoneOpenStatePacket::decode, SyncSmartphoneOpenStateHandler))
+        list.add(PacketRegisterInfo(SyncRotomEquipStatePacket.ID, SyncRotomEquipStatePacket::decode, SyncRotomEquipStateHandler))
+        list.add(PacketRegisterInfo(SyncRotomSocialSessionPacket.ID, SyncRotomSocialSessionPacket::decode, SyncRotomSocialSessionHandler))
         list.add(PacketRegisterInfo(SyncActionOrderPacket.ID, SyncActionOrderPacket::decode, SyncActionOrderHandler))
         list.add(
             PacketRegisterInfo(

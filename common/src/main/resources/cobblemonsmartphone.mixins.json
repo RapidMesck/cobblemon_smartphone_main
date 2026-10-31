@@ -14,8 +14,10 @@
   },
     "client": [
         "GuiGraphicsMixin",
+        "ItemColorsMixin",
         "ItemRendererMixin",
         "KeyboardHandlerMixin",
+        "LevelRendererMixin",
         "ModelLoaderMixin",
         "MixinPlayerExtensionsKt",
         "MixinPokedexUsageContext",

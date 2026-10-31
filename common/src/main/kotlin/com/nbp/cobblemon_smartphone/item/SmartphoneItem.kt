@@ -13,10 +13,15 @@ import com.nbp.cobblemon_smartphone.client.gui.SmartphoneScreen
 import com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper
 import com.nbp.cobblemon_smartphone.energy.getEnergy
 import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
+import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
 import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRotomAccessory
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.isRotomPhone
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRibbonDyeColor
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomAccessory
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomPhone
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -66,8 +71,37 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         player: Player,
         interactionHand: InteractionHand
     ): InteractionResultHolder<ItemStack> {
+        val stack = player.getItemInHand(interactionHand)
+
+        // Se estiver agachado e o smartphone for um Rotom Phone com acessório, remove o acessório e devolve
+        if (player.isCrouching && stack.isRotomPhone() && stack.getRotomAccessory() != null) {
+            if (!level.isClientSide) {
+                val returnedStack = SmartphoneHelper.createAccessoryStackFromPhone(stack)
+                stack.setRotomAccessory(null)
+                stack.setRibbonDyeColor(null)
+                if (returnedStack != null) {
+                    if (!player.inventory.add(returnedStack)) {
+                        player.drop(returnedStack, false)
+                    }
+                }
+                level.playSound(
+                    null as Player?,
+                    player.blockPosition(),
+                    SoundEvents.SHEEP_SHEAR,
+                    SoundSource.PLAYERS,
+                    1.0f,
+                    1.2f
+                )
+                player.displayClientMessage(
+                    Component.translatable("message.cobblemon_smartphone.accessory_removed")
+                        .withStyle(ChatFormatting.YELLOW),
+                    true
+                )
+            }
+            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide)
+        }
+
         if (level.isClientSide()) {
-            val stack = player.getItemInHand(interactionHand)
             // While Social is using the world as a camera view, right-click is the
             // shutter button. Do not reopen the smartphone screen from the held item.
             if (SocialPhotoClient.isCameraActive()) {
@@ -76,7 +110,7 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
             Minecraft.getInstance().setScreen(SmartphoneScreen(model, stack))
             player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.5f, 1f)
         }
-        return InteractionResultHolder.success(player.getItemInHand(interactionHand))
+        return InteractionResultHolder.success(stack)
     }
 
     override fun interactLivingEntity(
@@ -305,7 +339,23 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         tooltipFlag: TooltipFlag
     ) {
         if (itemStack.isRotomPhone()) {
-            list.add(Component.translatable("tooltip.cobblemon_smartphone.rotom_phone").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD))
+            val accessory = itemStack.getRotomAccessory()
+            val genderText = when (accessory) {
+                "bow" -> Component.translatable("tooltip.cobblemon_smartphone.rotom_accessory.bow").withStyle(ChatFormatting.LIGHT_PURPLE)
+                "tie" -> Component.translatable("tooltip.cobblemon_smartphone.rotom_accessory.tie").withStyle(ChatFormatting.AQUA)
+                else -> null
+            }
+            if (genderText != null) {
+                list.add(
+                    Component.translatable("tooltip.cobblemon_smartphone.rotom_phone")
+                        .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)
+                        .append(Component.literal(" ("))
+                        .append(genderText)
+                        .append(Component.literal(")"))
+                )
+            } else {
+                list.add(Component.translatable("tooltip.cobblemon_smartphone.rotom_phone").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD))
+            }
         }
 
         list.add(Component.translatable("item.cobblemon_smartphone.smartphone.desc").withStyle(ChatFormatting.GRAY))
