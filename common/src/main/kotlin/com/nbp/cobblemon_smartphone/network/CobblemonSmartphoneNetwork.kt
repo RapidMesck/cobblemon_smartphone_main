@@ -182,6 +182,10 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneOpenStatePacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveRotomRadarPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomRadarPacket
 import com.nbp.cobblemon_smartphone.network.packet.RotomAlertPacket
+import com.nbp.cobblemon_smartphone.network.packet.SetRotomScanPriorityPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket
+import com.nbp.cobblemon_smartphone.network.packet.RotomScanCompletePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomConfigPacket
 import com.nbp.cobblemon_smartphone.network.handler.SetSmartphoneOpenStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomEquipStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomSocialSessionHandler
@@ -189,6 +193,10 @@ import com.nbp.cobblemon_smartphone.network.handler.SyncSmartphoneOpenStateHandl
 import com.nbp.cobblemon_smartphone.network.handler.SaveRotomRadarHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomRadarHandler
 import com.nbp.cobblemon_smartphone.network.handler.RotomAlertHandler
+import com.nbp.cobblemon_smartphone.network.handler.SetRotomScanPriorityHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomScanHandler
+import com.nbp.cobblemon_smartphone.network.handler.RotomScanCompleteHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomConfigHandler
 
 object CobblemonSmartphoneNetwork {
     val s2cPayloads = generateS2CPacketInfoList()
@@ -304,6 +312,9 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(OpenPokeInfoScreenPacket.ID, OpenPokeInfoScreenPacket::decode, OpenPokeInfoScreenHandler))
         list.add(PacketRegisterInfo(SyncRotomRadarPacket.ID, SyncRotomRadarPacket::decode, SyncRotomRadarHandler))
         list.add(PacketRegisterInfo(RotomAlertPacket.ID, RotomAlertPacket::decode, RotomAlertHandler))
+        list.add(PacketRegisterInfo(SyncRotomScanPacket.ID, SyncRotomScanPacket::decode, SyncRotomScanHandler))
+        list.add(PacketRegisterInfo(RotomScanCompletePacket.ID, RotomScanCompletePacket::decode, RotomScanCompleteHandler))
+        list.add(PacketRegisterInfo(SyncRotomConfigPacket.ID, SyncRotomConfigPacket::decode, SyncRotomConfigHandler))
 
         return list
     }
@@ -502,6 +513,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(ReportContentPacket.ID, ReportContentPacket::decode, ReportContentHandler))
         list.add(PacketRegisterInfo(SetSmartphoneOpenStatePacket.ID, SetSmartphoneOpenStatePacket::decode, SetSmartphoneOpenStateHandler))
         list.add(PacketRegisterInfo(SaveRotomRadarPacket.ID, SaveRotomRadarPacket::decode, SaveRotomRadarHandler))
+        list.add(PacketRegisterInfo(SetRotomScanPriorityPacket.ID, SetRotomScanPriorityPacket::decode, SetRotomScanPriorityHandler))
 
         return list
     }

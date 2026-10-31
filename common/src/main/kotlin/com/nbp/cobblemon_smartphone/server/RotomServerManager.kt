@@ -3,6 +3,7 @@ package com.nbp.cobblemon_smartphone.server
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.pokemon.Pokemon
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
 import com.nbp.cobblemon_smartphone.network.packet.RotomAlertPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomEquipStatePacket
@@ -59,6 +60,8 @@ object RotomServerManager {
     fun updatePlayerConfig(playerUuid: UUID, config: RotomRadarConfig) {
         playerConfigs[playerUuid] = config
     }
+
+    fun getPlayerConfig(playerUuid: UUID): RotomRadarConfig? = playerConfigs[playerUuid]
 
     fun onPlayerSetOpen(player: ServerPlayer, isOpen: Boolean) {
         if (isOpen) {
@@ -120,6 +123,7 @@ object RotomServerManager {
     }
 
     fun onPlayerDisconnect(player: ServerPlayer) {
+        RotomAutoScannerManager.onPlayerDisconnect(player)
         playerConfigs.remove(player.uuid)
         equippedSnapshots.remove(player.uuid)
         val prefix = "${player.uuid}:"
@@ -224,7 +228,15 @@ object RotomServerManager {
 
         val playersByUuid = playersWithRotom.associateBy { it.uuid }
 
-        // 2. Validar sessões sociais ativas em grupo (terminar se expirou, abriu tela ou se afastou > 7.5 blocos)
+        // 2. Validar sessões sociais ativas em grupo (se desativado no config, encerra e ignora)
+        if (!CobblemonSmartphone.config.rotom.enableSocialInteractions) {
+            if (activeSocialSessions.isNotEmpty()) {
+                activeSocialSessions.clear()
+                playerToSession.clear()
+            }
+            return
+        }
+
         val sessionIter = activeSocialSessions.entries.iterator()
         while (sessionIter.hasNext()) {
             val (sessionId, session) = sessionIter.next()
@@ -420,7 +432,12 @@ object RotomServerManager {
     }
 
     fun tick(server: MinecraftServer) {
-        if (++tickCounter % 20 != 0) return
+        tickCounter++
+
+        // Auto Pokédex Scanner ticks every single tick
+        RotomAutoScannerManager.tick(server)
+
+        if (tickCounter % 20 != 0) return
 
         val now = System.currentTimeMillis()
         updateEquippedRotomsAndSocialSessions(server, now)

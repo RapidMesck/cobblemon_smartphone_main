@@ -10,6 +10,7 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.energy.getEnergy
 import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
 import com.nbp.cobblemon_smartphone.energy.hasEnoughEnergy
+import com.nbp.cobblemon_smartphone.energy.isInfiniteEnergy
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
@@ -285,9 +286,13 @@ class SmartphoneScreen(
                 if (CobblemonSmartphone.config.energy.enableEnergy) {
                     val cost = CobblemonSmartphone.config.energy.getCost(action.id)
                     if (cost > 0) {
-                        val hasEnough = currentSmartphone?.hasEnoughEnergy(cost) ?: false
+                        val isInfinite = currentSmartphone?.isInfiniteEnergy() ?: false
+                        val hasEnough = isInfinite || (currentSmartphone?.hasEnoughEnergy(cost) ?: false)
                         val color = if (hasEnough) ChatFormatting.GREEN else ChatFormatting.RED
                         lines.add(Component.translatable("tooltip.cobblemon_smartphone.energy_cost", cost).withStyle(color))
+                        if (isInfinite) {
+                            lines.add(Component.translatable("tooltip.cobblemon_smartphone.energy_cost_rotom_free").withStyle(ChatFormatting.AQUA))
+                        }
                     }
                 }
                 guiGraphics.renderComponentTooltip(font, lines, mouseX, mouseY)

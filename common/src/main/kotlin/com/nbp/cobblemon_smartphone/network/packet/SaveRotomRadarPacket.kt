@@ -14,6 +14,7 @@ class SaveRotomRadarPacket(val config: RotomRadarConfig) : CobblemonSmartphoneNe
             val shinyAlert = buffer.readBoolean()
             val targetAlert = buffer.readBoolean()
             val soundAlert = buffer.readBoolean()
+            val autoScanPokedex = if (buffer.isReadable) buffer.readBoolean() else true
             val targetsSize = buffer.readVarInt()
             val targets = mutableListOf<RotomTarget>()
             for (i in 0 until targetsSize) {
@@ -42,7 +43,8 @@ class SaveRotomRadarPacket(val config: RotomRadarConfig) : CobblemonSmartphoneNe
                     shinyAlert = shinyAlert,
                     targetAlert = targetAlert,
                     soundAlert = soundAlert,
-                    targets = targets
+                    targets = targets,
+                    autoScanPokedex = autoScanPokedex
                 )
             )
         }
@@ -55,6 +57,7 @@ class SaveRotomRadarPacket(val config: RotomRadarConfig) : CobblemonSmartphoneNe
         buffer.writeBoolean(config.shinyAlert)
         buffer.writeBoolean(config.targetAlert)
         buffer.writeBoolean(config.soundAlert)
+        buffer.writeBoolean(config.autoScanPokedex)
         buffer.writeVarInt(config.targets.size)
         for (target in config.targets) {
             buffer.writeUtf(target.id, 64)

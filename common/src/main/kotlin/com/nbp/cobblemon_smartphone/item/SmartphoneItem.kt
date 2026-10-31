@@ -101,6 +101,33 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide)
         }
 
+        // Se for um Rotom Phone e estiver mirando em um Pokémon dentro do raio configurado:
+        if (stack.isRotomPhone()) {
+            val scanDist = if (level.isClientSide) {
+                com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.scanRadius
+            } else {
+                CobblemonSmartphone.config.rotom.scanRadius
+            }
+            val canScanManual = if (level.isClientSide) {
+                com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.enableManualScanPriority
+            } else {
+                CobblemonSmartphone.config.rotom.enableManualScanPriority
+            }
+
+            if (canScanManual) {
+                val targeted = com.nbp.cobblemon_smartphone.util.RotomScannerHelper.findTargetedPokemon(player, scanDist)
+                if (targeted != null && targeted.isAlive) {
+                    if (level.isClientSide) {
+                        com.nbp.cobblemon_smartphone.network.packet.SetRotomScanPriorityPacket(targeted.id).sendToServer()
+                        player.playSound(CobblemonSounds.POKEDEX_SCAN_OPEN, 0.7f, 1.2f)
+                    } else if (player is ServerPlayer) {
+                        com.nbp.cobblemon_smartphone.server.RotomAutoScannerManager.setPlayerPriorityTarget(player, targeted)
+                    }
+                    return InteractionResultHolder.sidedSuccess(stack, level.isClientSide)
+                }
+            }
+        }
+
         if (level.isClientSide()) {
             // While Social is using the world as a camera view, right-click is the
             // shutter button. Do not reopen the smartphone screen from the held item.
@@ -123,27 +150,35 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
             return InteractionResult.PASS
         }
 
+        val level = player.level()
+        val heldStack = player.getItemInHand(usedHand)
+
+        // Se o smartphone for um Rotom Phone: prioriza o escaneamento deste Pokémon!
+        if (heldStack.isRotomPhone() || stack.isRotomPhone()) {
+            val canScanManual = if (level.isClientSide) {
+                com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.enableManualScanPriority
+            } else {
+                CobblemonSmartphone.config.rotom.enableManualScanPriority
+            }
+
+            if (canScanManual && interactionTarget.isAlive) {
+                if (level.isClientSide) {
+                    com.nbp.cobblemon_smartphone.network.packet.SetRotomScanPriorityPacket(interactionTarget.id).sendToServer()
+                    player.playSound(CobblemonSounds.POKEDEX_SCAN_OPEN, 0.7f, 1.2f)
+                } else if (player is ServerPlayer) {
+                    com.nbp.cobblemon_smartphone.server.RotomAutoScannerManager.setPlayerPriorityTarget(player, interactionTarget)
+                }
+                return InteractionResult.sidedSuccess(level.isClientSide)
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide)
+        }
+
         val pokemon = interactionTarget.pokemon
         val isRotom = pokemon.species.name.equals("rotom", ignoreCase = true) ||
             pokemon.species.resourceIdentifier.path == "rotom"
 
         if (!isRotom) {
             return InteractionResult.PASS
-        }
-
-        val level = player.level()
-        val heldStack = player.getItemInHand(usedHand)
-
-        // Check if the smartphone is already a Rotom Phone
-        if (heldStack.isRotomPhone() || stack.isRotomPhone()) {
-            if (level.isClientSide) {
-                player.displayClientMessage(
-                    Component.translatable("message.cobblemon_smartphone.already_rotom")
-                        .withStyle(ChatFormatting.YELLOW),
-                    true
-                )
-            }
-            return InteractionResult.sidedSuccess(level.isClientSide)
         }
 
         // Cannot transform if Rotom or player is currently in battle

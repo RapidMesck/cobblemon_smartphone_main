@@ -3,6 +3,7 @@ package com.nbp.neoforge.energy
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.energy.getEnergy
 import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
+import com.nbp.cobblemon_smartphone.energy.isInfiniteEnergy
 import com.nbp.cobblemon_smartphone.energy.receiveEnergy
 import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.energy.IEnergyStorage
@@ -29,6 +30,7 @@ class SmartphoneNeoForgeEnergyStorage(private val stack: ItemStack) : IEnergySto
     }
 
     override fun canReceive(): Boolean {
+        if (stack.isInfiniteEnergy()) return false
         return CobblemonSmartphone.config.energy.enableEnergy
     }
 }

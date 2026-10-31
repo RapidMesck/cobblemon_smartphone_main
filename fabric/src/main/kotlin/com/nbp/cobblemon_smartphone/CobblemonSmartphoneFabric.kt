@@ -101,6 +101,7 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
             }
             SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(handler.player)
             SyncEnergyConfigPacket.fromServerConfig().sendToPlayer(handler.player)
+            com.nbp.cobblemon_smartphone.network.packet.SyncRotomConfigPacket.fromServerConfig().sendToPlayer(handler.player)
             RotomServerManager.onPlayerJoin(handler.player)
         }
 

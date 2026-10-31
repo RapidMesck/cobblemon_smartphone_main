@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.nbp.cobblemon_smartphone.client.render.RotomAutoScannerRenderer;
 import com.nbp.cobblemon_smartphone.client.render.RotomPlayerRenderLayer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
@@ -55,8 +56,8 @@ public abstract class LevelRendererMixin {
         Matrix4f projectionMatrix,
         CallbackInfo ci
     ) {
+        float partialTick = deltaTracker.getGameTimeDeltaPartialTick(true);
         if (!camera.isDetached()) {
-            float partialTick = deltaTracker.getGameTimeDeltaPartialTick(true);
             RotomPlayerRenderLayer.renderFirstPersonForLocalPlayer(
                 new PoseStack(),
                 this.renderBuffers.bufferSource(),
@@ -64,6 +65,13 @@ public abstract class LevelRendererMixin {
                 partialTick
             );
         }
+
+        RotomAutoScannerRenderer.render(
+            new PoseStack(),
+            this.renderBuffers.bufferSource(),
+            camera,
+            partialTick
+        );
     }
 
     @Inject(method = "renderLevel", at = @At("RETURN"))

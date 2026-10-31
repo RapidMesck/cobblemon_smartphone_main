@@ -3,6 +3,7 @@ package com.nbp.cobblemon_smartphone.compat.energy
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.energy.getEnergy
 import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
+import com.nbp.cobblemon_smartphone.energy.isInfiniteEnergy
 import com.nbp.cobblemon_smartphone.energy.setEnergy
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import net.fabricmc.fabric.api.transfer.v1.context.ContainerItemContext
@@ -12,6 +13,7 @@ import team.reborn.energy.api.EnergyStorage
 
 class SmartphoneFabricEnergyStorage(private val context: ContainerItemContext) : EnergyStorage {
     override fun supportsInsertion(): Boolean {
+        if (context.itemVariant.toStack().isInfiniteEnergy()) return false
         return CobblemonSmartphone.config.energy.enableEnergy
     }
 

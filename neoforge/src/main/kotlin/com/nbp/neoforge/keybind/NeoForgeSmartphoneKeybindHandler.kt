@@ -26,8 +26,21 @@ object NeoForgeSmartphoneKeybindHandler {
     fun handleScannerKeybind() {
         val player = Minecraft.getInstance().player ?: return
 
+        val smartphoneStack = SmartphoneCompatManager.getSmartphone(player)
         val smartphoneItem = SmartphoneCompatManager.getSmartphoneItem(player)
         if (smartphoneItem == null) return
+
+        // Se o jogador possuir um Rotom Phone e a mira manual estiver permitida:
+        val rotomPhone = com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getEquippedRotomPhone(player)
+        if (rotomPhone != null && com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.enableManualScanPriority) {
+            val dist = com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.scanRadius
+            val targeted = com.nbp.cobblemon_smartphone.util.RotomScannerHelper.findTargetedPokemon(player, dist)
+            if (targeted != null && targeted.isAlive) {
+                com.nbp.cobblemon_smartphone.network.packet.SetRotomScanPriorityPacket(targeted.id).sendToServer()
+                player.playSound(CobblemonSounds.POKEDEX_SCAN_OPEN, 0.7f, 1.2f)
+                return
+            }
+        }
 
         if (!CobblemonSmartphone.config.features.enableScanner) {
             if (ScannerManager.isActive) {

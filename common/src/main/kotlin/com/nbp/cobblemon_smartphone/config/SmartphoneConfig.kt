@@ -18,6 +18,7 @@ class SmartphoneConfig {
     val structureCompass = StructureCompass()
     val social = Social()
     val energy = EnergyConfig()
+    val rotom = RotomConfig()
 
     class Cooldowns {
         val healButton: Int = 60  // 1 minuto em segundos
@@ -133,6 +134,56 @@ class SmartphoneConfig {
             if (match != null) return match.cost
             return com.nbp.cobblemon_smartphone.api.DatapackActionLoader.getActionFeCost(actionId) ?: defaultCost
         }
+    }
+
+    class RotomConfig {
+        /** Se o escaneamento automático passivo de Pokémon não registrados por perto está ativo */
+        var enableAutoScanner: Boolean = true
+
+        /** Se o jogador pode mirar/interagir com o Pokémon para focar e escanear com prioridade */
+        var enableManualScanPriority: Boolean = true
+
+        /** Se os Rotoms no ombro realizam coreografias e interações sociais em grupo quando jogadores se encontram */
+        var enableSocialInteractions: Boolean = true
+
+        /** Se o escaneamento manual permite escanear Pokémon que já foram registrados na Pokédex */
+        var allowScanAlreadyRegistered: Boolean = true
+
+        /** Se o escaneamento bem-sucedido registra o Pokémon automaticamente na Pokédex Cobblemon */
+        var registerUnregisteredToDex: Boolean = true
+
+        /** Se o jogador precisa ter linha de visão direta (sem blocos opacos no caminho) com o Pokémon */
+        var requireLineOfSight: Boolean = true
+
+        /** Se a porcentagem total de IVs deve ser revelada no holograma e na mensagem de conclusão */
+        var revealIvPercentage: Boolean = true
+
+        /** Se a nature do Pokémon deve ser revelada na mensagem de conclusão do scan */
+        var revealNature: Boolean = true
+
+        /** Raio máximo em blocos para detecção e escaneamento do Pokémon */
+        var scanRadius: Double = 10.0
+
+        /** Duração do escaneamento ativo em ticks (50 ticks = 2.5 segundos) */
+        var scanDurationTicks: Int = 50
+
+        /** Tempo de voo e aproximação do Rotom até o Pokémon em ticks (18 ticks = ~0.9 segundos) */
+        var approachTicks: Int = 18
+
+        /** Tempo de voo e retorno do Rotom de volta ao ombro do jogador em ticks (16 ticks = ~0.8 segundos) */
+        var returnTicks: Int = 16
+
+        /** Cooldown em segundos antes de poder escanear novamente a mesma entidade Pokémon */
+        var rescanCooldownSeconds: Int = 90
+
+        /** Se o Rotom Phone possui energia infinita / autoalimentação pelo Rotom elétrico (não precisando ser carregado) */
+        var infiniteEnergy: Boolean = true
+
+        /** Custo de energia (Forge/NeoForge/Fabric Energy) por escaneamento se o sistema de energia estiver ativo (0 = gratuito) */
+        var scanEnergyCost: Int = 0
+
+        /** Raio ao quadrado pré-calculado para verificações rápidas de distância no servidor */
+        val scanRadiusSqr: Double get() = scanRadius * scanRadius
     }
 
     companion object {

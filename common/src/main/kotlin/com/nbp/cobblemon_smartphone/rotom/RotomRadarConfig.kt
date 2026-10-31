@@ -46,7 +46,8 @@ data class RotomRadarConfig(
     var shinyAlert: Boolean = true,
     var targetAlert: Boolean = true,
     var soundAlert: Boolean = true,
-    val targets: MutableList<RotomTarget> = mutableListOf()
+    val targets: MutableList<RotomTarget> = mutableListOf(),
+    var autoScanPokedex: Boolean = true
 ) {
     fun toTag(): CompoundTag {
         val tag = CompoundTag()
@@ -54,6 +55,7 @@ data class RotomRadarConfig(
         tag.putBoolean("shinyAlert", shinyAlert)
         tag.putBoolean("targetAlert", targetAlert)
         tag.putBoolean("soundAlert", soundAlert)
+        tag.putBoolean("autoScanPokedex", autoScanPokedex)
 
         val list = ListTag()
         for (target in targets) {
@@ -69,7 +71,8 @@ data class RotomRadarConfig(
                 enabled = if (tag.contains("enabled")) tag.getBoolean("enabled") else true,
                 shinyAlert = if (tag.contains("shinyAlert")) tag.getBoolean("shinyAlert") else true,
                 targetAlert = if (tag.contains("targetAlert")) tag.getBoolean("targetAlert") else true,
-                soundAlert = if (tag.contains("soundAlert")) tag.getBoolean("soundAlert") else true
+                soundAlert = if (tag.contains("soundAlert")) tag.getBoolean("soundAlert") else true,
+                autoScanPokedex = if (tag.contains("autoScanPokedex")) tag.getBoolean("autoScanPokedex") else true
             )
             if (tag.contains("targets", Tag.TAG_LIST.toInt())) {
                 val list = tag.getList("targets", Tag.TAG_COMPOUND.toInt())

@@ -3,6 +3,7 @@ package com.nbp.cobblemon_smartphone.energy
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.isRotomPhone
 import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
@@ -13,7 +14,14 @@ import net.minecraft.world.item.component.CustomData
 const val ENERGY_TAG = "cobblemon_smartphone:energy"
 const val EXTRA_CAPACITY_TAG = "cobblemon_smartphone:extra_energy_capacity"
 
+fun ItemStack.isInfiniteEnergy(): Boolean {
+    return this.isRotomPhone() && CobblemonSmartphone.config.rotom.infiniteEnergy
+}
+
 fun ItemStack.getEnergy(): Int {
+    if (this.isInfiniteEnergy()) {
+        return getMaxEnergy()
+    }
     val customData = this.get(DataComponents.CUSTOM_DATA) ?: return 0
     val tag = customData.copyTag()
     return tag.getInt(ENERGY_TAG)
@@ -50,7 +58,7 @@ fun ItemStack.setEnergy(amount: Int) {
 }
 
 fun ItemStack.receiveEnergy(maxReceive: Int, simulate: Boolean = false, ignoreLimit: Boolean = false): Int {
-    if (!CobblemonSmartphone.config.energy.enableEnergy) return 0
+    if (!CobblemonSmartphone.config.energy.enableEnergy || this.isInfiniteEnergy()) return 0
     val current = getEnergy()
     val max = getMaxEnergy()
     val limit = if (ignoreLimit) 0 else CobblemonSmartphone.config.energy.maxReceive
@@ -64,7 +72,7 @@ fun ItemStack.receiveEnergy(maxReceive: Int, simulate: Boolean = false, ignoreLi
 }
 
 fun ItemStack.extractEnergy(maxExtract: Int, simulate: Boolean): Int {
-    if (!CobblemonSmartphone.config.energy.enableEnergy) return 0
+    if (!CobblemonSmartphone.config.energy.enableEnergy || this.isInfiniteEnergy()) return 0
     val current = getEnergy()
     val energyExtracted = minOf(current, maxExtract)
     if (energyExtracted <= 0) return 0
@@ -76,11 +84,13 @@ fun ItemStack.extractEnergy(maxExtract: Int, simulate: Boolean): Int {
 
 fun ItemStack.hasEnoughEnergy(cost: Int): Boolean {
     if (!CobblemonSmartphone.config.energy.enableEnergy || cost <= 0) return true
+    if (this.isInfiniteEnergy()) return true
     return getEnergy() >= cost
 }
 
 fun ItemStack.consumeEnergy(cost: Int): Boolean {
     if (!CobblemonSmartphone.config.energy.enableEnergy || cost <= 0) return true
+    if (this.isInfiniteEnergy()) return true
     if (!hasEnoughEnergy(cost)) return false
     setEnergy(getEnergy() - cost)
     return true
@@ -104,6 +114,10 @@ object SmartphoneEnergyHelper {
                 true
             )
             return false
+        }
+
+        if (phone.isInfiniteEnergy()) {
+            return true
         }
 
         if (!phone.hasEnoughEnergy(cost)) {

@@ -107,6 +107,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
             }
             SocialCapabilitiesPacket.fromServerConfig().sendToPlayer(player)
             SyncEnergyConfigPacket.fromServerConfig().sendToPlayer(player)
+            com.nbp.cobblemon_smartphone.network.packet.SyncRotomConfigPacket.fromServerConfig().sendToPlayer(player)
             RotomServerManager.onPlayerJoin(player)
         }
 

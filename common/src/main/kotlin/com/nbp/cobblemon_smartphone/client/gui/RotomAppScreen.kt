@@ -190,13 +190,13 @@ class RotomAppScreen(
     }
 
     private fun renderSettingsTab(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        var cy = screenY + 48
-        val rowH = 32
-        val rowGap = 4
+        var cy = screenY + 44
+        val rowH = 26
+        val rowGap = 3
 
         // 1. Radar Geral
         renderSettingRow(
-            guiGraphics, mouseX, mouseY, cy,
+            guiGraphics, mouseX, mouseY, cy, rowH,
             title = lang("setting_radar_title"),
             desc = lang("setting_radar_desc"),
             enabled = config.enabled
@@ -205,7 +205,7 @@ class RotomAppScreen(
 
         // 2. Alerta Shiny
         renderSettingRow(
-            guiGraphics, mouseX, mouseY, cy,
+            guiGraphics, mouseX, mouseY, cy, rowH,
             title = lang("setting_shiny_title"),
             desc = lang("setting_shiny_desc"),
             enabled = config.shinyAlert
@@ -214,7 +214,7 @@ class RotomAppScreen(
 
         // 3. Alerta de Alvos
         renderSettingRow(
-            guiGraphics, mouseX, mouseY, cy,
+            guiGraphics, mouseX, mouseY, cy, rowH,
             title = lang("setting_targets_title"),
             desc = lang("setting_targets_desc"),
             enabled = config.targetAlert
@@ -223,10 +223,19 @@ class RotomAppScreen(
 
         // 4. Som de Notificação
         renderSettingRow(
-            guiGraphics, mouseX, mouseY, cy,
+            guiGraphics, mouseX, mouseY, cy, rowH,
             title = lang("setting_sound_title"),
             desc = lang("setting_sound_desc"),
             enabled = config.soundAlert
+        )
+        cy += rowH + rowGap
+
+        // 5. Auto Scanner Pokédex
+        renderSettingRow(
+            guiGraphics, mouseX, mouseY, cy, rowH,
+            title = lang("setting_autoscan_title"),
+            desc = lang("setting_autoscan_desc"),
+            enabled = config.autoScanPokedex
         )
     }
 
@@ -235,21 +244,22 @@ class RotomAppScreen(
         mouseX: Int,
         mouseY: Int,
         y: Int,
+        rowH: Int = 26,
         title: String,
         desc: String,
         enabled: Boolean
     ) {
         val x1 = screenX + CONTENT_X
         val x2 = x1 + LIST_WIDTH
-        val y2 = y + 32
+        val y2 = y + rowH
 
         guiGraphics.fill(x1, y, x2, y2, SECTION_CONTENT_BG)
 
         // Toggle button on the right
         val btnW = 38
-        val btnH = 16
-        val btnX = x2 - btnW - 6
-        val btnY = y + 8
+        val btnH = 15
+        val btnX = x2 - btnW - 5
+        val btnY = y + (rowH - btnH) / 2
         val btnHover = mouseX in btnX..(btnX + btnW) && mouseY in btnY..(btnY + btnH)
 
         val btnBg = if (enabled) (if (btnHover) theme.colors.primaryHover else theme.colors.success)
@@ -267,8 +277,8 @@ class RotomAppScreen(
         } else {
             desc
         }
-        guiGraphics.drawString(font, title, x1 + 6, y + 5, CONTENT_TEXT, false)
-        guiGraphics.drawString(font, displayDesc, x1 + 6, y + 18, CONTENT_DIM, false)
+        guiGraphics.drawString(font, title, x1 + 6, y + 3, CONTENT_TEXT, false)
+        guiGraphics.drawString(font, displayDesc, x1 + 6, y + 14, CONTENT_DIM, false)
     }
 
     private fun renderTargetsListTab(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -567,16 +577,21 @@ class RotomAppScreen(
     }
 
     private fun handleSettingsClick(mx: Int, my: Int): Boolean {
-        var cy = screenY + 48
-        val rowH = 32
-        val rowGap = 4
+        var cy = screenY + 44
+        val rowH = 26
+        val rowGap = 3
         val x2 = screenX + CONTENT_X + LIST_WIDTH
         val btnW = 38
-        val btnH = 16
-        val btnX = x2 - btnW - 6
+        val btnH = 15
+        val btnX = x2 - btnW - 5
+
+        fun isClicked(y: Int): Boolean {
+            val btnY = y + (rowH - btnH) / 2
+            return mx in btnX..(btnX + btnW) && my in btnY..(btnY + btnH)
+        }
 
         // 1. Radar Geral
-        if (mx in btnX..(btnX + btnW) && my in (cy + 8)..(cy + 8 + btnH)) {
+        if (isClicked(cy)) {
             playClickSound()
             config.enabled = !config.enabled
             RotomRadarClientState.saveConfig()
@@ -585,7 +600,7 @@ class RotomAppScreen(
         cy += rowH + rowGap
 
         // 2. Alerta Shiny
-        if (mx in btnX..(btnX + btnW) && my in (cy + 8)..(cy + 8 + btnH)) {
+        if (isClicked(cy)) {
             playClickSound()
             config.shinyAlert = !config.shinyAlert
             RotomRadarClientState.saveConfig()
@@ -594,7 +609,7 @@ class RotomAppScreen(
         cy += rowH + rowGap
 
         // 3. Alerta de Alvos
-        if (mx in btnX..(btnX + btnW) && my in (cy + 8)..(cy + 8 + btnH)) {
+        if (isClicked(cy)) {
             playClickSound()
             config.targetAlert = !config.targetAlert
             RotomRadarClientState.saveConfig()
@@ -603,9 +618,18 @@ class RotomAppScreen(
         cy += rowH + rowGap
 
         // 4. Som de Notificação
-        if (mx in btnX..(btnX + btnW) && my in (cy + 8)..(cy + 8 + btnH)) {
+        if (isClicked(cy)) {
             playClickSound()
             config.soundAlert = !config.soundAlert
+            RotomRadarClientState.saveConfig()
+            return true
+        }
+        cy += rowH + rowGap
+
+        // 5. Auto Scanner Pokédex
+        if (isClicked(cy)) {
+            playClickSound()
+            config.autoScanPokedex = !config.autoScanPokedex
             RotomRadarClientState.saveConfig()
             return true
         }

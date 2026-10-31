@@ -288,5 +288,6 @@ object RotomClientManager {
         }
         val isOpen = RotomPlayerRenderLayer.isSmartphoneScreen(mc.screen)
         updateLocalState(isOpen)
+        com.nbp.cobblemon_smartphone.client.RotomScannerClientState.tick()
     }
 }
