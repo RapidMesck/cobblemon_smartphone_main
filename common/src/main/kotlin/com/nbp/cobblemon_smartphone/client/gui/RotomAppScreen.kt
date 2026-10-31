@@ -144,11 +144,6 @@ class RotomAppScreen(
         val backColor = if (backHover) theme.colors.gold else theme.colors.textPrimary
         guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, backColor, false)
 
-        // Title
-        val title = lang("title")
-        val titleX = screenX + (GUI_WIDTH - font.width(title)) / 2
-        guiGraphics.drawString(font, title, titleX, screenY + BACK_Y, theme.colors.gold, false)
-
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
 
         // Tabs
