@@ -5,13 +5,19 @@ import net.minecraft.network.RegistryFriendlyByteBuf
 import java.util.UUID
 
 /**
- * Envia do cliente para o servidor informando se a tela do smartphone foi aberta ou fechada.
+ * Envia do cliente para o servidor informando se a tela do smartphone foi aberta ou fechada,
+ * e se está em modo horizontal (scanner de pokédex ou câmera fotográfica).
  */
-class SetSmartphoneOpenStatePacket(val isOpen: Boolean) : CobblemonSmartphoneNetworkPacket<SetSmartphoneOpenStatePacket> {
+class SetSmartphoneOpenStatePacket(
+    val isOpen: Boolean,
+    val isHorizontal: Boolean = false
+) : CobblemonSmartphoneNetworkPacket<SetSmartphoneOpenStatePacket> {
     companion object {
         val ID = smartphoneResource("set_smartphone_open_state")
         fun decode(buffer: RegistryFriendlyByteBuf): SetSmartphoneOpenStatePacket {
-            return SetSmartphoneOpenStatePacket(buffer.readBoolean())
+            val isOpen = buffer.readBoolean()
+            val isHorizontal = if (buffer.isReadable) buffer.readBoolean() else false
+            return SetSmartphoneOpenStatePacket(isOpen, isHorizontal)
         }
     }
 
@@ -19,17 +25,26 @@ class SetSmartphoneOpenStatePacket(val isOpen: Boolean) : CobblemonSmartphoneNet
 
     override fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeBoolean(isOpen)
+        buffer.writeBoolean(isHorizontal)
     }
 }
 
 /**
- * Envia do servidor para os clientes sincronizando o estado de abertura do smartphone de um jogador.
+ * Envia do servidor para os clientes sincronizando o estado de abertura do smartphone de um jogador
+ * e se está em orientação horizontal.
  */
-class SyncSmartphoneOpenStatePacket(val playerUuid: UUID, val isOpen: Boolean) : CobblemonSmartphoneNetworkPacket<SyncSmartphoneOpenStatePacket> {
+class SyncSmartphoneOpenStatePacket(
+    val playerUuid: UUID,
+    val isOpen: Boolean,
+    val isHorizontal: Boolean = false
+) : CobblemonSmartphoneNetworkPacket<SyncSmartphoneOpenStatePacket> {
     companion object {
         val ID = smartphoneResource("sync_smartphone_open_state")
         fun decode(buffer: RegistryFriendlyByteBuf): SyncSmartphoneOpenStatePacket {
-            return SyncSmartphoneOpenStatePacket(buffer.readUUID(), buffer.readBoolean())
+            val playerUuid = buffer.readUUID()
+            val isOpen = buffer.readBoolean()
+            val isHorizontal = if (buffer.isReadable) buffer.readBoolean() else false
+            return SyncSmartphoneOpenStatePacket(playerUuid, isOpen, isHorizontal)
         }
     }
 
@@ -38,6 +53,7 @@ class SyncSmartphoneOpenStatePacket(val playerUuid: UUID, val isOpen: Boolean) :
     override fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeUUID(playerUuid)
         buffer.writeBoolean(isOpen)
+        buffer.writeBoolean(isHorizontal)
     }
 }
 

@@ -26,7 +26,9 @@ object RotomScannerClientState {
         var scanDurationTicks: Int = 50,
         var approachTicks: Int = 18,
         var returnTicks: Int = 16,
-        var infiniteEnergy: Boolean = true
+        var infiniteEnergy: Boolean = true,
+        var enableSocialDataShare: Boolean = true,
+        var socialDataShareChance: Double = 0.35
     )
 
     var clientConfig: ClientRotomConfig = ClientRotomConfig()
@@ -46,7 +48,9 @@ object RotomScannerClientState {
             scanDurationTicks = packet.scanDurationTicks,
             approachTicks = packet.approachTicks,
             returnTicks = packet.returnTicks,
-            infiniteEnergy = packet.infiniteEnergy
+            infiniteEnergy = packet.infiniteEnergy,
+            enableSocialDataShare = packet.enableSocialDataShare,
+            socialDataShareChance = packet.socialDataShareChance
         )
     }
 

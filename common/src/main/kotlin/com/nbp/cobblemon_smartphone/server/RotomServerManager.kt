@@ -1,7 +1,13 @@
 package com.nbp.cobblemon_smartphone.server
 
+import com.cobblemon.mod.common.Cobblemon
+import com.cobblemon.mod.common.CobblemonSounds
+import com.cobblemon.mod.common.api.pokedex.PokedexEntryProgress
+import com.cobblemon.mod.common.api.pokedex.PokedexLearnedInformation
+import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import com.cobblemon.mod.common.net.messages.client.pokedex.ServerConfirmedRegisterPacket
 import com.cobblemon.mod.common.pokemon.Pokemon
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
@@ -17,8 +23,12 @@ import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getBowtieDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRibbonDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRotomAccessory
+import net.minecraft.ChatFormatting
+import net.minecraft.core.particles.ParticleTypes
+import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.sounds.SoundSource
 import net.minecraft.world.item.DyeColor
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -26,6 +36,7 @@ import kotlin.random.Random
 
 object RotomServerManager {
     private val openPlayers = ConcurrentHashMap.newKeySet<UUID>()
+    private val horizontalPlayers = ConcurrentHashMap.newKeySet<UUID>()
     private val playerConfigs = ConcurrentHashMap<UUID, RotomRadarConfig>()
     // Cooldown map: key = "playerUuid:entityUuid", value = expiration timestamp ms
     private val alertCooldowns = ConcurrentHashMap<String, Long>()
@@ -48,7 +59,9 @@ object RotomServerManager {
         val dirZ: Double,
         val patternSeed: Int,
         val durationTicks: Int,
-        val endTimeMs: Long
+        val endTimeMs: Long,
+        val dataShareCheckTimeMs: Long,
+        var hasSharedData: Boolean = false
     )
 
     private val equippedSnapshots = ConcurrentHashMap<UUID, EquippedRotomSnapshot>()
@@ -63,15 +76,21 @@ object RotomServerManager {
 
     fun getPlayerConfig(playerUuid: UUID): RotomRadarConfig? = playerConfigs[playerUuid]
 
-    fun onPlayerSetOpen(player: ServerPlayer, isOpen: Boolean) {
+    fun onPlayerSetOpen(player: ServerPlayer, isOpen: Boolean, isHorizontal: Boolean = false) {
         if (isOpen) {
             openPlayers.add(player.uuid)
+            if (isHorizontal) {
+                horizontalPlayers.add(player.uuid)
+            } else {
+                horizontalPlayers.remove(player.uuid)
+            }
         } else {
             openPlayers.remove(player.uuid)
+            horizontalPlayers.remove(player.uuid)
         }
 
         // Broadcast para todos os outros jogadores sincronizarem a animação
-        val syncPacket = SyncSmartphoneOpenStatePacket(player.uuid, isOpen)
+        val syncPacket = SyncSmartphoneOpenStatePacket(player.uuid, isOpen, isHorizontal)
         for (other in player.server.playerList.players) {
             if (other.uuid != player.uuid) {
                 syncPacket.sendToPlayer(other)
@@ -82,7 +101,8 @@ object RotomServerManager {
     fun onPlayerJoin(player: ServerPlayer) {
         // Envia para o jogador que acabou de entrar quais jogadores estão com o smartphone aberto
         for (openUuid in openPlayers) {
-            SyncSmartphoneOpenStatePacket(openUuid, true).sendToPlayer(player)
+            val isHorizontal = horizontalPlayers.contains(openUuid)
+            SyncSmartphoneOpenStatePacket(openUuid, true, isHorizontal).sendToPlayer(player)
         }
 
         // Envia o estado visual de Rotom Phone de todos os jogadores online
@@ -182,8 +202,9 @@ object RotomServerManager {
             }
         }
 
+        horizontalPlayers.remove(player.uuid)
         if (openPlayers.remove(player.uuid)) {
-            val syncPacket = SyncSmartphoneOpenStatePacket(player.uuid, false)
+            val syncPacket = SyncSmartphoneOpenStatePacket(player.uuid, false, false)
             for (other in player.server.playerList.players) {
                 if (other.uuid != player.uuid) {
                     syncPacket.sendToPlayer(other)
@@ -285,22 +306,30 @@ object RotomServerManager {
                 for (target in players) {
                     stopPkt.sendToPlayer(target)
                 }
-            } else if (invalidParticipants.isNotEmpty()) {
-                // Participante saiu, mas a sessão continua com os outros!
-                val updatePkt = SyncRotomSocialSessionPacket(
-                    sessionId = sessionId,
-                    participants = session.participants.toList(),
-                    active = true,
-                    anchorX = session.anchorX,
-                    anchorY = session.anchorY,
-                    anchorZ = session.anchorZ,
-                    dirX = session.dirX,
-                    dirZ = session.dirZ,
-                    patternSeed = session.patternSeed,
-                    durationTicks = ((session.endTimeMs - now) / 50L).toInt().coerceAtLeast(20)
-                )
-                for (target in players) {
-                    updatePkt.sendToPlayer(target)
+            } else {
+                // Sessão ativa: verificar compartilhamento de dados da Pokédex no ponto médio
+                if (!session.hasSharedData && now >= session.dataShareCheckTimeMs) {
+                    session.hasSharedData = true
+                    trySocialDataShare(server, session)
+                }
+
+                if (invalidParticipants.isNotEmpty()) {
+                    // Participante saiu, mas a sessão continua com os outros!
+                    val updatePkt = SyncRotomSocialSessionPacket(
+                        sessionId = sessionId,
+                        participants = session.participants.toList(),
+                        active = true,
+                        anchorX = session.anchorX,
+                        anchorY = session.anchorY,
+                        anchorZ = session.anchorZ,
+                        dirX = session.dirX,
+                        dirZ = session.dirZ,
+                        patternSeed = session.patternSeed,
+                        durationTicks = ((session.endTimeMs - now) / 50L).toInt().coerceAtLeast(20)
+                    )
+                    for (target in players) {
+                        updatePkt.sendToPlayer(target)
+                    }
                 }
             }
         }
@@ -401,7 +430,9 @@ object RotomServerManager {
                                 dirZ = uZ,
                                 patternSeed = Random.nextInt(1, 1_000_000),
                                 durationTicks = durationTicks,
-                                endTimeMs = now + durationSec * 1000L
+                                endTimeMs = now + durationSec * 1000L,
+                                dataShareCheckTimeMs = now + (durationSec * 500L),
+                                hasSharedData = false
                             )
 
                             activeSocialSessions[sessionId] = newSession
@@ -542,5 +573,85 @@ object RotomServerManager {
             return target
         }
         return null
+    }
+
+    private fun trySocialDataShare(server: MinecraftServer, session: ServerSocialSession) {
+        val rotomConfig = CobblemonSmartphone.config.rotom
+        if (!rotomConfig.enableSocialInteractions || !rotomConfig.enableSocialDataShare || !rotomConfig.registerUnregisteredToDex) return
+        if (Random.nextDouble() >= rotomConfig.socialDataShareChance) return
+
+        val participants = session.participants
+            .mapNotNull { server.playerList.getPlayer(it) }
+            .filter { it.isAlive && !openPlayers.contains(it.uuid) }
+
+        if (participants.size < 2) return
+
+        var anyShared = false
+
+        for (recipient in participants) {
+            val recipientDex = Cobblemon.playerDataManager.getPokedexData(recipient)
+            val potentialDonors = participants.filter { it.uuid != recipient.uuid }
+
+            val candidates = mutableListOf<Pair<ServerPlayer, net.minecraft.resources.ResourceLocation>>()
+            for (donor in potentialDonors) {
+                val donorDex = Cobblemon.playerDataManager.getPokedexData(donor)
+                for (speciesId in donorDex.speciesRecords.keys) {
+                    if (donorDex.getHighestKnowledgeForSpecies(speciesId) != PokedexEntryProgress.UNREGISTERED) {
+                        if (recipientDex.getHighestKnowledgeForSpecies(speciesId) == PokedexEntryProgress.UNREGISTERED) {
+                            if (PokemonSpecies.getByIdentifier(speciesId) != null) {
+                                candidates.add(donor to speciesId)
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (candidates.isNotEmpty()) {
+                val (chosenDonor, chosenSpeciesId) = candidates.random()
+                val species = PokemonSpecies.getByIdentifier(chosenSpeciesId)
+                val formName = species?.standardForm?.name ?: ""
+
+                val speciesRecord = recipientDex.getOrCreateSpeciesRecord(chosenSpeciesId)
+                val formRecord = speciesRecord.getOrCreateFormRecord(formName)
+                (formRecord.getSeenShinyStates() as? MutableSet<String>)?.add("normal")
+                formRecord.setKnowledgeProgress(PokedexEntryProgress.SEEN)
+
+                ServerConfirmedRegisterPacket(chosenSpeciesId, PokedexLearnedInformation.SPECIES).sendToPlayer(recipient)
+
+                recipient.playNotifySound(CobblemonSounds.POKEDEX_SCAN_REGISTER_POKEMON, SoundSource.PLAYERS, 1.0f, 1.0f)
+                chosenDonor.playNotifySound(CobblemonSounds.POKEDEX_CLICK, SoundSource.PLAYERS, 0.8f, 1.2f)
+
+                val speciesDisplayName = species?.translatedName ?: Component.literal(chosenSpeciesId.path.replaceFirstChar { it.uppercase() })
+
+                recipient.displayClientMessage(
+                    Component.translatable(
+                        "message.cobblemon_smartphone.rotom_social.data_received",
+                        speciesDisplayName,
+                        chosenDonor.displayName
+                    ).withStyle(ChatFormatting.AQUA),
+                    false
+                )
+
+                chosenDonor.displayClientMessage(
+                    Component.translatable(
+                        "message.cobblemon_smartphone.rotom_social.data_shared",
+                        speciesDisplayName,
+                        recipient.displayName
+                    ).withStyle(ChatFormatting.GREEN),
+                    false
+                )
+
+                anyShared = true
+            }
+        }
+
+        if (anyShared) {
+            val level = participants.firstOrNull()?.serverLevel()
+            if (level != null) {
+                level.sendParticles(ParticleTypes.ELECTRIC_SPARK, session.anchorX, session.anchorY, session.anchorZ, 18, 0.4, 0.4, 0.4, 0.08)
+                level.sendParticles(ParticleTypes.ENCHANT, session.anchorX, session.anchorY, session.anchorZ, 22, 0.5, 0.5, 0.5, 0.12)
+                level.sendParticles(ParticleTypes.HAPPY_VILLAGER, session.anchorX, session.anchorY, session.anchorZ, 8, 0.35, 0.35, 0.35, 0.02)
+            }
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.nbp.cobblemon_smartphone.client.render
 
+import com.nbp.cobblemon_smartphone.client.scanner.ScannerManager
+import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.SetSmartphoneOpenStatePacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
@@ -17,8 +19,10 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 
 object RotomClientManager {
-    private var lastLocalState: Boolean? = null
+    private var lastLocalOpen: Boolean? = null
+    private var lastLocalHorizontal: Boolean? = null
     private val remoteOpenStates = ConcurrentHashMap<UUID, Boolean>()
+    private val remoteHorizontalStates = ConcurrentHashMap<UUID, Boolean>()
 
     data class RemoteRotomVisual(
         val hasRotom: Boolean,
@@ -39,11 +43,25 @@ object RotomClientManager {
         return remoteOpenStates[uuid] == true
     }
 
-    fun setRemotePlayerOpen(uuid: UUID, isOpen: Boolean) {
+    fun isPlayerHorizontal(uuid: UUID): Boolean {
+        val mc = Minecraft.getInstance()
+        if (mc.player?.uuid == uuid) {
+            return ScannerManager.isInUse() || SocialPhotoClient.isCameraActive()
+        }
+        return remoteHorizontalStates[uuid] == true
+    }
+
+    fun setRemotePlayerOpen(uuid: UUID, isOpen: Boolean, isHorizontal: Boolean = false) {
         if (isOpen) {
             remoteOpenStates[uuid] = true
+            if (isHorizontal) {
+                remoteHorizontalStates[uuid] = true
+            } else {
+                remoteHorizontalStates.remove(uuid)
+            }
         } else {
             remoteOpenStates.remove(uuid)
+            remoteHorizontalStates.remove(uuid)
         }
     }
 
@@ -269,10 +287,11 @@ object RotomClientManager {
         return null
     }
 
-    fun updateLocalState(isOpen: Boolean) {
-        if (lastLocalState != isOpen) {
-            lastLocalState = isOpen
-            SetSmartphoneOpenStatePacket(isOpen).sendToServer()
+    fun updateLocalState(isOpen: Boolean, isHorizontal: Boolean = false) {
+        if (lastLocalOpen != isOpen || lastLocalHorizontal != isHorizontal) {
+            lastLocalOpen = isOpen
+            lastLocalHorizontal = isHorizontal
+            SetSmartphoneOpenStatePacket(isOpen, isHorizontal).sendToServer()
         }
     }
 
@@ -280,14 +299,22 @@ object RotomClientManager {
         val mc = Minecraft.getInstance()
         if (mc.player == null) {
             remoteRotomVisuals.clear()
+            remoteOpenStates.clear()
+            remoteHorizontalStates.clear()
             activeSessions.clear()
             playerToSessionId.clear()
             fallbackCheckStates.clear()
             serverSocialSyncReceived = false
+            lastLocalOpen = null
+            lastLocalHorizontal = null
             return
         }
-        val isOpen = RotomPlayerRenderLayer.isSmartphoneScreen(mc.screen)
-        updateLocalState(isOpen)
+        val isScreenOpen = RotomPlayerRenderLayer.isSmartphoneScreen(mc.screen)
+        val isScannerActive = ScannerManager.isInUse()
+        val isPhotoActive = SocialPhotoClient.isCameraActive()
+        val isOpen = isScreenOpen || isScannerActive || isPhotoActive
+        val isHorizontal = isScannerActive || isPhotoActive
+        updateLocalState(isOpen, isHorizontal)
         com.nbp.cobblemon_smartphone.client.RotomScannerClientState.tick()
     }
 }

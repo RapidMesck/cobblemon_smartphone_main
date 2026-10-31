@@ -3,6 +3,8 @@ package com.nbp.cobblemon_smartphone.client.render
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.math.Axis
 import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
+import com.nbp.cobblemon_smartphone.client.scanner.ScannerManager
+import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
@@ -70,6 +72,7 @@ class RotomPlayerRenderLayer(
 
         class RotomAnimState {
             var openProgress: Float = 0.0f
+            var horizontalProgress: Float = 0.0f
             var lastRenderTime: Long = 0L
             var currentYaw: Float = YAW_FACING_FRONT
             var currentPitch: Float = 0.0f
@@ -137,13 +140,20 @@ class RotomPlayerRenderLayer(
             if (player.isInvisible || player.isSleeping || player.isDeadOrDying || player.isSpectator) return
 
             // Não renderiza em primeira pessoa se o Rotom estiver descansando no ombro!
-            // Renderiza APENAS se estiver ativamente em uma interação social ou no voo suave de transição.
+            // Renderiza se estiver socializando, escaneando Pokémon selvagem, em modo Pokédex scanner/câmera social horizontal,
+            // ou em transição suave de abertura/retorno ao ombro.
             val animState = playerAnimStates[player.uuid]
             val hasActiveSession = RotomClientManager.hasActiveSessionFor(player.uuid)
             val isTransitioningSocial = animState != null && animState.socialProgress > 0.001f
             val hasActiveScan = animState != null && animState.scanProgress > 0.001f
             val isScanningNow = RotomScannerClientState.getScanFor(player.uuid) != null
-            if (!hasActiveSession && !isTransitioningSocial && !hasActiveScan && !isScanningNow) {
+            val isScanningPokedex = ScannerManager.isInUse()
+            val isSocialPhoto = SocialPhotoClient.isCameraActive()
+            val isTransitioningHorizontal = animState != null && animState.horizontalProgress > 0.001f
+            val isTransitioningOpen = animState != null && animState.openProgress > 0.001f
+
+            if (!hasActiveSession && !isTransitioningSocial && !hasActiveScan && !isScanningNow
+                && !isScanningPokedex && !isSocialPhoto && !isTransitioningHorizontal && !isTransitioningOpen) {
                 return
             }
 
@@ -208,11 +218,18 @@ class RotomPlayerRenderLayer(
 
             val isLocalPlayer = (player == mc.player)
             val isScreenOpen = if (isLocalPlayer) {
-                val open = isSmartphoneScreen(mc.screen)
-                RotomClientManager.updateLocalState(open)
-                open
+                isSmartphoneScreen(mc.screen)
             } else {
                 RotomClientManager.isPlayerOpen(player.uuid)
+            }
+            val isHorizontalMode = if (isLocalPlayer) {
+                ScannerManager.isInUse() || SocialPhotoClient.isCameraActive()
+            } else {
+                RotomClientManager.isPlayerHorizontal(player.uuid)
+            }
+
+            if (isLocalPlayer) {
+                RotomClientManager.updateLocalState(isScreenOpen || isHorizontalMode, isHorizontalMode)
             }
 
             val animState = playerAnimStates.computeIfAbsent(player.uuid) { RotomAnimState() }
@@ -221,11 +238,19 @@ class RotomPlayerRenderLayer(
             val dt = if (animState.lastRenderTime == 0L) 0.016f else ((now - animState.lastRenderTime) / 1000f).coerceIn(0.001f, 0.1f)
             animState.lastRenderTime = now
 
-            val targetProgress = if (isScreenOpen) 1.0f else 0.0f
+            val targetProgress = if (isScreenOpen || isHorizontalMode) 1.0f else 0.0f
             if (animState.openProgress < targetProgress) {
                 animState.openProgress = (animState.openProgress + dt * TRANSITION_SPEED).coerceAtMost(targetProgress)
             } else if (animState.openProgress > targetProgress) {
                 animState.openProgress = (animState.openProgress - dt * TRANSITION_SPEED).coerceAtLeast(targetProgress)
+            }
+
+            val targetHorizontal = if (isHorizontalMode) 1.0f else 0.0f
+            val hSpeed = TRANSITION_SPEED * 1.5f
+            if (animState.horizontalProgress < targetHorizontal) {
+                animState.horizontalProgress = (animState.horizontalProgress + dt * hSpeed).coerceAtMost(targetHorizontal)
+            } else if (animState.horizontalProgress > targetHorizontal) {
+                animState.horizontalProgress = (animState.horizontalProgress - dt * hSpeed).coerceAtLeast(targetHorizontal)
             }
 
             if (playerAnimStates.size > 50) {
@@ -234,6 +259,9 @@ class RotomPlayerRenderLayer(
 
             val p = animState.openProgress
             val t = p * p * p * (p * (p * 6.0f - 15.0f) + 10.0f)
+
+            val hp = animState.horizontalProgress
+            val hProg = hp * hp * (3.0f - 2.0f * hp)
 
             // 1. Procurar outros jogadores próximos (até 8 blocos) que TAMBÉM tenham um Rotom Phone
             val nearbyPlayers = player.level().getEntitiesOfClass(
@@ -287,9 +315,10 @@ class RotomPlayerRenderLayer(
             val cosHeadYaw = Mth.cos(headYawRad.toFloat())
             val sinHeadYaw = Mth.sin(headYawRad.toFloat())
 
-            val targetFaceX = sinHeadYaw * cosHeadPitch * FACE_VIEW_DISTANCE
-            val targetFaceY = eyeY + sinHeadPitch * FACE_VIEW_DISTANCE
-            val targetFaceZ = -cosHeadYaw * cosHeadPitch * FACE_VIEW_DISTANCE
+            val faceDist = if (hProg > 0.001f) Mth.lerp(hProg, FACE_VIEW_DISTANCE, 0.48f) else FACE_VIEW_DISTANCE
+            val targetFaceX = sinHeadYaw * cosHeadPitch * faceDist
+            val targetFaceY = eyeY + sinHeadPitch * faceDist
+            val targetFaceZ = -cosHeadYaw * cosHeadPitch * faceDist
 
             val openTargetYaw = YAW_FACING_FRONT + netHeadYaw
             val openTargetPitch = -headPitch
@@ -376,8 +405,8 @@ class RotomPlayerRenderLayer(
             val finalRoll = idleSwayRoll
 
             // 2. Consultar o gerenciador para obter o Ponto Âncora compartilhado (se houver uma interação ativa)
-            val sharedAnchor = if (t < 0.1f) {
-                RotomClientManager.getActiveSharedAnchor(player, nearbyPlayers, partialTick, now, isScreenOpen)
+            val sharedAnchor = if (t < 0.1f && hProg < 0.1f) {
+                RotomClientManager.getActiveSharedAnchor(player, nearbyPlayers, partialTick, now, isScreenOpen || isHorizontalMode)
             } else {
                 null
             }
@@ -711,14 +740,18 @@ class RotomPlayerRenderLayer(
                     val idleCamZ = (fwdZ * fpFwd + rightZ * fpRight).toFloat()
 
                     val cPitchRad = Math.toRadians(camPitch.toDouble())
-                    val cYawRad = Math.toRadians(camPitch.toDouble()).let { Math.toRadians(camYaw.toDouble()) }
+                    val cYawRad = Math.toRadians(camYaw.toDouble())
                     val lookX = -Math.sin(cYawRad) * Math.cos(cPitchRad)
                     val lookY = -Math.sin(cPitchRad)
                     val lookZ = Math.cos(cYawRad) * Math.cos(cPitchRad)
 
-                    val openCamX = (lookX * FACE_VIEW_DISTANCE).toFloat()
-                    val openCamY = (lookY * FACE_VIEW_DISTANCE - 0.04).toFloat()
-                    val openCamZ = (lookZ * FACE_VIEW_DISTANCE).toFloat()
+                    val fpFaceDist = if (hProg > 0.001f) Mth.lerp(hProg, FACE_VIEW_DISTANCE, 0.52f) else FACE_VIEW_DISTANCE
+                    val fpDownOffset = if (hProg > 0.001f) Mth.lerp(hProg, 0.04f, 0.22f) else 0.04f
+                    val fpHoverY = if (hProg > 0.001f) (Mth.sin(time * 0.08f) * 0.008f) else 0.0f
+
+                    val openCamX = (lookX * fpFaceDist).toFloat()
+                    val openCamY = (lookY * fpFaceDist - fpDownOffset + fpHoverY).toFloat()
+                    val openCamZ = (lookZ * fpFaceDist).toFloat()
 
                     shoulderCamPos.set(
                         Mth.lerp(t, idleCamX, openCamX),
@@ -771,7 +804,8 @@ class RotomPlayerRenderLayer(
                 }
                 val currentWorldYaw = socialWorldYaw + Mth.wrapDegrees(animState.scanWorldYaw - socialWorldYaw) * scanT
                 val currentPitch = Mth.lerp(scanT, Mth.lerp(socialT, finalPitch, rotPitch), animState.scanWorldPitch)
-                val currentRoll = Mth.lerp(scanT, Mth.lerp(socialT, finalRoll, rotRoll), animState.scanWorldRoll) + flightBank
+                val horizontalRoll = hProg * 90.0f
+                val currentRoll = Mth.lerp(scanT, Mth.lerp(socialT, finalRoll, rotRoll), animState.scanWorldRoll) + flightBank + (horizontalRoll * (1.0f - scanT))
 
                 // Reseta o PoseStack para o Espaço de Mundo puro (relativo à câmera),
                 // garantindo 0% de vínculo com a movimentação ou rotação do jogador durante a dança ou scan!
@@ -782,17 +816,20 @@ class RotomPlayerRenderLayer(
                 poseStack.mulPose(Axis.YP.rotationDegrees(180.0f - currentWorldYaw))
                 poseStack.scale(-baseModelScale, -baseModelScale, baseModelScale)
 
-                val combinedTiltPitch = (effectiveTilt + jumpTiltPitch) * (1.0f - maxOf(socialT, scanT))
+                val combinedTiltPitch = (effectiveTilt + jumpTiltPitch) * (1.0f - maxOf(socialT, scanT, hProg))
                 if (combinedTiltPitch > 0.01f || combinedTiltPitch < -0.01f) {
                     poseStack.mulPose(Axis.XP.rotationDegrees(combinedTiltPitch))
                 }
-                val effectiveBankRoll = effectiveBank * (1.0f - maxOf(socialT, scanT))
+                val effectiveBankRoll = effectiveBank * (1.0f - maxOf(socialT, scanT, hProg))
                 if (effectiveBankRoll != 0.0f) {
                     poseStack.mulPose(Axis.ZP.rotationDegrees(effectiveBankRoll))
                 }
 
-                poseStack.mulPose(Axis.YP.rotationDegrees(YAW_FACING_FRONT))
-                poseStack.mulPose(Axis.XP.rotationDegrees(currentPitch))
+                val facingYaw = if (hProg > 0.001f) Mth.lerp(hProg, YAW_FACING_FRONT, 0.0f) else YAW_FACING_FRONT
+                poseStack.mulPose(Axis.YP.rotationDegrees(facingYaw))
+
+                val fpTiltPitch = if (isFirstPersonPass && hProg > 0.001f) 10.0f * hProg else 0.0f
+                poseStack.mulPose(Axis.XP.rotationDegrees(currentPitch + fpTiltPitch))
                 poseStack.mulPose(Axis.ZP.rotationDegrees(currentRoll))
                 poseStack.scale(SCALE, -SCALE, -SCALE)
             } else {
@@ -800,7 +837,8 @@ class RotomPlayerRenderLayer(
                 poseStack.translate(posX, posY, posZ)
                 poseStack.mulPose(Axis.YP.rotationDegrees(finalYaw))
                 poseStack.mulPose(Axis.XP.rotationDegrees(finalPitch))
-                poseStack.mulPose(Axis.ZP.rotationDegrees(finalRoll))
+                val effectivePaperdollRoll = finalRoll + (if (hProg > 0.001f) hProg * 90.0f else 0.0f)
+                poseStack.mulPose(Axis.ZP.rotationDegrees(effectivePaperdollRoll))
                 poseStack.scale(SCALE, -SCALE, -SCALE)
             }
 

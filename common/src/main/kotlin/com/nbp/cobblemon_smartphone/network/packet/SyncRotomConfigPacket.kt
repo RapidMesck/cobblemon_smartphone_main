@@ -17,26 +17,45 @@ class SyncRotomConfigPacket(
     val scanDurationTicks: Int,
     val approachTicks: Int,
     val returnTicks: Int,
-    val infiniteEnergy: Boolean
+    val infiniteEnergy: Boolean,
+    val enableSocialDataShare: Boolean = true,
+    val socialDataShareChance: Double = 0.35
 ) : CobblemonSmartphoneNetworkPacket<SyncRotomConfigPacket> {
     companion object {
         val ID = smartphoneResource("sync_rotom_config")
 
         fun decode(buffer: RegistryFriendlyByteBuf): SyncRotomConfigPacket {
+            val enableScanner = buffer.readBoolean()
+            val enableAutoScanner = buffer.readBoolean()
+            val enableManualScanPriority = buffer.readBoolean()
+            val enableSocialInteractions = buffer.readBoolean()
+            val allowScanAlreadyRegistered = buffer.readBoolean()
+            val requireLineOfSight = buffer.readBoolean()
+            val revealIvPercentage = buffer.readBoolean()
+            val revealNature = buffer.readBoolean()
+            val scanRadius = buffer.readDouble()
+            val scanDurationTicks = buffer.readVarInt()
+            val approachTicks = buffer.readVarInt()
+            val returnTicks = buffer.readVarInt()
+            val infiniteEnergy = buffer.readBoolean()
+            val enableSocialDataShare = if (buffer.isReadable) buffer.readBoolean() else true
+            val socialDataShareChance = if (buffer.isReadable) buffer.readDouble() else 0.35
             return SyncRotomConfigPacket(
-                enableScanner = buffer.readBoolean(),
-                enableAutoScanner = buffer.readBoolean(),
-                enableManualScanPriority = buffer.readBoolean(),
-                enableSocialInteractions = buffer.readBoolean(),
-                allowScanAlreadyRegistered = buffer.readBoolean(),
-                requireLineOfSight = buffer.readBoolean(),
-                revealIvPercentage = buffer.readBoolean(),
-                revealNature = buffer.readBoolean(),
-                scanRadius = buffer.readDouble(),
-                scanDurationTicks = buffer.readVarInt(),
-                approachTicks = buffer.readVarInt(),
-                returnTicks = buffer.readVarInt(),
-                infiniteEnergy = buffer.readBoolean()
+                enableScanner = enableScanner,
+                enableAutoScanner = enableAutoScanner,
+                enableManualScanPriority = enableManualScanPriority,
+                enableSocialInteractions = enableSocialInteractions,
+                allowScanAlreadyRegistered = allowScanAlreadyRegistered,
+                requireLineOfSight = requireLineOfSight,
+                revealIvPercentage = revealIvPercentage,
+                revealNature = revealNature,
+                scanRadius = scanRadius,
+                scanDurationTicks = scanDurationTicks,
+                approachTicks = approachTicks,
+                returnTicks = returnTicks,
+                infiniteEnergy = infiniteEnergy,
+                enableSocialDataShare = enableSocialDataShare,
+                socialDataShareChance = socialDataShareChance
             )
         }
 
@@ -56,7 +75,9 @@ class SyncRotomConfigPacket(
                 scanDurationTicks = rotom.scanDurationTicks,
                 approachTicks = rotom.approachTicks,
                 returnTicks = rotom.returnTicks,
-                infiniteEnergy = rotom.infiniteEnergy
+                infiniteEnergy = rotom.infiniteEnergy,
+                enableSocialDataShare = rotom.enableSocialDataShare,
+                socialDataShareChance = rotom.socialDataShareChance
             )
         }
     }
@@ -77,5 +98,7 @@ class SyncRotomConfigPacket(
         buffer.writeVarInt(approachTicks)
         buffer.writeVarInt(returnTicks)
         buffer.writeBoolean(infiniteEnergy)
+        buffer.writeBoolean(enableSocialDataShare)
+        buffer.writeDouble(socialDataShareChance)
     }
 }

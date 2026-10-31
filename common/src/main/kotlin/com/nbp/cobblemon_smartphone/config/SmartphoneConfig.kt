@@ -146,6 +146,12 @@ class SmartphoneConfig {
         /** Se os Rotoms no ombro realizam coreografias e interações sociais em grupo quando jogadores se encontram */
         var enableSocialInteractions: Boolean = true
 
+        /** Se os Rotoms ao interagirem socialmente podem compartilhar dados de Pokédex entre os jogadores */
+        var enableSocialDataShare: Boolean = true
+
+        /** Chance (0.0 a 1.0) dos Rotoms compartilharem um registro de Pokédex não descoberto durante uma sessão social (0.35 = 35%) */
+        var socialDataShareChance: Double = 0.35
+
         /** Se o escaneamento manual permite escanear Pokémon que já foram registrados na Pokédex */
         var allowScanAlreadyRegistered: Boolean = true
 

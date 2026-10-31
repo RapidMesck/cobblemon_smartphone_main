@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.client.gui
 
 import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.api.gui.blitk
+import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.nbp.cobblemon_smartphone.client.RotomRadarClientState
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.rotom.RotomRadarConfig
@@ -47,6 +48,89 @@ class RotomAppScreen(
     private var selectedMinIvPercent = 0
     private var selectedMinPerfectIvs = 0
     private var selectedShinyOnly = false
+
+    // Autocomplete / Species insert recommendation state
+    data class SpeciesSuggestion(
+        val name: String,
+        val path: String,
+        val translatedName: String,
+        val dexNumber: Int
+    )
+
+    private var cachedSpeciesList: List<SpeciesSuggestion>? = null
+    private var lastSuggestionQuery: String? = null
+    private var currentSuggestions: List<SpeciesSuggestion> = emptyList()
+    private var selectedSuggestionIndex = -1
+
+    private fun getSpeciesList(): List<SpeciesSuggestion> {
+        if (cachedSpeciesList == null) {
+            val src = PokemonSpecies.implemented.ifEmpty { PokemonSpecies.species.toList() }
+            cachedSpeciesList = src.map { sp ->
+                SpeciesSuggestion(
+                    name = sp.name,
+                    path = sp.resourceIdentifier.path,
+                    translatedName = sp.translatedName.string,
+                    dexNumber = sp.nationalPokedexNumber
+                )
+            }.sortedWith(
+                compareBy<SpeciesSuggestion> {
+                    if (it.dexNumber > 0) it.dexNumber else Int.MAX_VALUE
+                }.thenBy {
+                    it.name.lowercase()
+                }
+            )
+        }
+        return cachedSpeciesList ?: emptyList()
+    }
+
+    private fun filterSuggestions(query: String): List<SpeciesSuggestion> {
+        val all = getSpeciesList()
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) {
+            val popular = listOf("ditto", "pikachu", "eevee", "charizard", "gengar", "lucario", "mewtwo")
+            return popular.mapNotNull { pop -> all.firstOrNull { it.path == pop || it.name.lowercase() == pop } }
+        }
+
+        val exactMatch = all.firstOrNull { it.path == q || it.name.lowercase() == q }
+        if (exactMatch != null) {
+            val others = all.filter {
+                (it.path != exactMatch.path && it.name != exactMatch.name) &&
+                (it.path.startsWith(q) || it.name.lowercase().startsWith(q))
+            }
+            if (others.isEmpty()) {
+                return emptyList()
+            }
+        }
+
+        val prefixMatches = all.filter {
+            it.path.startsWith(q) || it.name.lowercase().startsWith(q) || it.translatedName.lowercase().startsWith(q)
+        }
+
+        val containsMatches = all.filter {
+            !prefixMatches.contains(it) && (it.path.contains(q) || it.name.lowercase().contains(q) || it.translatedName.lowercase().contains(q))
+        }
+
+        return (prefixMatches + containsMatches).take(5)
+    }
+
+    private fun getActiveSuggestions(): List<SpeciesSuggestion> {
+        val q = if (::speciesBox.isInitialized) speciesBox.value else ""
+        if (q != lastSuggestionQuery) {
+            lastSuggestionQuery = q
+            currentSuggestions = filterSuggestions(q)
+            selectedSuggestionIndex = -1
+        }
+        return currentSuggestions
+    }
+
+    private fun insertSuggestion(suggestion: SpeciesSuggestion) {
+        speciesBox.value = suggestion.name
+        speciesBox.setCursorPosition(speciesBox.value.length)
+        speciesBox.setHighlightPos(speciesBox.value.length)
+        selectedSuggestionIndex = -1
+        lastSuggestionQuery = null
+        getActiveSuggestions()
+    }
 
     // Scroll state for targets list
     private var scrollY = 0
@@ -105,7 +189,10 @@ class RotomAppScreen(
         speciesBox.setMaxLength(32)
         speciesBox.setBordered(false)
         speciesBox.setHint(Component.translatable("cobblemon_smartphone.rotom.species_hint"))
-        speciesBox.setTextColor(0xFF888888.toInt())
+        speciesBox.setTextColor(CONTENT_TEXT)
+        speciesBox.setResponder {
+            getActiveSuggestions()
+        }
         addWidget(speciesBox)
         speciesBox.visible = (currentTab == Tab.TARGETS && isAddingTarget)
 
@@ -407,6 +494,22 @@ class RotomAppScreen(
         speciesBox.setY(boxY + 3)
         speciesBox.renderWidget(guiGraphics, mouseX, mouseY, delta)
 
+        // Ghost text for instant inline completion hint
+        val suggestions = getActiveSuggestions()
+        if (speciesBox.isFocused && speciesBox.value.isNotEmpty()) {
+            val top = suggestions.firstOrNull()
+            if (top != null && top.name.lowercase().startsWith(speciesBox.value.lowercase())) {
+                val suffix = top.name.substring(speciesBox.value.length)
+                val typedW = font.width(speciesBox.value)
+                val ghostX = speciesBox.x + typedW
+                if (ghostX + font.width(suffix) <= boxX + LIST_WIDTH - 28) {
+                    guiGraphics.drawString(font, suffix, ghostX, speciesBox.y, 0x88777777.toInt(), false)
+                }
+                val tabHint = "⇥ Tab"
+                guiGraphics.drawString(font, tabHint, boxX + LIST_WIDTH - font.width(tabHint) - 3, boxY + 3, 0xFF6D879B.toInt(), false)
+            }
+        }
+
         // Field 2: Nature
         guiGraphics.drawString(font, lang("form_nature"), screenX + CONTENT_X, screenY + 73, CONTENT_TEXT, false)
         renderCycleSelector(
@@ -458,6 +561,72 @@ class RotomAppScreen(
         guiGraphics.fill(cancelBtnX, btnY, cancelBtnX + btnW, btnY + btnH, cancelBg)
         val cancelText = lang("btn_cancel")
         guiGraphics.drawString(font, cancelText, cancelBtnX + (btnW - font.width(cancelText)) / 2, btnY + 4, 0xFFFFFFFF.toInt(), false)
+
+        // Floating suggestion dropdown rendered above other form rows
+        renderSuggestionDropdown(guiGraphics, mouseX, mouseY)
+    }
+
+    private fun renderSuggestionDropdown(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (!speciesBox.isFocused) return
+        val suggestions = getActiveSuggestions()
+        if (suggestions.isEmpty()) return
+
+        val popupX = screenX + CONTENT_X
+        val popupY = screenY + 56 + 14 + 1
+        val popupW = LIST_WIDTH
+        val rowH = 15
+        val popupH = suggestions.size * rowH + 2
+
+        val matrices = guiGraphics.pose()
+        matrices.pushPose()
+        matrices.translate(0f, 0f, 100f)
+
+        // Sombra suave para destacar o dropdown flutuante
+        guiGraphics.fill(popupX + 2, popupY + 2, popupX + popupW + 2, popupY + popupH + 2, 0x55000000)
+
+        // Borda externa
+        guiGraphics.fill(popupX, popupY, popupX + popupW, popupY + popupH, SECTION_TITLE_BG)
+
+        // Fundo interno escuro e nítido
+        guiGraphics.fill(popupX + 1, popupY + 1, popupX + popupW - 1, popupY + popupH - 1, 0xFF181C24.toInt())
+
+        for (i in suggestions.indices) {
+            val suggestion = suggestions[i]
+            val rowY = popupY + 1 + i * rowH
+            val isHovered = mouseX in popupX..(popupX + popupW) && mouseY in rowY..(rowY + rowH)
+            val isSelected = i == selectedSuggestionIndex
+
+            val rowBg = if (isSelected) {
+                theme.colors.primaryHover
+            } else if (isHovered) {
+                0xFF2A3442.toInt()
+            } else {
+                if (i % 2 == 0) 0xFF181C24.toInt() else 0xFF1E232E.toInt()
+            }
+            guiGraphics.fill(popupX + 1, rowY, popupX + popupW - 1, rowY + rowH, rowBg)
+
+            // Marcador
+            val bulletColor = if (isSelected || isHovered) theme.colors.gold else 0xFF6D879B.toInt()
+            guiGraphics.drawString(font, "▸", popupX + 4, rowY + 3, bulletColor, false)
+
+            // Nome da espécie
+            val nameColor = if (isSelected || isHovered) 0xFFFFFFFF.toInt() else 0xFFE0E6ED.toInt()
+            guiGraphics.drawString(font, suggestion.name, popupX + 14, rowY + 3, nameColor, false)
+
+            // Indicador de Inserir ou Número da Pokédex
+            if (isHovered || isSelected) {
+                val insertBadge = lang("badge_insert")
+                val badgeColor = if (isSelected) 0xFFFFFFFF.toInt() else theme.colors.gold
+                guiGraphics.drawString(font, insertBadge, popupX + popupW - font.width(insertBadge) - 4, rowY + 3, badgeColor, false)
+            } else {
+                val dexText = if (suggestion.dexNumber > 0) "#%03d".format(suggestion.dexNumber) else ""
+                if (dexText.isNotEmpty()) {
+                    guiGraphics.drawString(font, dexText, popupX + popupW - font.width(dexText) - 5, rowY + 3, 0xFF8AA5AD.toInt(), false)
+                }
+            }
+        }
+
+        matrices.popPose()
     }
 
     private fun renderCycleSelector(
@@ -639,6 +808,26 @@ class RotomAppScreen(
 
     private fun handleTargetsClick(mx: Int, my: Int): Boolean {
         if (isAddingTarget) {
+            if (speciesBox.isFocused) {
+                val suggestions = getActiveSuggestions()
+                if (suggestions.isNotEmpty()) {
+                    val popupX = screenX + CONTENT_X
+                    val popupY = screenY + 56 + 14 + 1
+                    val popupW = LIST_WIDTH
+                    val rowH = 15
+                    val popupH = suggestions.size * rowH + 2
+
+                    if (mx in popupX..(popupX + popupW) && my in popupY..(popupY + popupH)) {
+                        val clickedIdx = (my - (popupY + 1)) / rowH
+                        if (clickedIdx in suggestions.indices) {
+                            playClickSound()
+                            insertSuggestion(suggestions[clickedIdx])
+                            return true
+                        }
+                    }
+                }
+            }
+
             val boxClicked = speciesBox.mouseClicked(mx.toDouble(), my.toDouble(), 0)
             speciesBox.isFocused = boxClicked
             if (boxClicked) return true
@@ -656,6 +845,9 @@ class RotomAppScreen(
             speciesBox.value = ""
             speciesBox.visible = true
             speciesBox.isFocused = true
+            selectedSuggestionIndex = -1
+            lastSuggestionQuery = null
+            getActiveSuggestions()
             selectedNatureIndex = 0
             selectedMinIvPercent = 0
             selectedMinPerfectIvs = 0
@@ -821,15 +1013,61 @@ class RotomAppScreen(
     }
 
     override fun charTyped(codePoint: Char, modifiers: Int): Boolean {
-        if (isAddingTarget && speciesBox.charTyped(codePoint, modifiers)) return true
+        if (isAddingTarget) {
+            selectedSuggestionIndex = -1
+            if (speciesBox.charTyped(codePoint, modifiers)) {
+                getActiveSuggestions()
+                return true
+            }
+        }
         return super.charTyped(codePoint, modifiers)
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
         if (isAddingTarget) {
+            val suggestions = getActiveSuggestions()
+            val hasSuggestions = speciesBox.isFocused && suggestions.isNotEmpty()
+
+            if (hasSuggestions) {
+                // Seta para baixo: navegar pelas sugestões
+                if (keyCode == 264) {
+                    selectedSuggestionIndex = (selectedSuggestionIndex + 1).coerceAtMost(suggestions.size - 1)
+                    return true
+                }
+                // Seta para cima
+                if (keyCode == 265) {
+                    selectedSuggestionIndex = (selectedSuggestionIndex - 1).coerceAtLeast(-1)
+                    return true
+                }
+                // Tab: inserir sugestão selecionada ou do topo
+                if (keyCode == 258) {
+                    val chosen = if (selectedSuggestionIndex in suggestions.indices) {
+                        suggestions[selectedSuggestionIndex]
+                    } else {
+                        suggestions.firstOrNull()
+                    }
+                    if (chosen != null) {
+                        playClickSound()
+                        insertSuggestion(chosen)
+                        return true
+                    }
+                }
+                // Enter: inserir sugestão selecionada
+                if ((keyCode == 257 || keyCode == 335) && selectedSuggestionIndex in suggestions.indices) {
+                    playClickSound()
+                    insertSuggestion(suggestions[selectedSuggestionIndex])
+                    return true
+                }
+            }
+
             if (keyCode == 256) { // Escape
+                if (hasSuggestions && selectedSuggestionIndex != -1) {
+                    selectedSuggestionIndex = -1
+                    return true
+                }
                 isAddingTarget = false
                 speciesBox.visible = false
+                selectedSuggestionIndex = -1
                 return true
             }
             if (speciesBox.isFocused && speciesBox.keyPressed(keyCode, scanCode, modifiers)) return true
