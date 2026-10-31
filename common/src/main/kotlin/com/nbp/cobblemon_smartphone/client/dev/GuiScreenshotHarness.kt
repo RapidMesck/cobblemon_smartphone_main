@@ -439,11 +439,49 @@ object GuiScreenshotHarness {
 
             // --- ROTOM ---
             ScreenshotTask(
-                id = "rotom",
+                id = "rotom_settings",
                 category = "rotom",
                 guiWidth = 211,
                 guiHeight = 207,
-                createScreen = { RotomAppScreen(SmartphoneColor.RED, null) }
+                createScreen = { RotomAppScreen(SmartphoneColor.RED, null, RotomAppScreen.Tab.SETTINGS) }
+            ),
+            ScreenshotTask(
+                id = "rotom_targets",
+                category = "rotom",
+                guiWidth = 211,
+                guiHeight = 207,
+                createScreen = {
+                    val config = com.nbp.cobblemon_smartphone.client.RotomRadarClientState.config
+                    config.targets.clear()
+                    config.targets.add(
+                        com.nbp.cobblemon_smartphone.rotom.RotomTarget(
+                            species = "pikachu",
+                            minIvPercent = 80,
+                            minPerfectIvs = 2,
+                            nature = "timid",
+                            shinyOnly = true,
+                            enabled = true
+                        )
+                    )
+                    config.targets.add(
+                        com.nbp.cobblemon_smartphone.rotom.RotomTarget(
+                            species = "charizard",
+                            minIvPercent = 90,
+                            minPerfectIvs = 3,
+                            nature = "jolly",
+                            shinyOnly = false,
+                            enabled = false
+                        )
+                    )
+                    RotomAppScreen(SmartphoneColor.RED, null, RotomAppScreen.Tab.TARGETS, false)
+                }
+            ),
+            ScreenshotTask(
+                id = "rotom_add_target",
+                category = "rotom",
+                guiWidth = 211,
+                guiHeight = 207,
+                createScreen = { RotomAppScreen(SmartphoneColor.RED, null, RotomAppScreen.Tab.TARGETS, true) }
             )
         )
     }
