@@ -16,6 +16,7 @@ import com.nbp.cobblemon_smartphone.actions.OpenTomsStorageAction
 import com.nbp.cobblemon_smartphone.actions.OpenWaystonesAction
 import com.nbp.cobblemon_smartphone.actions.PokeInfoAction
 import com.nbp.cobblemon_smartphone.actions.PokedexAction
+import com.nbp.cobblemon_smartphone.actions.RotomAppAction
 import com.nbp.cobblemon_smartphone.actions.SocialAction
 import com.nbp.cobblemon_smartphone.actions.StructureCompassAction
 import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
@@ -68,6 +69,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(GpsAction)
         SmartphoneActionRegistry.register(StructureCompassAction)
         SmartphoneActionRegistry.register(SocialAction)
+        SmartphoneActionRegistry.register(RotomAppAction)
     }
 
     fun registerDefaultUpgrades() {

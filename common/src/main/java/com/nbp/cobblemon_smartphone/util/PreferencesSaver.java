@@ -13,6 +13,7 @@ public interface PreferencesSaver {
     String MUTED_PLAYERS_KEY = "muted_players";
     String THEME_KEY = "theme";
     String WALLPAPER_KEY = "wallpaper";
+    String ROTOM_RADAR_KEY = "rotom_radar";
 
     CompoundTag cobblemonsmartphone$getSavedPreferences();
 }

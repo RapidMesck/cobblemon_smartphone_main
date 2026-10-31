@@ -177,8 +177,14 @@ import com.nbp.cobblemon_smartphone.network.packet.OpenStructureCompassScreenPac
 import com.nbp.cobblemon_smartphone.network.packet.OpenPokeInfoScreenPacket
 import com.nbp.cobblemon_smartphone.network.packet.SetSmartphoneOpenStatePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneOpenStatePacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveRotomRadarPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomRadarPacket
+import com.nbp.cobblemon_smartphone.network.packet.RotomAlertPacket
 import com.nbp.cobblemon_smartphone.network.handler.SetSmartphoneOpenStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncSmartphoneOpenStateHandler
+import com.nbp.cobblemon_smartphone.network.handler.SaveRotomRadarHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomRadarHandler
+import com.nbp.cobblemon_smartphone.network.handler.RotomAlertHandler
 
 object CobblemonSmartphoneNetwork {
     val s2cPayloads = generateS2CPacketInfoList()
@@ -290,6 +296,8 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(OpenGpsScreenPacket.ID, OpenGpsScreenPacket::decode, OpenGpsScreenHandler))
         list.add(PacketRegisterInfo(OpenStructureCompassScreenPacket.ID, OpenStructureCompassScreenPacket::decode, OpenStructureCompassScreenHandler))
         list.add(PacketRegisterInfo(OpenPokeInfoScreenPacket.ID, OpenPokeInfoScreenPacket::decode, OpenPokeInfoScreenHandler))
+        list.add(PacketRegisterInfo(SyncRotomRadarPacket.ID, SyncRotomRadarPacket::decode, SyncRotomRadarHandler))
+        list.add(PacketRegisterInfo(RotomAlertPacket.ID, RotomAlertPacket::decode, RotomAlertHandler))
 
         return list
     }
@@ -487,6 +495,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(VotePollPacket.ID, VotePollPacket::decode, VotePollHandler))
         list.add(PacketRegisterInfo(ReportContentPacket.ID, ReportContentPacket::decode, ReportContentHandler))
         list.add(PacketRegisterInfo(SetSmartphoneOpenStatePacket.ID, SetSmartphoneOpenStatePacket::decode, SetSmartphoneOpenStateHandler))
+        list.add(PacketRegisterInfo(SaveRotomRadarPacket.ID, SaveRotomRadarPacket::decode, SaveRotomRadarHandler))
 
         return list
     }

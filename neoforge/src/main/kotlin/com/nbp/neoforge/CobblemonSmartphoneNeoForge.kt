@@ -129,6 +129,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
         NeoForge.EVENT_BUS.addListener<ServerTickEvent.Post> { event ->
             CallManager.tick(event.server)
             ElectricPokemonCharger.tick(event.server)
+            RotomServerManager.tick(event.server)
         }
     }
     

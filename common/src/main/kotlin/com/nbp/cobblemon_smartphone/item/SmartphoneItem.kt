@@ -2,6 +2,9 @@ package com.nbp.cobblemon_smartphone.item
 
 import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.block.PokeSnackBlock
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import com.cobblemon.mod.common.util.isInBattle
+import com.cobblemon.mod.common.util.party
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.isModLoaded
 import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
@@ -28,6 +31,7 @@ import net.minecraft.sounds.SoundSource
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.InteractionResultHolder
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
@@ -35,7 +39,6 @@ import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.item.UseAnim
 import net.minecraft.world.item.context.UseOnContext
 import net.minecraft.world.level.Level
-import net.minecraft.world.level.block.Blocks
 
 class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().stacksTo(MAX_STACK)) {
 
@@ -76,71 +79,169 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         return InteractionResultHolder.success(player.getItemInHand(interactionHand))
     }
 
+    override fun interactLivingEntity(
+        stack: ItemStack,
+        player: Player,
+        interactionTarget: LivingEntity,
+        usedHand: InteractionHand
+    ): InteractionResult {
+        if (interactionTarget !is PokemonEntity) {
+            return InteractionResult.PASS
+        }
+
+        val pokemon = interactionTarget.pokemon
+        val isRotom = pokemon.species.name.equals("rotom", ignoreCase = true) ||
+            pokemon.species.resourceIdentifier.path == "rotom"
+
+        if (!isRotom) {
+            return InteractionResult.PASS
+        }
+
+        val level = player.level()
+        val heldStack = player.getItemInHand(usedHand)
+
+        // Check if the smartphone is already a Rotom Phone
+        if (heldStack.isRotomPhone() || stack.isRotomPhone()) {
+            if (level.isClientSide) {
+                player.displayClientMessage(
+                    Component.translatable("message.cobblemon_smartphone.already_rotom")
+                        .withStyle(ChatFormatting.YELLOW),
+                    true
+                )
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide)
+        }
+
+        // Cannot transform if Rotom or player is currently in battle
+        if (interactionTarget.isBattling || (player is ServerPlayer && player.isInBattle())) {
+            return InteractionResult.sidedSuccess(level.isClientSide)
+        }
+
+        // Client side check: confirm ownership before claiming success
+        if (level.isClientSide) {
+            if (interactionTarget.ownerUUID != player.uuid) {
+                player.displayClientMessage(
+                    Component.translatable("message.cobblemon_smartphone.rotom_not_in_party")
+                        .withStyle(ChatFormatting.RED),
+                    true
+                )
+                return InteractionResult.sidedSuccess(true)
+            }
+            // Update client-side item stack so render layer and tooltip reflect Rotom Phone immediately
+            heldStack.setRotomPhone(true)
+            stack.setRotomPhone(true)
+            player.setItemInHand(usedHand, heldStack)
+            return InteractionResult.sidedSuccess(true)
+        }
+
+        // Server-side: verify Rotom is in the player's party, consume it and transform the smartphone
+        if (player is ServerPlayer) {
+            val party = player.party()
+            val rotomInParty = party.find { it.uuid == pokemon.uuid }
+
+            if (rotomInParty == null) {
+                // Revert prediction if server rejected
+                heldStack.setRotomPhone(false)
+                stack.setRotomPhone(false)
+                player.setItemInHand(usedHand, heldStack)
+                player.containerMenu.broadcastChanges()
+                player.inventoryMenu.broadcastChanges()
+
+                player.displayClientMessage(
+                    Component.translatable("message.cobblemon_smartphone.rotom_not_in_party")
+                        .withStyle(ChatFormatting.RED),
+                    true
+                )
+                return InteractionResult.sidedSuccess(false)
+            }
+
+            // Return any held item or cosmetic item to the player
+            val heldItem = rotomInParty.heldItem()
+            if (!heldItem.isEmpty) {
+                if (!player.inventory.add(heldItem.copy())) {
+                    player.drop(heldItem.copy(), false)
+                }
+            }
+            val cosmeticItem = rotomInParty.cosmeticItem()
+            if (!cosmeticItem.isEmpty) {
+                if (!player.inventory.add(cosmeticItem.copy())) {
+                    player.drop(cosmeticItem.copy(), false)
+                }
+            }
+
+            // Transform the smartphone into a Rotom Phone
+            heldStack.setRotomPhone(true)
+            stack.setRotomPhone(true)
+            player.setItemInHand(usedHand, heldStack)
+            player.containerMenu.broadcastChanges()
+            player.inventoryMenu.broadcastChanges()
+
+            // Play Rotom's cry
+            interactionTarget.cry()
+
+            // Remove Rotom from party and discard world entity
+            party.remove(rotomInParty)
+            interactionTarget.discard()
+
+            val eyePos = interactionTarget.eyePosition
+            val blockPos = interactionTarget.blockPosition()
+
+            level.playSound(
+                null,
+                blockPos,
+                SoundEvents.LIGHTNING_BOLT_THUNDER,
+                SoundSource.PLAYERS,
+                0.7f,
+                1.4f
+            )
+            level.playSound(
+                null,
+                blockPos,
+                SoundEvents.LIGHTNING_BOLT_IMPACT,
+                SoundSource.PLAYERS,
+                0.5f,
+                1.2f
+            )
+
+            if (level is ServerLevel) {
+                level.sendParticles(
+                    ParticleTypes.ELECTRIC_SPARK,
+                    eyePos.x,
+                    eyePos.y,
+                    eyePos.z,
+                    35,
+                    0.3,
+                    0.3,
+                    0.3,
+                    0.15
+                )
+                level.sendParticles(
+                    ParticleTypes.FLASH,
+                    eyePos.x,
+                    eyePos.y,
+                    eyePos.z,
+                    1,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                )
+            }
+
+            player.displayClientMessage(
+                Component.translatable("message.cobblemon_smartphone.became_rotom")
+                    .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD),
+                true
+            )
+        }
+
+        return InteractionResult.sidedSuccess(level.isClientSide)
+    }
+
     // Lets optional storage-mod integrations (e.g. Toms Storage) bind their own remote
     // terminal to this smartphone on sneak-right-click, without this item knowing they exist.
     override fun useOn(context: UseOnContext): InteractionResult {
         val stack = context.itemInHand
-        val level = context.level
-        val pos = context.clickedPos
-        val blockState = level.getBlockState(pos)
-
-        // Transform into Rotom Phone when interacting with a Lightning Rod
-        if (blockState.`is`(Blocks.LIGHTNING_ROD)) {
-            val player = context.player
-            if (stack.isRotomPhone()) {
-                if (level.isClientSide && player != null) {
-                    player.displayClientMessage(
-                        Component.translatable("message.cobblemon_smartphone.already_rotom")
-                            .withStyle(ChatFormatting.YELLOW),
-                        true
-                    )
-                }
-                return InteractionResult.sidedSuccess(level.isClientSide)
-            }
-
-            stack.setRotomPhone(true)
-
-            if (!level.isClientSide) {
-                level.playSound(
-                    null,
-                    pos,
-                    SoundEvents.LIGHTNING_BOLT_THUNDER,
-                    SoundSource.BLOCKS,
-                    0.7f,
-                    1.4f
-                )
-                level.playSound(
-                    null,
-                    pos,
-                    SoundEvents.LIGHTNING_BOLT_IMPACT,
-                    SoundSource.BLOCKS,
-                    0.5f,
-                    1.2f
-                )
-                if (level is ServerLevel) {
-                    level.sendParticles(
-                        ParticleTypes.ELECTRIC_SPARK,
-                        pos.x + 0.5,
-                        pos.y + 0.8,
-                        pos.z + 0.5,
-                        30,
-                        0.25,
-                        0.35,
-                        0.25,
-                        0.15
-                    )
-                }
-                if (player != null) {
-                    player.displayClientMessage(
-                        Component.translatable("message.cobblemon_smartphone.became_rotom")
-                            .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD),
-                        true
-                    )
-                }
-            }
-
-            return InteractionResult.sidedSuccess(level.isClientSide)
-        }
 
         for (link in SmartphoneStorageLinkRegistry.getAll()) {
             val result = link.tryLink(context, stack)

@@ -118,6 +118,7 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
         ServerTickEvents.END_SERVER_TICK.register { server ->
             TomsStorageRemoteSession.tick(server)
             ElectricPokemonCharger.tick(server)
+            RotomServerManager.tick(server)
         }
         ServerTickEvents.END_SERVER_TICK.register(ServerTickEvents.EndTick(CallManager::tick))
     }

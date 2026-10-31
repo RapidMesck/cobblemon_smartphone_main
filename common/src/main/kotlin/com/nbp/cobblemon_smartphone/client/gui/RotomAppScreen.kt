@@ -1,0 +1,811 @@
+package com.nbp.cobblemon_smartphone.client.gui
+
+import com.cobblemon.mod.common.CobblemonSounds
+import com.cobblemon.mod.common.api.gui.blitk
+import com.nbp.cobblemon_smartphone.client.RotomRadarClientState
+import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.rotom.RotomRadarConfig
+import com.nbp.cobblemon_smartphone.rotom.RotomTarget
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
+import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.EditBox
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.network.chat.Component
+import net.minecraft.world.item.ItemStack
+
+class RotomAppScreen(
+    private val color: SmartphoneColor,
+    private val smartphoneStack: ItemStack? = null
+) : Screen(Component.translatable("cobblemon_smartphone.screen.rotom")) {
+
+    private val theme get() = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
+    private val SECTION_TITLE_BG get() = theme.colors.primary
+    private val SECTION_CONTENT_BG get() = theme.colors.surface
+    private val CARD_HOVER_BG get() = theme.colors.primaryHover
+    private val CONTENT_TEXT get() = theme.colors.textDark
+    private val CONTENT_DIM get() = theme.colors.textDarkMuted
+
+    private var screenX = 0
+    private var screenY = 0
+
+    enum class Tab {
+        SETTINGS,
+        TARGETS
+    }
+
+    private var currentTab = Tab.SETTINGS
+    private var isAddingTarget = false
+
+    // Target form inputs
+    private lateinit var speciesBox: EditBox
+    private var selectedNatureIndex = 0
+    private var selectedMinIvPercent = 0
+    private var selectedMinPerfectIvs = 0
+    private var selectedShinyOnly = false
+
+    // Scroll state for targets list
+    private var scrollY = 0
+    private var maxScroll = 0
+    private var draggingScrollbar = false
+    private var dragStartMouseY = 0
+    private var dragStartScrollY = 0
+
+    private val config: RotomRadarConfig
+        get() = RotomRadarClientState.config
+
+    companion object {
+        private const val GUI_WIDTH = 211
+        private const val GUI_HEIGHT = 207
+        private const val CONTENT_X = 12
+        private const val LIST_WIDTH = 187
+        private const val LIST_START_Y = 70
+        private const val LIST_END_Y = 196
+        private const val CARD_HEIGHT = 38
+        private const val CARD_GAP = 4
+        private const val SCROLLBAR_WIDTH = 3
+        private const val SCROLL_SPEED = 14
+
+        private val NATURE_OPTIONS = listOf("any") + listOf(
+            "adamant", "bashful", "bold", "brave", "calm", "careful", "docile",
+            "gentle", "hardy", "hasty", "impish", "jolly", "lax", "lonely",
+            "mild", "modest", "naive", "naughty", "quiet", "quirky", "rash",
+            "relaxed", "sassy", "serious", "timid"
+        )
+    }
+
+    private fun lang(key: String, vararg args: Any): String =
+        Component.translatable("cobblemon_smartphone.rotom.$key", *args).string
+
+    override fun isPauseScreen(): Boolean = false
+
+    override fun init() {
+        screenX = (width - GUI_WIDTH) / 2
+        screenY = (height - GUI_HEIGHT) / 2
+        SmartphoneHelper.contextSmartphone = smartphoneStack
+        SmartphoneHelper.contextColor = color
+
+        speciesBox = EditBox(
+            font,
+            screenX + CONTENT_X + 4,
+            screenY + 76,
+            LIST_WIDTH - 8,
+            14,
+            Component.translatable("cobblemon_smartphone.rotom.species_hint")
+        )
+        speciesBox.setMaxLength(32)
+        speciesBox.setBordered(false)
+        speciesBox.setHint(Component.translatable("cobblemon_smartphone.rotom.species_hint"))
+        speciesBox.setTextColor(0xFFFFFFFF.toInt())
+        addRenderableWidget(speciesBox)
+        speciesBox.visible = (currentTab == Tab.TARGETS && isAddingTarget)
+
+        updateMaxScroll()
+    }
+
+    override fun removed() {
+        RotomRadarClientState.saveConfig()
+        SmartphoneHelper.contextSmartphone = null
+        SmartphoneHelper.contextColor = null
+        super.removed()
+    }
+
+    private fun updateMaxScroll() {
+        val totalHeight = config.targets.size * (CARD_HEIGHT + CARD_GAP)
+        val viewHeight = LIST_END_Y - LIST_START_Y
+        maxScroll = maxOf(0, totalHeight - viewHeight)
+        scrollY = scrollY.coerceIn(0, maxScroll)
+    }
+
+    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        val matrices = guiGraphics.pose()
+
+        SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
+        blitk(
+            matrixStack = matrices,
+            texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()),
+            x = screenX,
+            y = screenY,
+            width = GUI_WIDTH,
+            height = GUI_HEIGHT
+        )
+
+        // Header: Back button
+        val backHover = isInBackButton(mouseX, mouseY)
+        val backColor = if (backHover) theme.colors.gold else theme.colors.textPrimary
+        guiGraphics.drawString(font, lang("back"), screenX + 10, screenY + 12, backColor, false)
+
+        // Title
+        val title = lang("title")
+        val titleX = screenX + (GUI_WIDTH - font.width(title)) / 2
+        guiGraphics.drawString(font, title, titleX, screenY + 12, theme.colors.gold, false)
+
+        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
+
+        // Tabs
+        renderTabs(guiGraphics, mouseX, mouseY)
+
+        // Content
+        when (currentTab) {
+            Tab.SETTINGS -> renderSettingsTab(guiGraphics, mouseX, mouseY)
+            Tab.TARGETS -> {
+                if (isAddingTarget) {
+                    renderAddTargetForm(guiGraphics, mouseX, mouseY, delta)
+                } else {
+                    renderTargetsListTab(guiGraphics, mouseX, mouseY)
+                }
+            }
+        }
+    }
+
+    private fun renderTabs(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val tabY = screenY + 28
+        val tabH = 15
+        val tabW = (LIST_WIDTH - 4) / 2
+
+        val tab1X = screenX + CONTENT_X
+        val tab2X = tab1X + tabW + 4
+
+        val tab1Hover = mouseX in tab1X..(tab1X + tabW) && mouseY in tabY..(tabY + tabH)
+        val tab2Hover = mouseX in tab2X..(tab2X + tabW) && mouseY in tabY..(tabY + tabH)
+
+        val tab1Bg = if (currentTab == Tab.SETTINGS) SECTION_TITLE_BG else (if (tab1Hover) theme.colors.surfaceHover else SECTION_CONTENT_BG)
+        val tab2Bg = if (currentTab == Tab.TARGETS) SECTION_TITLE_BG else (if (tab2Hover) theme.colors.surfaceHover else SECTION_CONTENT_BG)
+
+        guiGraphics.fill(tab1X, tabY, tab1X + tabW, tabY + tabH, tab1Bg)
+        guiGraphics.fill(tab2X, tabY, tab2X + tabW, tabY + tabH, tab2Bg)
+
+        val text1 = lang("tab_settings")
+        val text2 = lang("tab_targets", config.targets.size)
+
+        val text1Color = if (currentTab == Tab.SETTINGS) 0xFFFFFFFF.toInt() else theme.colors.textDark
+        val text2Color = if (currentTab == Tab.TARGETS) 0xFFFFFFFF.toInt() else theme.colors.textDark
+
+        guiGraphics.drawString(font, text1, tab1X + (tabW - font.width(text1)) / 2, tabY + 4, text1Color, false)
+        guiGraphics.drawString(font, text2, tab2X + (tabW - font.width(text2)) / 2, tabY + 4, text2Color, false)
+    }
+
+    private fun renderSettingsTab(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        var cy = screenY + 50
+        val rowH = 32
+        val rowGap = 4
+
+        // 1. Radar Geral
+        renderSettingRow(
+            guiGraphics, mouseX, mouseY, cy,
+            title = lang("setting_radar_title"),
+            desc = lang("setting_radar_desc"),
+            enabled = config.enabled
+        )
+        cy += rowH + rowGap
+
+        // 2. Alerta Shiny
+        renderSettingRow(
+            guiGraphics, mouseX, mouseY, cy,
+            title = lang("setting_shiny_title"),
+            desc = lang("setting_shiny_desc"),
+            enabled = config.shinyAlert
+        )
+        cy += rowH + rowGap
+
+        // 3. Alerta de Alvos
+        renderSettingRow(
+            guiGraphics, mouseX, mouseY, cy,
+            title = lang("setting_targets_title"),
+            desc = lang("setting_targets_desc"),
+            enabled = config.targetAlert
+        )
+        cy += rowH + rowGap
+
+        // 4. Som de Notificação
+        renderSettingRow(
+            guiGraphics, mouseX, mouseY, cy,
+            title = lang("setting_sound_title"),
+            desc = lang("setting_sound_desc"),
+            enabled = config.soundAlert
+        )
+    }
+
+    private fun renderSettingRow(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        y: Int,
+        title: String,
+        desc: String,
+        enabled: Boolean
+    ) {
+        val x1 = screenX + CONTENT_X
+        val x2 = x1 + LIST_WIDTH
+        val y2 = y + 32
+
+        guiGraphics.fill(x1, y, x2, y2, SECTION_CONTENT_BG)
+
+        // Text
+        guiGraphics.drawString(font, title, x1 + 6, y + 5, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, desc, x1 + 6, y + 18, CONTENT_DIM, false)
+
+        // Toggle button on the right
+        val btnW = 46
+        val btnH = 16
+        val btnX = x2 - btnW - 6
+        val btnY = y + 8
+        val btnHover = mouseX in btnX..(btnX + btnW) && mouseY in btnY..(btnY + btnH)
+
+        val btnBg = if (enabled) (if (btnHover) theme.colors.primaryHover else theme.colors.success)
+        else (if (btnHover) 0xFF555555.toInt() else 0xFF333333.toInt())
+
+        guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, btnBg)
+
+        val btnText = if (enabled) lang("status_on") else lang("status_off")
+        guiGraphics.drawString(font, btnText, btnX + (btnW - font.width(btnText)) / 2, btnY + 4, 0xFFFFFFFF.toInt(), false)
+    }
+
+    private fun renderTargetsListTab(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        // "+ Adicionar Alvo" button at the top
+        val addBtnX = screenX + CONTENT_X
+        val addBtnY = screenY + 48
+        val addBtnW = LIST_WIDTH
+        val addBtnH = 16
+        val addBtnHover = mouseX in addBtnX..(addBtnX + addBtnW) && mouseY in addBtnY..(addBtnY + addBtnH)
+        val addBtnBg = if (addBtnHover) theme.colors.primaryHover else SECTION_TITLE_BG
+
+        guiGraphics.fill(addBtnX, addBtnY, addBtnX + addBtnW, addBtnY + addBtnH, addBtnBg)
+        val addText = lang("btn_add_target")
+        guiGraphics.drawString(font, addText, addBtnX + (addBtnW - font.width(addText)) / 2, addBtnY + 4, 0xFFFFFFFF.toInt(), false)
+
+        if (config.targets.isEmpty()) {
+            val empty1 = lang("targets_empty_1")
+            val empty2 = lang("targets_empty_2")
+            val empty3 = lang("targets_empty_3")
+            val midY = screenY + 110
+            guiGraphics.drawString(font, empty1, screenX + (GUI_WIDTH - font.width(empty1)) / 2, midY, CONTENT_DIM, false)
+            guiGraphics.drawString(font, empty2, screenX + (GUI_WIDTH - font.width(empty2)) / 2, midY + 14, CONTENT_DIM, false)
+            guiGraphics.drawString(font, empty3, screenX + (GUI_WIDTH - font.width(empty3)) / 2, midY + 28, CONTENT_DIM, false)
+            return
+        }
+
+        guiGraphics.enableScissor(
+            screenX + CONTENT_X, screenY + LIST_START_Y,
+            screenX + CONTENT_X + LIST_WIDTH, screenY + LIST_END_Y
+        )
+
+        for (i in config.targets.indices) {
+            val target = config.targets[i]
+            val cy = screenY + LIST_START_Y + i * (CARD_HEIGHT + CARD_GAP) - scrollY
+            if (cy + CARD_HEIGHT < screenY + LIST_START_Y || cy > screenY + LIST_END_Y) continue
+            renderTargetCard(guiGraphics, mouseX, mouseY, cy, target)
+        }
+
+        guiGraphics.disableScissor()
+        renderScrollbar(guiGraphics, mouseY)
+    }
+
+    private fun renderTargetCard(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        y: Int,
+        target: RotomTarget
+    ) {
+        val x1 = screenX + CONTENT_X
+        val x2 = x1 + LIST_WIDTH
+        val y2 = y + CARD_HEIGHT
+
+        val hovered = mouseX in x1..x2 && mouseY in y..y2
+        val bg = if (hovered) theme.colors.surfaceHover else SECTION_CONTENT_BG
+        guiGraphics.fill(x1, y, x2, y2, bg)
+
+        // Border
+        val borderCol = if (target.enabled) theme.colors.primary else 0xFF444444.toInt()
+        guiGraphics.fill(x1, y, x1 + 2, y2, borderCol)
+
+        // Line 1: Species name
+        val specName = if (target.species.isBlank() || target.species == "any") lang("species_any")
+        else target.species.replaceFirstChar(Char::uppercase)
+        val shinyBadge = if (target.shinyOnly) " ✨" else ""
+        val titleColor = if (target.enabled) 0xFFFFFFFF.toInt() else 0xFF888888.toInt()
+        guiGraphics.drawString(font, "$specName$shinyBadge", x1 + 6, y + 4, titleColor, false)
+
+        // Line 2: Filters summary
+        val ivText = if (target.minIvPercent > 0) "IV ≥${target.minIvPercent}%" else ""
+        val perfText = if (target.minPerfectIvs > 0) "${target.minPerfectIvs}x 31" else ""
+        val natText = if (target.nature.isNotBlank() && target.nature != "any") target.nature.replaceFirstChar(Char::uppercase) else ""
+
+        val summaryParts = mutableListOf<String>()
+        if (ivText.isNotEmpty()) summaryParts.add(ivText)
+        if (perfText.isNotEmpty()) summaryParts.add(perfText)
+        if (natText.isNotEmpty()) summaryParts.add(natText)
+        val summary = if (summaryParts.isEmpty()) lang("filters_none") else summaryParts.joinToString(" • ")
+
+        guiGraphics.drawString(font, summary, x1 + 6, y + 17, CONTENT_DIM, false)
+
+        // Action buttons: Toggle [✓/X] and Delete [🗑]
+        val toggleBtnX = x2 - 42
+        val toggleBtnY = y + 6
+        val toggleBtnW = 16
+        val toggleBtnH = 16
+        val toggleHover = mouseX in toggleBtnX..(toggleBtnX + toggleBtnW) && mouseY in toggleBtnY..(toggleBtnY + toggleBtnH)
+        val toggleBg = if (target.enabled) (if (toggleHover) theme.colors.primaryHover else theme.colors.success)
+        else (if (toggleHover) 0xFF555555.toInt() else 0xFF333333.toInt())
+        guiGraphics.fill(toggleBtnX, toggleBtnY, toggleBtnX + toggleBtnW, toggleBtnY + toggleBtnH, toggleBg)
+        val toggleText = if (target.enabled) "✓" else "✕"
+        guiGraphics.drawString(font, toggleText, toggleBtnX + 5, toggleBtnY + 4, 0xFFFFFFFF.toInt(), false)
+
+        val delBtnX = x2 - 22
+        val delBtnY = y + 6
+        val delBtnW = 16
+        val delBtnH = 16
+        val delHover = mouseX in delBtnX..(delBtnX + delBtnW) && mouseY in delBtnY..(delBtnY + delBtnH)
+        val delBg = if (delHover) 0xFFCC2222.toInt() else theme.colors.danger
+        guiGraphics.fill(delBtnX, delBtnY, delBtnX + delBtnW, delBtnY + delBtnH, delBg)
+        guiGraphics.drawString(font, "✕", delBtnX + 5, delBtnY + 4, 0xFFFFFFFF.toInt(), false)
+    }
+
+    private fun renderAddTargetForm(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        delta: Float
+    ) {
+        var cy = screenY + 48
+
+        // Field 1: Espécie
+        guiGraphics.drawString(font, lang("form_species"), screenX + CONTENT_X, cy, theme.colors.gold, false)
+        cy += 12
+
+        val boxX = screenX + CONTENT_X
+        val boxY = cy
+        guiGraphics.fill(boxX, boxY, boxX + LIST_WIDTH, boxY + 18, SECTION_CONTENT_BG)
+        guiGraphics.fill(boxX, boxY, boxX + LIST_WIDTH, boxY + 1, SECTION_TITLE_BG)
+        guiGraphics.fill(boxX, boxY + 17, boxX + LIST_WIDTH, boxY + 18, SECTION_TITLE_BG)
+        guiGraphics.fill(boxX, boxY, boxX + 1, boxY + 18, SECTION_TITLE_BG)
+        guiGraphics.fill(boxX + LIST_WIDTH - 1, boxY, boxX + LIST_WIDTH, boxY + 18, SECTION_TITLE_BG)
+        speciesBox.setX(boxX + 4)
+        speciesBox.setY(boxY + 5)
+        speciesBox.renderWidget(guiGraphics, mouseX, mouseY, delta)
+        cy += 24
+
+        // Field 2: Natureza
+        guiGraphics.drawString(font, lang("form_nature"), screenX + CONTENT_X, cy, theme.colors.gold, false)
+        cy += 12
+        renderCycleSelector(
+            guiGraphics, mouseX, mouseY, cy,
+            label = if (selectedNatureIndex == 0) lang("nature_any") else NATURE_OPTIONS[selectedNatureIndex].replaceFirstChar(Char::uppercase)
+        )
+        cy += 22
+
+        // Field 3: IV Mínimo %
+        guiGraphics.drawString(font, lang("form_min_iv"), screenX + CONTENT_X, cy, theme.colors.gold, false)
+        cy += 12
+        renderNumberSelector(
+            guiGraphics, mouseX, mouseY, cy,
+            label = if (selectedMinIvPercent == 0) lang("iv_any") else "$selectedMinIvPercent%"
+        )
+        cy += 22
+
+        // Field 4: IVs 31s
+        guiGraphics.drawString(font, lang("form_min_31s"), screenX + CONTENT_X, cy, theme.colors.gold, false)
+        cy += 12
+        renderCountSelector(
+            guiGraphics, mouseX, mouseY, cy,
+            label = if (selectedMinPerfectIvs == 0) lang("iv_any") else "$selectedMinPerfectIvs x 31"
+        )
+        cy += 20
+
+        // Field 5: Apenas Shiny toggle
+        val shinyY = cy
+        guiGraphics.drawString(font, lang("form_shiny_only"), screenX + CONTENT_X, shinyY + 4, theme.colors.gold, false)
+        val shinyBtnX = screenX + CONTENT_X + LIST_WIDTH - 44
+        val shinyBtnW = 44
+        val shinyBtnH = 14
+        val shinyHover = mouseX in shinyBtnX..(shinyBtnX + shinyBtnW) && mouseY in shinyY..(shinyY + shinyBtnH)
+        val shinyBg = if (selectedShinyOnly) (if (shinyHover) theme.colors.primaryHover else theme.colors.gold)
+        else (if (shinyHover) 0xFF555555.toInt() else 0xFF333333.toInt())
+        guiGraphics.fill(shinyBtnX, shinyY, shinyBtnX + shinyBtnW, shinyY + shinyBtnH, shinyBg)
+        val shinyText = if (selectedShinyOnly) lang("status_yes") else lang("status_no")
+        val shinyTextColor = if (selectedShinyOnly) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+        guiGraphics.drawString(font, shinyText, shinyBtnX + (shinyBtnW - font.width(shinyText)) / 2, shinyY + 3, shinyTextColor, false)
+        cy += 22
+
+        // Action buttons: [ Salvar ] and [ Cancelar ]
+        val btnW = (LIST_WIDTH - 6) / 2
+        val saveBtnX = screenX + CONTENT_X
+        val saveBtnHover = mouseX in saveBtnX..(saveBtnX + btnW) && mouseY in cy..(cy + 16)
+        val saveBg = if (saveBtnHover) theme.colors.primaryHover else theme.colors.success
+        guiGraphics.fill(saveBtnX, cy, saveBtnX + btnW, cy + 16, saveBg)
+        val saveText = lang("btn_save_target")
+        guiGraphics.drawString(font, saveText, saveBtnX + (btnW - font.width(saveText)) / 2, cy + 4, 0xFFFFFFFF.toInt(), false)
+
+        val cancelBtnX = saveBtnX + btnW + 6
+        val cancelBtnHover = mouseX in cancelBtnX..(cancelBtnX + btnW) && mouseY in cy..(cy + 16)
+        val cancelBg = if (cancelBtnHover) 0xFF555555.toInt() else 0xFF333333.toInt()
+        guiGraphics.fill(cancelBtnX, cy, cancelBtnX + btnW, cy + 16, cancelBg)
+        val cancelText = lang("btn_cancel")
+        guiGraphics.drawString(font, cancelText, cancelBtnX + (btnW - font.width(cancelText)) / 2, cy + 4, 0xFFFFFFFF.toInt(), false)
+    }
+
+    private fun renderCycleSelector(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        y: Int,
+        label: String
+    ) {
+        val x1 = screenX + CONTENT_X
+        val w = LIST_WIDTH
+        guiGraphics.fill(x1, y, x1 + w, y + 16, SECTION_CONTENT_BG)
+
+        // [<] button
+        val leftBtnHover = mouseX in x1..(x1 + 16) && mouseY in y..(y + 16)
+        guiGraphics.fill(x1, y, x1 + 16, y + 16, if (leftBtnHover) theme.colors.surfaceHover else 0xFF333333.toInt())
+        guiGraphics.drawString(font, "<", x1 + 6, y + 4, 0xFFFFFFFF.toInt(), false)
+
+        // Label
+        guiGraphics.drawString(font, label, x1 + (w - font.width(label)) / 2, y + 4, 0xFFFFFFFF.toInt(), false)
+
+        // [>] button
+        val rightX = x1 + w - 16
+        val rightBtnHover = mouseX in rightX..(rightX + 16) && mouseY in y..(y + 16)
+        guiGraphics.fill(rightX, y, rightX + 16, y + 16, if (rightBtnHover) theme.colors.surfaceHover else 0xFF333333.toInt())
+        guiGraphics.drawString(font, ">", rightX + 6, y + 4, 0xFFFFFFFF.toInt(), false)
+    }
+
+    private fun renderNumberSelector(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        y: Int,
+        label: String
+    ) {
+        renderCycleSelector(guiGraphics, mouseX, mouseY, y, label)
+    }
+
+    private fun renderCountSelector(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        y: Int,
+        label: String
+    ) {
+        renderCycleSelector(guiGraphics, mouseX, mouseY, y, label)
+    }
+
+    private fun renderScrollbar(guiGraphics: GuiGraphics, mouseY: Int) {
+        if (maxScroll <= 0) return
+        val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
+        val trackY = screenY + LIST_START_Y
+        val trackH = LIST_END_Y - LIST_START_Y
+        val totalH = config.targets.size * (CARD_HEIGHT + CARD_GAP)
+        val handleH = maxOf(12, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
+        val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
+
+        if (draggingScrollbar) {
+            val dy = mouseY - dragStartMouseY
+            val scrollRange = trackH - handleH
+            if (scrollRange > 0) {
+                scrollY = (dragStartScrollY + (dy.toFloat() / scrollRange * maxScroll).toInt()).coerceIn(0, maxScroll)
+            }
+        }
+
+        guiGraphics.fill(trackX, trackY, trackX + SCROLLBAR_WIDTH, trackY + trackH, 0x20FFFFFF.toInt())
+        val color = if (draggingScrollbar) 0x90FFFFFF.toInt() else 0x60FFFFFF.toInt()
+        guiGraphics.fill(trackX, handleY, trackX + SCROLLBAR_WIDTH, handleY + handleH, color)
+    }
+
+    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        val mx = mouseX.toInt()
+        val my = mouseY.toInt()
+
+        // Back button
+        if (isInBackButton(mx, my)) {
+            playClickSound()
+            Minecraft.getInstance().setScreen(SmartphoneScreen(color, smartphoneStack))
+            return true
+        }
+
+        // Tabs
+        val tabY = screenY + 28
+        val tabH = 15
+        val tabW = (LIST_WIDTH - 4) / 2
+        val tab1X = screenX + CONTENT_X
+        val tab2X = tab1X + tabW + 4
+
+        if (my in tabY..(tabY + tabH)) {
+            if (mx in tab1X..(tab1X + tabW)) {
+                if (currentTab != Tab.SETTINGS) {
+                    playClickSound()
+                    currentTab = Tab.SETTINGS
+                    isAddingTarget = false
+                    speciesBox.visible = false
+                }
+                return true
+            }
+            if (mx in tab2X..(tab2X + tabW)) {
+                if (currentTab != Tab.TARGETS) {
+                    playClickSound()
+                    currentTab = Tab.TARGETS
+                    isAddingTarget = false
+                    speciesBox.visible = false
+                    updateMaxScroll()
+                }
+                return true
+            }
+        }
+
+        if (currentTab == Tab.SETTINGS) {
+            return handleSettingsClick(mx, my)
+        } else {
+            return handleTargetsClick(mx, my)
+        }
+    }
+
+    private fun handleSettingsClick(mx: Int, my: Int): Boolean {
+        var cy = screenY + 50
+        val rowH = 32
+        val rowGap = 4
+        val x2 = screenX + CONTENT_X + LIST_WIDTH
+        val btnW = 46
+        val btnH = 16
+        val btnX = x2 - btnW - 6
+
+        // 1. Radar Geral
+        if (mx in btnX..(btnX + btnW) && my in (cy + 8)..(cy + 8 + btnH)) {
+            playClickSound()
+            config.enabled = !config.enabled
+            RotomRadarClientState.saveConfig()
+            return true
+        }
+        cy += rowH + rowGap
+
+        // 2. Alerta Shiny
+        if (mx in btnX..(btnX + btnW) && my in (cy + 8)..(cy + 8 + btnH)) {
+            playClickSound()
+            config.shinyAlert = !config.shinyAlert
+            RotomRadarClientState.saveConfig()
+            return true
+        }
+        cy += rowH + rowGap
+
+        // 3. Alerta de Alvos
+        if (mx in btnX..(btnX + btnW) && my in (cy + 8)..(cy + 8 + btnH)) {
+            playClickSound()
+            config.targetAlert = !config.targetAlert
+            RotomRadarClientState.saveConfig()
+            return true
+        }
+        cy += rowH + rowGap
+
+        // 4. Som de Notificação
+        if (mx in btnX..(btnX + btnW) && my in (cy + 8)..(cy + 8 + btnH)) {
+            playClickSound()
+            config.soundAlert = !config.soundAlert
+            RotomRadarClientState.saveConfig()
+            return true
+        }
+
+        return false
+    }
+
+    private fun handleTargetsClick(mx: Int, my: Int): Boolean {
+        if (isAddingTarget) {
+            return handleAddFormClick(mx, my)
+        }
+
+        // "+ Adicionar Alvo" button
+        val addBtnX = screenX + CONTENT_X
+        val addBtnY = screenY + 48
+        val addBtnW = LIST_WIDTH
+        val addBtnH = 16
+        if (mx in addBtnX..(addBtnX + addBtnW) && my in addBtnY..(addBtnY + addBtnH)) {
+            playClickSound()
+            isAddingTarget = true
+            speciesBox.value = ""
+            speciesBox.visible = true
+            selectedNatureIndex = 0
+            selectedMinIvPercent = 0
+            selectedMinPerfectIvs = 0
+            selectedShinyOnly = false
+            return true
+        }
+
+        // Targets list cards click
+        val x2 = screenX + CONTENT_X + LIST_WIDTH
+        for (i in config.targets.indices) {
+            val target = config.targets[i]
+            val cy = screenY + LIST_START_Y + i * (CARD_HEIGHT + CARD_GAP) - scrollY
+            if (cy + CARD_HEIGHT < screenY + LIST_START_Y || cy > screenY + LIST_END_Y) continue
+
+            // Toggle button
+            val toggleBtnX = x2 - 42
+            val toggleBtnY = cy + 6
+            if (mx in toggleBtnX..(toggleBtnX + 16) && my in toggleBtnY..(toggleBtnY + 16)) {
+                playClickSound()
+                target.enabled = !target.enabled
+                RotomRadarClientState.saveConfig()
+                return true
+            }
+
+            // Delete button
+            val delBtnX = x2 - 22
+            val delBtnY = cy + 6
+            if (mx in delBtnX..(delBtnX + 16) && my in delBtnY..(delBtnY + 16)) {
+                playClickSound()
+                config.targets.removeAt(i)
+                updateMaxScroll()
+                RotomRadarClientState.saveConfig()
+                return true
+            }
+        }
+
+        // Scrollbar dragging start
+        if (maxScroll > 0) {
+            val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
+            val trackY = screenY + LIST_START_Y
+            val trackH = LIST_END_Y - LIST_START_Y
+            val totalH = config.targets.size * (CARD_HEIGHT + CARD_GAP)
+            val handleH = maxOf(12, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
+            val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
+            if (mx in trackX..(trackX + SCROLLBAR_WIDTH) && my in handleY..(handleY + handleH)) {
+                draggingScrollbar = true
+                dragStartMouseY = my
+                dragStartScrollY = scrollY
+                return true
+            }
+        }
+
+        return false
+    }
+
+    private fun handleAddFormClick(mx: Int, my: Int): Boolean {
+        var cy = screenY + 48 + 12 + 24 // After species field
+
+        // Nature cycle selector
+        val x1 = screenX + CONTENT_X
+        val w = LIST_WIDTH
+        if (my in cy..(cy + 16)) {
+            if (mx in x1..(x1 + 16)) {
+                playClickSound()
+                selectedNatureIndex = (selectedNatureIndex - 1 + NATURE_OPTIONS.size) % NATURE_OPTIONS.size
+                return true
+            }
+            if (mx in (x1 + w - 16)..(x1 + w)) {
+                playClickSound()
+                selectedNatureIndex = (selectedNatureIndex + 1) % NATURE_OPTIONS.size
+                return true
+            }
+        }
+        cy += 22
+
+        // Min IV % selector (cycles: 0, 50, 60, 70, 80, 85, 90, 95, 100)
+        val ivSteps = listOf(0, 50, 60, 70, 80, 85, 90, 95, 100)
+        if (my in cy..(cy + 16)) {
+            val curIdx = ivSteps.indexOf(selectedMinIvPercent).coerceAtLeast(0)
+            if (mx in x1..(x1 + 16)) {
+                playClickSound()
+                val nextIdx = (curIdx - 1 + ivSteps.size) % ivSteps.size
+                selectedMinIvPercent = ivSteps[nextIdx]
+                return true
+            }
+            if (mx in (x1 + w - 16)..(x1 + w)) {
+                playClickSound()
+                val nextIdx = (curIdx + 1) % ivSteps.size
+                selectedMinIvPercent = ivSteps[nextIdx]
+                return true
+            }
+        }
+        cy += 22
+
+        // Min 31s count (0 to 6)
+        if (my in cy..(cy + 16)) {
+            if (mx in x1..(x1 + 16)) {
+                playClickSound()
+                selectedMinPerfectIvs = (selectedMinPerfectIvs - 1 + 7) % 7
+                return true
+            }
+            if (mx in (x1 + w - 16)..(x1 + w)) {
+                playClickSound()
+                selectedMinPerfectIvs = (selectedMinPerfectIvs + 1) % 7
+                return true
+            }
+        }
+        cy += 20
+
+        // Shiny only toggle
+        val shinyBtnX = screenX + CONTENT_X + LIST_WIDTH - 44
+        if (mx in shinyBtnX..(shinyBtnX + 44) && my in cy..(cy + 14)) {
+            playClickSound()
+            selectedShinyOnly = !selectedShinyOnly
+            return true
+        }
+        cy += 22
+
+        // Action buttons: [ Salvar ] and [ Cancelar ]
+        val btnW = (LIST_WIDTH - 6) / 2
+        val saveBtnX = screenX + CONTENT_X
+        if (mx in saveBtnX..(saveBtnX + btnW) && my in cy..(cy + 16)) {
+            playClickSound()
+            val rawSpecies = speciesBox.value.trim().lowercase()
+            val nat = if (selectedNatureIndex == 0) "" else NATURE_OPTIONS[selectedNatureIndex]
+            val newTarget = RotomTarget(
+                species = rawSpecies,
+                minIvPercent = selectedMinIvPercent,
+                minPerfectIvs = selectedMinPerfectIvs,
+                nature = nat,
+                shinyOnly = selectedShinyOnly,
+                enabled = true
+            )
+            config.targets.add(newTarget)
+            RotomRadarClientState.saveConfig()
+            isAddingTarget = false
+            speciesBox.visible = false
+            updateMaxScroll()
+            return true
+        }
+
+        val cancelBtnX = saveBtnX + btnW + 6
+        if (mx in cancelBtnX..(cancelBtnX + btnW) && my in cy..(cy + 16)) {
+            playClickSound()
+            isAddingTarget = false
+            speciesBox.visible = false
+            return true
+        }
+
+        return false
+    }
+
+    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        draggingScrollbar = false
+        return super.mouseReleased(mouseX, mouseY, button)
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
+        if (currentTab == Tab.TARGETS && !isAddingTarget && maxScroll > 0 && verticalAmount != 0.0) {
+            scrollY = (scrollY - verticalAmount.toInt() * SCROLL_SPEED).coerceIn(0, maxScroll)
+            return true
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
+    }
+
+    override fun charTyped(codePoint: Char, modifiers: Int): Boolean {
+        if (isAddingTarget && speciesBox.charTyped(codePoint, modifiers)) return true
+        return super.charTyped(codePoint, modifiers)
+    }
+
+    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        if (isAddingTarget && speciesBox.isFocused && speciesBox.keyPressed(keyCode, scanCode, modifiers)) return true
+        return super.keyPressed(keyCode, scanCode, modifiers)
+    }
+
+    private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
+        val x = screenX + 10
+        val y = screenY + 12
+        return mouseX in x..(x + 40) && mouseY in (y - 2)..(y + 10)
+    }
+
+    private fun playClickSound() {
+        Minecraft.getInstance().player?.playSound(CobblemonSounds.GUI_CLICK, 0.5f, 1f)
+    }
+}
