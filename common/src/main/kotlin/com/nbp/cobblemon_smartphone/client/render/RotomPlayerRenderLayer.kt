@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.client.render
 
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.math.Axis
+import com.nbp.cobblemon_smartphone.client.RotomDialogueClientState
 import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.client.scanner.ScannerManager
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
@@ -94,6 +95,7 @@ class RotomPlayerRenderLayer(
             var scanWorldYaw: Float = 0.0f
             var scanWorldPitch: Float = 0.0f
             var scanWorldRoll: Float = 0.0f
+            var dialogueProgress: Float = 0.0f
         }
 
         data class SocialAnchor(
@@ -140,19 +142,23 @@ class RotomPlayerRenderLayer(
             if (player.isInvisible || player.isSleeping || player.isDeadOrDying || player.isSpectator) return
 
             // Não renderiza em primeira pessoa se o Rotom estiver descansando no ombro!
-            // Renderiza se estiver socializando, escaneando Pokémon selvagem, em modo Pokédex scanner/câmera social horizontal,
-            // ou em transição suave de abertura/retorno ao ombro.
+            // Renderiza se estiver socializando, escaneando Pokémon selvagem, apresentando curiosidade no diálogo,
+            // em modo Pokédex scanner/câmera social horizontal, ou em transição suave de abertura/retorno ao ombro.
             val animState = playerAnimStates[player.uuid]
             val hasActiveSession = RotomClientManager.hasActiveSessionFor(player.uuid)
             val isTransitioningSocial = animState != null && animState.socialProgress > 0.001f
             val hasActiveScan = animState != null && animState.scanProgress > 0.001f
             val isScanningNow = RotomScannerClientState.getScanFor(player.uuid) != null
+            val hasActiveDialogue = RotomDialogueClientState.shouldRotomFlyInFront(player.uuid)
+            val isTransitioningDialogue = animState != null && animState.dialogueProgress > 0.001f
+            val isDismissingDialogue = RotomDialogueClientState.isDismissing(player.uuid)
             val isScanningPokedex = ScannerManager.isInUse()
             val isSocialPhoto = SocialPhotoClient.isCameraActive()
             val isTransitioningHorizontal = animState != null && animState.horizontalProgress > 0.001f
             val isTransitioningOpen = animState != null && animState.openProgress > 0.001f
 
             if (!hasActiveSession && !isTransitioningSocial && !hasActiveScan && !isScanningNow
+                && !hasActiveDialogue && !isTransitioningDialogue && !isDismissingDialogue
                 && !isScanningPokedex && !isSocialPhoto && !isTransitioningHorizontal && !isTransitioningOpen) {
                 return
             }
@@ -435,15 +441,47 @@ class RotomPlayerRenderLayer(
                 activeScan?.phase != com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_RETURNING &&
                 activeScan?.phase != com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_IDLE
             val targetScan = if (isScanningTarget) 1.0f else 0.0f
-            // Velocidade dinâmica baseada nas configurações sincronizadas com o servidor
+            // Velocidade dinâmica linear baseada nas configurações sincronizadas com o servidor
             val approachSec = (RotomScannerClientState.clientConfig.approachTicks.coerceAtLeast(4) / 20.0f)
             val returnSec = (RotomScannerClientState.clientConfig.returnTicks.coerceAtLeast(4) / 20.0f)
-            val scanTransitionSpeed = if (targetScan > 0.5f) (1.0f / approachSec) else (1.0f / returnSec)
-            animState.scanProgress += (targetScan - animState.scanProgress) * (dt * scanTransitionSpeed).coerceIn(0.0f, 1.0f)
+            if (animState.scanProgress < targetScan) {
+                animState.scanProgress = (animState.scanProgress + dt / approachSec).coerceAtMost(targetScan)
+            } else if (animState.scanProgress > targetScan) {
+                animState.scanProgress = (animState.scanProgress - dt / returnSec).coerceAtLeast(targetScan)
+            }
             if (animState.scanProgress <= 0.001f && !isScanningTarget) {
                 animState.scanProgress = 0.0f
             }
+            // Curva de voo suave e elegante (Smoothstep): acelera do repouso e desacelera suavemente ao chegar
             val scanT = animState.scanProgress * animState.scanProgress * (3f - 2f * animState.scanProgress)
+
+            // 2.2 Consultar se há diálogo ativo de curiosidade para este jogador após o scan
+            val hasActiveDialogue = RotomDialogueClientState.shouldRotomFlyInFront(player.uuid)
+            val dismissT = RotomDialogueClientState.getDismissProgress(player.uuid)
+            val isDismissing = RotomDialogueClientState.isDismissing(player.uuid)
+            val targetDialogue = if (hasActiveDialogue && !isDismissing && t < 0.1f && scanT < 0.35f) 1.0f else 0.0f
+            val dialogueSpeed = if (targetDialogue > 0.5f) 2.0f else 2.6f
+            if (animState.dialogueProgress < targetDialogue) {
+                animState.dialogueProgress = (animState.dialogueProgress + dt * dialogueSpeed).coerceAtMost(targetDialogue)
+            } else if (animState.dialogueProgress > targetDialogue) {
+                animState.dialogueProgress = (animState.dialogueProgress - dt * dialogueSpeed).coerceAtLeast(targetDialogue)
+            }
+            if (animState.dialogueProgress <= 0.001f && !hasActiveDialogue && !isDismissing) {
+                animState.dialogueProgress = 0.0f
+            }
+            val dialogueT = animState.dialogueProgress * animState.dialogueProgress * (3f - 2f * animState.dialogueProgress)
+
+            // Gestos expressivos de fala (bobbing e inclinação fofa) enquanto conversa
+            val talkBob = if (dialogueT > 0.001f) (Mth.sin(time * 0.40f) * 0.015f * dialogueT) else 0.0f
+            val talkSway = if (dialogueT > 0.001f) (Mth.cos(time * 0.25f) * 0.012f * dialogueT) else 0.0f
+            val talkPitch = if (dialogueT > 0.001f) (Mth.sin(time * 0.40f) * 6.0f * dialogueT) else 0.0f
+            val talkRoll = if (dialogueT > 0.001f) (Mth.sin(time * 0.25f) * 5.0f * dialogueT) else 0.0f
+
+            // Animação de saída de cena ao fechar o diálogo (voo gracioso para fora da tela)
+            val dismissCurve = dismissT * dismissT * (3.0f - 2.0f * dismissT)
+            val exitPitch = -dismissCurve * 26.0f
+            val exitRoll = -dismissCurve * 38.0f
+            val exitYaw = dismissCurve * 35.0f
 
             if (scanEntity != null && scanEntity.isAlive) {
                 val entX = Mth.lerp(partialTick.toDouble(), scanEntity.xOld, scanEntity.x)
@@ -710,14 +748,21 @@ class RotomPlayerRenderLayer(
                     val camPitch = mc.gameRenderer.mainCamera.xRot
 
                     // Segue o corpo/câmera de forma bem solta para que, ao virar para a esquerda, olhar para baixo
-                    // ou correr, o Rotom saia naturalmente da tela e apareça só de vez em quando no canto superior direito
-                    val targetAnchorYaw = bodyYaw + Mth.wrapDegrees(camYaw - bodyYaw) * 0.55f
+                    // ou correr, o Rotom saia naturalmente da tela e apareça só de vez em quando no canto superior direito.
+                    // Quando estiver falando no balão de diálogo, alinha-se suavemente no lado direito da visão.
+                    val targetAnchorYaw = if (dialogueT > 0.001f) {
+                        camYaw - 4.0f
+                    } else {
+                        bodyYaw + Mth.wrapDegrees(camYaw - bodyYaw) * 0.55f
+                    }
                     if (animState.fpCompanionYaw.isNaN()) {
                         animState.fpCompanionYaw = targetAnchorYaw
                     } else {
                         val diff = Mth.wrapDegrees(targetAnchorYaw - animState.fpCompanionYaw)
-                        animState.fpCompanionYaw += diff * (dt * 2.4f).coerceIn(0.0f, 1.0f)
-                        val clampedDiff = Mth.wrapDegrees(camYaw - animState.fpCompanionYaw).coerceIn(-105.0f, 105.0f)
+                        val yawFollowSpeed = if (dialogueT > 0.001f) 4.5f else 2.4f
+                        animState.fpCompanionYaw += diff * (dt * yawFollowSpeed).coerceIn(0.0f, 1.0f)
+                        val maxDiff = if (dialogueT > 0.001f) 35.0f else 105.0f
+                        val clampedDiff = Mth.wrapDegrees(camYaw - animState.fpCompanionYaw).coerceIn(-maxDiff, maxDiff)
                         animState.fpCompanionYaw = camYaw - clampedDiff
                     }
 
@@ -728,15 +773,29 @@ class RotomPlayerRenderLayer(
                     val rightX = -Math.cos(fpRad)
                     val rightZ = -Math.sin(fpRad)
 
-                    // Oscilação lenta de avanço/recuo mantendo o mesmo ângulo no canto superior direito, porém mais próximo do ombro
-                    val wanderFwd = (Mth.sin(time * 0.022f) * 0.14f) - 0.03f
-                    val fpFwd = 0.44 + wanderFwd - effectiveLagZ * 0.45 + hoverZ * 0.5f
-                    val fpRight = 0.28 + hoverX * 0.5f
-                    // Positivo em Y = acima da linha dos olhos (canto SUPERIOR direito)
-                    val fpUp = 0.22 - animState.crouchProgress * 0.03 - hoverY * 0.4f - runBob - effectiveJumpLagY
+                    // Posição física de repouso no ombro direito (completamente fora da visão da câmera em 1ª pessoa)
+                    val shoulderOffscreenFwd = -0.32f
+                    val shoulderOffscreenRight = 0.82f
+                    val shoulderOffscreenUp = -0.46f
+
+                    // Posição de fala na tela durante o diálogo (posicionado no lado direito da tela)
+                    val dialogueFwd = 0.46f
+                    val dialogueRight = 0.28f + talkSway
+                    val dialogueUp = 0.18f + talkBob
+
+                    // Interpolação suave ao entrar no diálogo
+                    val dCurve = dialogueT * dialogueT * (3.0f - 2.0f * dialogueT)
+                    val baseFpFwd = Mth.lerp(dCurve, shoulderOffscreenFwd, dialogueFwd)
+                    val baseFpRight = Mth.lerp(dCurve, shoulderOffscreenRight, dialogueRight)
+                    val baseFpUp = Mth.lerp(dCurve, shoulderOffscreenUp, dialogueUp)
+
+                    // Animação de saída graciosa voando para fora da tela de volta ao ombro
+                    val fpFwd = Mth.lerp(dismissCurve, baseFpFwd, shoulderOffscreenFwd - 0.20f)
+                    val fpRight = Mth.lerp(dismissCurve, baseFpRight, shoulderOffscreenRight + 0.35f)
+                    val fpUp = Mth.lerp(dismissCurve, baseFpUp, shoulderOffscreenUp - 0.15f)
 
                     val idleCamX = (fwdX * fpFwd + rightX * fpRight).toFloat()
-                    val idleCamY = fpUp.toFloat()
+                    val idleCamY = fpUp
                     val idleCamZ = (fwdZ * fpFwd + rightZ * fpRight).toFloat()
 
                     val cPitchRad = Math.toRadians(camPitch.toDouble())
@@ -759,15 +818,17 @@ class RotomPlayerRenderLayer(
                         Mth.lerp(t, idleCamZ, openCamZ)
                     )
 
-                    val idleFpWorldYaw = if (nearbyPlayer != null) {
+                    val idleFpWorldYaw = if (nearbyPlayer != null && dialogueT <= 0.001f) {
                         bodyYaw + (finalYaw - YAW_FACING_FRONT)
+                    } else if (dialogueT > 0.001f) {
+                        camYaw - 165.0f + idleSwayYaw * 0.3f - exitYaw
                     } else {
                         animState.fpCompanionYaw - 145.0f + idleSwayYaw
                     }
                     val openFpWorldYaw = camYaw
                     shoulderWorldYaw = idleFpWorldYaw + Mth.wrapDegrees(openFpWorldYaw - idleFpWorldYaw) * t
-                    // Mais próximo do ombro e com escala equilibrada (0.55f) para não parecer distante
-                    val fpScaleFactor = Mth.lerp(maxOf(t, socialT, scanT), 0.55f, 1.0f)
+                    // Mais próximo do ombro e com escala equilibrada (0.55f) para não parecer distante, ou 1.0f durante o diálogo
+                    val fpScaleFactor = Mth.lerp(maxOf(t, socialT, scanT, dialogueT), 0.55f, 1.0f)
                     baseModelScale = 0.9375f * player.scale * fpScaleFactor
                 } else {
                     // Em terceira pessoa ou jogadores remotos: extrai a posição exata do ombro no espaço da câmera
@@ -775,6 +836,32 @@ class RotomPlayerRenderLayer(
                     shoulderWorldYaw = bodyYaw + (finalYaw - YAW_FACING_FRONT)
                     baseModelScale = 0.9375f * player.scale
                 }
+
+                // Posição no mundo para Rotom vir à frente do jogador relatar a curiosidade (terceira pessoa)
+                val plX = Mth.lerp(partialTick.toDouble(), player.xOld, player.x)
+                val plY = Mth.lerp(partialTick.toDouble(), player.yOld, player.y)
+                val plZ = Mth.lerp(partialTick.toDouble(), player.zOld, player.z)
+                val plYawRad = Math.toRadians(player.yRot.toDouble())
+                val plFwdX = -Math.sin(plYawRad)
+                val plFwdZ = Math.cos(plYawRad)
+                val plRightX = -Math.cos(plYawRad)
+                val plRightZ = -Math.sin(plYawRad)
+
+                val reportWorldX = plX + plFwdX * 0.95 + plRightX * 0.18
+                val reportWorldY = plY + player.eyeHeight * 0.88 + Math.sin(time * 0.15) * 0.04
+                val reportWorldZ = plZ + plFwdZ * 0.95 + plRightZ * 0.18
+
+                val toPlayerX = plX - reportWorldX
+                val toPlayerY = (plY + player.eyeHeight) - reportWorldY
+                val toPlayerZ = plZ - reportWorldZ
+                val distXZ = kotlin.math.sqrt(toPlayerX * toPlayerX + toPlayerZ * toPlayerZ).coerceAtLeast(0.05)
+                val reportWorldYaw = (Mth.atan2(toPlayerZ, toPlayerX) * (180.0 / Math.PI)).toFloat() - 90.0f
+                val reportWorldPitch = -(kotlin.math.atan2(toPlayerY, distXZ) * (180.0 / Math.PI)).toFloat() + talkPitch
+                val reportWorldRoll = talkRoll
+
+                val reportCamX = (reportWorldX - camPos.x).toFloat()
+                val reportCamY = (reportWorldY - camPos.y).toFloat()
+                val reportCamZ = (reportWorldZ - camPos.z).toFloat()
 
                 val danceCamX = if (activeAnchor != null) (targetDanceWorldX - camPos.x).toFloat() else shoulderCamPos.x
                 val danceCamY = if (activeAnchor != null) (targetDanceWorldY - camPos.y).toFloat() else shoulderCamPos.y
@@ -793,19 +880,33 @@ class RotomPlayerRenderLayer(
                 // Inclinação aerodinâmica de voo (banking roll)
                 val flightBank = (Math.sin(scanT * Math.PI) * 14.0).toFloat()
 
-                val finalCamX = Mth.lerp(scanT, socialCamX, scanCamX)
-                val finalCamY = Mth.lerp(scanT, socialCamY, scanCamY) + flightArc
-                val finalCamZ = Mth.lerp(scanT, socialCamZ, scanCamZ)
+                val postScanCamX = Mth.lerp(scanT, socialCamX, scanCamX)
+                val postScanCamY = Mth.lerp(scanT, socialCamY, scanCamY) + flightArc
+                val postScanCamZ = Mth.lerp(scanT, socialCamZ, scanCamZ)
+
+                val reportArc = if (dismissT > 0.0f) (Math.sin(dismissCurve.toDouble() * Math.PI) * 0.30).toFloat() else 0.0f
+                val effectiveReportCamX = if (dismissT > 0.0f) Mth.lerp(dismissCurve, reportCamX, shoulderCamPos.x) else reportCamX
+                val effectiveReportCamY = (if (dismissT > 0.0f) Mth.lerp(dismissCurve, reportCamY, shoulderCamPos.y) else reportCamY) + reportArc
+                val effectiveReportCamZ = if (dismissT > 0.0f) Mth.lerp(dismissCurve, reportCamZ, shoulderCamPos.z) else reportCamZ
+
+                val finalCamX = if (isFirstPersonPass) postScanCamX else Mth.lerp(dialogueT, postScanCamX, effectiveReportCamX)
+                val finalCamY = if (isFirstPersonPass) postScanCamY else Mth.lerp(dialogueT, postScanCamY, effectiveReportCamY)
+                val finalCamZ = if (isFirstPersonPass) postScanCamZ else Mth.lerp(dialogueT, postScanCamZ, effectiveReportCamZ)
 
                 val socialWorldYaw = if (activeAnchor != null) {
                     shoulderWorldYaw + Mth.wrapDegrees(rotWorldYaw - shoulderWorldYaw) * socialT
                 } else {
                     shoulderWorldYaw
                 }
-                val currentWorldYaw = socialWorldYaw + Mth.wrapDegrees(animState.scanWorldYaw - socialWorldYaw) * scanT
-                val currentPitch = Mth.lerp(scanT, Mth.lerp(socialT, finalPitch, rotPitch), animState.scanWorldPitch)
+                val scanWorldYaw = socialWorldYaw + Mth.wrapDegrees(animState.scanWorldYaw - socialWorldYaw) * scanT
+                val scanPitch = Mth.lerp(scanT, Mth.lerp(socialT, finalPitch, rotPitch), animState.scanWorldPitch)
                 val horizontalRoll = hProg * 90.0f
-                val currentRoll = Mth.lerp(scanT, Mth.lerp(socialT, finalRoll, rotRoll), animState.scanWorldRoll) + flightBank + (horizontalRoll * (1.0f - scanT))
+                val scanRoll = Mth.lerp(scanT, Mth.lerp(socialT, finalRoll, rotRoll), animState.scanWorldRoll) + flightBank + (horizontalRoll * (1.0f - scanT))
+
+                val effectiveReportYaw = if (dismissT > 0.0f) (reportWorldYaw + Mth.wrapDegrees(shoulderWorldYaw - reportWorldYaw) * dismissCurve) else reportWorldYaw
+                val currentWorldYaw = if (isFirstPersonPass) scanWorldYaw else (scanWorldYaw + Mth.wrapDegrees(effectiveReportYaw - scanWorldYaw) * dialogueT)
+                val currentPitch = if (isFirstPersonPass) scanPitch + talkPitch + exitPitch else Mth.lerp(dialogueT, scanPitch, reportWorldPitch)
+                val currentRoll = if (isFirstPersonPass) scanRoll + talkRoll + exitRoll else Mth.lerp(dialogueT, scanRoll, reportWorldRoll + (if (dismissT > 0.0f) (Math.sin(dismissT.toDouble() * Math.PI) * 20.0).toFloat() else 0.0f))
 
                 // Reseta o PoseStack para o Espaço de Mundo puro (relativo à câmera),
                 // garantindo 0% de vínculo com a movimentação ou rotação do jogador durante a dança ou scan!
@@ -816,11 +917,11 @@ class RotomPlayerRenderLayer(
                 poseStack.mulPose(Axis.YP.rotationDegrees(180.0f - currentWorldYaw))
                 poseStack.scale(-baseModelScale, -baseModelScale, baseModelScale)
 
-                val combinedTiltPitch = (effectiveTilt + jumpTiltPitch) * (1.0f - maxOf(socialT, scanT, hProg))
+                val combinedTiltPitch = (effectiveTilt + jumpTiltPitch) * (1.0f - maxOf(socialT, scanT, dialogueT, hProg))
                 if (combinedTiltPitch > 0.01f || combinedTiltPitch < -0.01f) {
                     poseStack.mulPose(Axis.XP.rotationDegrees(combinedTiltPitch))
                 }
-                val effectiveBankRoll = effectiveBank * (1.0f - maxOf(socialT, scanT, hProg))
+                val effectiveBankRoll = effectiveBank * (1.0f - maxOf(socialT, scanT, dialogueT, hProg))
                 if (effectiveBankRoll != 0.0f) {
                     poseStack.mulPose(Axis.ZP.rotationDegrees(effectiveBankRoll))
                 }

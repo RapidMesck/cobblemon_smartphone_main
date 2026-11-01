@@ -4,6 +4,7 @@ import com.nbp.cobblemon_smartphone.client.GpsClientState
 import com.nbp.cobblemon_smartphone.client.StructureCompassClientState
 import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
 import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
+import com.nbp.cobblemon_smartphone.client.gui.RotomDialogueOverlay
 import com.nbp.cobblemon_smartphone.client.gui.StructureCompassOverlay
 import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
@@ -32,6 +33,9 @@ object CobblemonSmartphoneNeoForgeTickHandler {
         while (SmartphoneKeybinds.SCANNER.consumeClick()) {
             NeoForgeSmartphoneKeybindHandler.handleScannerKeybind()
         }
+        while (SmartphoneKeybinds.DISMISS_DIALOGUE.consumeClick()) {
+            com.nbp.cobblemon_smartphone.client.RotomDialogueClientState.dismissLocalDialogue()
+        }
         SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEachIndexed { index, keyMapping ->
             while (keyMapping.consumeClick()) {
                 QuickActionDispatcher.trigger(index)
@@ -57,6 +61,7 @@ object CobblemonSmartphoneNeoForgeTickHandler {
         GpsCompassOverlay.render(event.guiGraphics)
         StructureCompassOverlay.render(event.guiGraphics)
         SocialPhotoClient.renderCameraOverlay(event.guiGraphics)
+        RotomDialogueOverlay.render(event.guiGraphics)
     }
 
     @SubscribeEvent

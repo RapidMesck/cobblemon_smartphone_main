@@ -316,5 +316,6 @@ object RotomClientManager {
         val isHorizontal = isScannerActive || isPhotoActive
         updateLocalState(isOpen, isHorizontal)
         com.nbp.cobblemon_smartphone.client.RotomScannerClientState.tick()
+        com.nbp.cobblemon_smartphone.client.RotomDialogueClientState.tick()
     }
 }

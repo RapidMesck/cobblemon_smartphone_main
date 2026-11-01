@@ -4,6 +4,7 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphoneFabricNetworkManager
 import com.nbp.cobblemon_smartphone.client.dev.GuiScreenshotHarness
 import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
 import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
+import com.nbp.cobblemon_smartphone.client.gui.RotomDialogueOverlay
 import com.nbp.cobblemon_smartphone.client.gui.StructureCompassOverlay
 import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
@@ -42,6 +43,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
 
         KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.OPEN_SMARTPHONE)
         KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.SCANNER)
+        KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.DISMISS_DIALOGUE)
         SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEach { KeyBindingHelper.registerKeyBinding(it) }
         // Call hotkeys only make sense (and only appear in Controls) when Simple Voice Chat is present.
         if (VoiceChatBridge.isModPresent) {
@@ -55,6 +57,9 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             }
             while (SmartphoneKeybinds.SCANNER.consumeClick()) {
                 FabricSmartphoneKeybindHandler.handleScannerKeybind()
+            }
+            while (SmartphoneKeybinds.DISMISS_DIALOGUE.consumeClick()) {
+                RotomDialogueClientState.dismissLocalDialogue()
             }
             SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEachIndexed { index, keyMapping ->
                 while (keyMapping.consumeClick()) {
@@ -81,6 +86,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             GpsCompassOverlay.render(guiGraphics)
             StructureCompassOverlay.render(guiGraphics)
             SocialPhotoClient.renderCameraOverlay(guiGraphics)
+            RotomDialogueOverlay.render(guiGraphics)
         })
 
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->

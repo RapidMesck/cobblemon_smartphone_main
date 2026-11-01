@@ -22,6 +22,12 @@ object SmartphoneKeybinds {
         CATEGORY
     )
 
+    val DISMISS_DIALOGUE: KeyMapping = KeyMapping(
+        "key.cobblemon_smartphone.dismiss_dialogue",
+        GLFW.GLFW_KEY_T,
+        CATEGORY
+    )
+
     // Call answer/decline hotkeys. Registered only when Simple Voice Chat is present (see the
     // platform client initializers). "Decline" doubles as cancel (outgoing) and hang up (in-call).
     val ANSWER_CALL: KeyMapping = KeyMapping(

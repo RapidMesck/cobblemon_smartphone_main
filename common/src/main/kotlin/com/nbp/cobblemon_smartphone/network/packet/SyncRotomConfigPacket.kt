@@ -19,7 +19,8 @@ class SyncRotomConfigPacket(
     val returnTicks: Int,
     val infiniteEnergy: Boolean,
     val enableSocialDataShare: Boolean = true,
-    val socialDataShareChance: Double = 0.35
+    val socialDataShareChance: Double = 0.35,
+    val curiosityLanguage: String = "en"
 ) : CobblemonSmartphoneNetworkPacket<SyncRotomConfigPacket> {
     companion object {
         val ID = smartphoneResource("sync_rotom_config")
@@ -40,6 +41,7 @@ class SyncRotomConfigPacket(
             val infiniteEnergy = buffer.readBoolean()
             val enableSocialDataShare = if (buffer.isReadable) buffer.readBoolean() else true
             val socialDataShareChance = if (buffer.isReadable) buffer.readDouble() else 0.35
+            val curiosityLanguage = if (buffer.isReadable) buffer.readUtf(16) else "en"
             return SyncRotomConfigPacket(
                 enableScanner = enableScanner,
                 enableAutoScanner = enableAutoScanner,
@@ -55,7 +57,8 @@ class SyncRotomConfigPacket(
                 returnTicks = returnTicks,
                 infiniteEnergy = infiniteEnergy,
                 enableSocialDataShare = enableSocialDataShare,
-                socialDataShareChance = socialDataShareChance
+                socialDataShareChance = socialDataShareChance,
+                curiosityLanguage = curiosityLanguage
             )
         }
 
@@ -77,7 +80,8 @@ class SyncRotomConfigPacket(
                 returnTicks = rotom.returnTicks,
                 infiniteEnergy = rotom.infiniteEnergy,
                 enableSocialDataShare = rotom.enableSocialDataShare,
-                socialDataShareChance = rotom.socialDataShareChance
+                socialDataShareChance = rotom.socialDataShareChance,
+                curiosityLanguage = rotom.curiosityLanguage
             )
         }
     }
@@ -100,5 +104,6 @@ class SyncRotomConfigPacket(
         buffer.writeBoolean(infiniteEnergy)
         buffer.writeBoolean(enableSocialDataShare)
         buffer.writeDouble(socialDataShareChance)
+        buffer.writeUtf(curiosityLanguage, 16)
     }
 }

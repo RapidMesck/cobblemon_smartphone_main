@@ -22,6 +22,7 @@ object SyncRotomConfigHandler : ClientNetworkPacketHandler<SyncRotomConfigPacket
             rotom.approachTicks = packet.approachTicks
             rotom.returnTicks = packet.returnTicks
             rotom.infiniteEnergy = packet.infiniteEnergy
+            rotom.curiosityLanguage = packet.curiosityLanguage
         }
     }
 }

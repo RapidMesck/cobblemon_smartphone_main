@@ -47,8 +47,19 @@ data class RotomRadarConfig(
     var targetAlert: Boolean = true,
     var soundAlert: Boolean = true,
     val targets: MutableList<RotomTarget> = mutableListOf(),
-    var autoScanPokedex: Boolean = true
+    var autoScanPokedex: Boolean = true,
+    var language: String = "en",
+    var scanDisplayMode: Int = DISPLAY_FULL
 ) {
+    val showCuriosityText: Boolean
+        get() = scanDisplayMode == DISPLAY_FULL
+
+    val isBriefMode: Boolean
+        get() = scanDisplayMode == DISPLAY_BRIEF
+
+    val isSilentMode: Boolean
+        get() = scanDisplayMode == DISPLAY_NONE
+
     fun toTag(): CompoundTag {
         val tag = CompoundTag()
         tag.putBoolean("enabled", enabled)
@@ -56,6 +67,8 @@ data class RotomRadarConfig(
         tag.putBoolean("targetAlert", targetAlert)
         tag.putBoolean("soundAlert", soundAlert)
         tag.putBoolean("autoScanPokedex", autoScanPokedex)
+        tag.putString("language", language)
+        tag.putInt("scanDisplayMode", scanDisplayMode)
 
         val list = ListTag()
         for (target in targets) {
@@ -66,13 +79,26 @@ data class RotomRadarConfig(
     }
 
     companion object {
+        const val DISPLAY_FULL = 0   // Curiosidade completa + modelo 3D + Rotom na frente
+        const val DISPLAY_BRIEF = 1  // Apenas card 3D de descoberto (Rotom não vai para a frente)
+        const val DISPLAY_NONE = 2   // Silencioso / Nada na tela
+
         fun fromTag(tag: CompoundTag): RotomRadarConfig {
+            val mode = if (tag.contains("scanDisplayMode")) {
+                tag.getInt("scanDisplayMode").coerceIn(DISPLAY_FULL, DISPLAY_NONE)
+            } else if (tag.contains("showCuriosityText")) {
+                if (tag.getBoolean("showCuriosityText")) DISPLAY_FULL else DISPLAY_BRIEF
+            } else {
+                DISPLAY_FULL
+            }
             val config = RotomRadarConfig(
                 enabled = if (tag.contains("enabled")) tag.getBoolean("enabled") else true,
                 shinyAlert = if (tag.contains("shinyAlert")) tag.getBoolean("shinyAlert") else true,
                 targetAlert = if (tag.contains("targetAlert")) tag.getBoolean("targetAlert") else true,
                 soundAlert = if (tag.contains("soundAlert")) tag.getBoolean("soundAlert") else true,
-                autoScanPokedex = if (tag.contains("autoScanPokedex")) tag.getBoolean("autoScanPokedex") else true
+                autoScanPokedex = if (tag.contains("autoScanPokedex")) tag.getBoolean("autoScanPokedex") else true,
+                language = if (tag.contains("language")) tag.getString("language") else "en",
+                scanDisplayMode = mode
             )
             if (tag.contains("targets", Tag.TAG_LIST.toInt())) {
                 val list = tag.getList("targets", Tag.TAG_COMPOUND.toInt())

@@ -24,11 +24,12 @@ object RotomScannerClientState {
         var revealNature: Boolean = true,
         var scanRadius: Double = 10.0,
         var scanDurationTicks: Int = 50,
-        var approachTicks: Int = 18,
-        var returnTicks: Int = 16,
+        var approachTicks: Int = 38,
+        var returnTicks: Int = 28,
         var infiniteEnergy: Boolean = true,
         var enableSocialDataShare: Boolean = true,
-        var socialDataShareChance: Double = 0.35
+        var socialDataShareChance: Double = 0.35,
+        var curiosityLanguage: String = "en"
     )
 
     var clientConfig: ClientRotomConfig = ClientRotomConfig()
@@ -50,7 +51,8 @@ object RotomScannerClientState {
             returnTicks = packet.returnTicks,
             infiniteEnergy = packet.infiniteEnergy,
             enableSocialDataShare = packet.enableSocialDataShare,
-            socialDataShareChance = packet.socialDataShareChance
+            socialDataShareChance = packet.socialDataShareChance,
+            curiosityLanguage = packet.curiosityLanguage
         )
     }
 
@@ -70,6 +72,13 @@ object RotomScannerClientState {
     fun getActiveScans(): Collection<ActiveScan> = activeScans.values
 
     fun getScanFor(scannerUuid: UUID): ActiveScan? = activeScans[scannerUuid]
+
+    fun isScanningOrReporting(scannerUuid: UUID): Boolean {
+        val scan = activeScans[scannerUuid]
+        val isScanning = scan != null && scan.phase != SyncRotomScanPacket.PHASE_IDLE
+        val isReporting = RotomDialogueClientState.shouldRotomFlyInFront(scannerUuid)
+        return isScanning || isReporting
+    }
 
     fun updateScanState(packet: SyncRotomScanPacket) {
         if (packet.targetEntityId == -1 || packet.phase == SyncRotomScanPacket.PHASE_IDLE) {

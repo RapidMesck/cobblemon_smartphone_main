@@ -139,6 +139,13 @@ class RotomAppScreen(
     private var dragStartMouseY = 0
     private var dragStartScrollY = 0
 
+    // Scroll state for settings tab
+    private var settingsScrollY = 0
+    private var settingsMaxScroll = 0
+    private var draggingSettingsScrollbar = false
+    private var dragStartSettingsMouseY = 0
+    private var dragStartSettingsScrollY = 0
+
     private val config: RotomRadarConfig
         get() = RotomRadarClientState.config
 
@@ -150,6 +157,10 @@ class RotomAppScreen(
         private const val CONTENT_X = 20
         private const val CONTENT_WIDTH = 171
         private const val LIST_WIDTH = 171
+        private const val SETTINGS_START_Y = 46
+        private const val SETTINGS_END_Y = 195
+        private const val SETTINGS_ROW_H = 22
+        private const val SETTINGS_ROW_GAP = 2
         private const val LIST_START_Y = 70
         private const val LIST_END_Y = 195
         private const val CARD_HEIGHT = 34
@@ -277,53 +288,140 @@ class RotomAppScreen(
     }
 
     private fun renderSettingsTab(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        var cy = screenY + 44
-        val rowH = 26
-        val rowGap = 3
+        val totalRows = 7
+        val totalH = totalRows * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
+        val viewH = SETTINGS_END_Y - SETTINGS_START_Y
+        settingsMaxScroll = (totalH - viewH).coerceAtLeast(0)
+        settingsScrollY = settingsScrollY.coerceIn(0, settingsMaxScroll)
+
+        guiGraphics.enableScissor(
+            screenX + CONTENT_X, screenY + SETTINGS_START_Y,
+            screenX + CONTENT_X + LIST_WIDTH, screenY + SETTINGS_END_Y
+        )
+
+        var cy = screenY + SETTINGS_START_Y - settingsScrollY
 
         // 1. Radar Geral
         renderSettingRow(
-            guiGraphics, mouseX, mouseY, cy, rowH,
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
             title = lang("setting_radar_title"),
             desc = lang("setting_radar_desc"),
             enabled = config.enabled
         )
-        cy += rowH + rowGap
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
 
         // 2. Alerta Shiny
         renderSettingRow(
-            guiGraphics, mouseX, mouseY, cy, rowH,
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
             title = lang("setting_shiny_title"),
             desc = lang("setting_shiny_desc"),
             enabled = config.shinyAlert
         )
-        cy += rowH + rowGap
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
 
         // 3. Alerta de Alvos
         renderSettingRow(
-            guiGraphics, mouseX, mouseY, cy, rowH,
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
             title = lang("setting_targets_title"),
             desc = lang("setting_targets_desc"),
             enabled = config.targetAlert
         )
-        cy += rowH + rowGap
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
 
         // 4. Som de Notificação
         renderSettingRow(
-            guiGraphics, mouseX, mouseY, cy, rowH,
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
             title = lang("setting_sound_title"),
             desc = lang("setting_sound_desc"),
             enabled = config.soundAlert
         )
-        cy += rowH + rowGap
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
 
         // 5. Auto Scanner Pokédex
         renderSettingRow(
-            guiGraphics, mouseX, mouseY, cy, rowH,
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
             title = lang("setting_autoscan_title"),
             desc = lang("setting_autoscan_desc"),
             enabled = config.autoScanPokedex
         )
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 6. Exibição na Tela (3 opções: Tudo / Mini / Off)
+        renderTriStateRow(
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
+            title = lang("setting_curiosity_title"),
+            desc = lang("setting_curiosity_desc"),
+            currentMode = config.scanDisplayMode
+        )
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 7. Idioma do Rotom / Rotom Language
+        renderLanguageRow(
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
+            title = lang("setting_language_title"),
+            desc = lang("setting_language_desc"),
+            language = config.language
+        )
+
+        guiGraphics.disableScissor()
+        renderSettingsScrollbar(guiGraphics, mouseY)
+    }
+
+    private fun renderSettingsScrollbar(guiGraphics: GuiGraphics, mouseY: Int) {
+        if (settingsMaxScroll <= 0) return
+        val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
+        val trackY = screenY + SETTINGS_START_Y
+        val trackH = SETTINGS_END_Y - SETTINGS_START_Y
+        val totalH = 7 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
+        val handleH = maxOf(14, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
+        val handleY = trackY + (settingsScrollY.toFloat() / settingsMaxScroll * (trackH - handleH)).toInt()
+
+        if (draggingSettingsScrollbar) {
+            val dy = mouseY - dragStartSettingsMouseY
+            val scrollRange = trackH - handleH
+            if (scrollRange > 0) {
+                settingsScrollY = (dragStartSettingsScrollY + (dy.toFloat() / scrollRange * settingsMaxScroll).toInt()).coerceIn(0, settingsMaxScroll)
+            }
+        }
+
+        guiGraphics.fill(trackX, trackY, trackX + SCROLLBAR_WIDTH, trackY + trackH, 0x20FFFFFF.toInt())
+        val color = if (draggingSettingsScrollbar) 0x90FFFFFF.toInt() else 0x60FFFFFF.toInt()
+        guiGraphics.fill(trackX, handleY, trackX + SCROLLBAR_WIDTH, handleY + handleH, color)
+    }
+
+    private fun renderToggleSwitch(
+        guiGraphics: GuiGraphics,
+        trackX: Int,
+        trackY: Int,
+        trackW: Int,
+        trackH: Int,
+        enabled: Boolean,
+        hovered: Boolean
+    ) {
+        val trackBg = if (enabled) {
+            if (hovered) 0xFF00F0FF.toInt() else 0xFF00E5FF.toInt()
+        } else {
+            if (hovered) 0xFF353C4D.toInt() else 0xFF242A38.toInt()
+        }
+        val trackBorder = if (enabled) 0xFF00B0CC.toInt() else 0xFF3E485A.toInt()
+
+        // Pílula do trilho
+        guiGraphics.fill(trackX + 2, trackY, trackX + trackW - 2, trackY + trackH, trackBg)
+        guiGraphics.fill(trackX, trackY + 2, trackX + trackW, trackY + trackH - 2, trackBg)
+        guiGraphics.renderOutline(trackX + 1, trackY + 1, trackW - 2, trackH - 2, trackBorder)
+
+        // Botão deslizante (knob)
+        val knobSize = 10
+        val knobY = trackY + (trackH - knobSize) / 2
+        val knobX = if (enabled) (trackX + trackW - knobSize - 2) else (trackX + 2)
+
+        val knobColor = if (enabled) {
+            0xFFFFFFFF.toInt()
+        } else {
+            if (hovered) 0xFFC0C7D5.toInt() else 0xFF8A93A4.toInt()
+        }
+
+        guiGraphics.fill(knobX, knobY, knobX + knobSize, knobY + knobSize, knobColor)
     }
 
     private fun renderSettingRow(
@@ -331,7 +429,7 @@ class RotomAppScreen(
         mouseX: Int,
         mouseY: Int,
         y: Int,
-        rowH: Int = 26,
+        rowH: Int = SETTINGS_ROW_H,
         title: String,
         desc: String,
         enabled: Boolean
@@ -342,30 +440,140 @@ class RotomAppScreen(
 
         guiGraphics.fill(x1, y, x2, y2, SECTION_CONTENT_BG)
 
-        // Toggle button on the right
-        val btnW = 38
-        val btnH = 15
+        // Toggle Switch à direita
+        val switchW = 26
+        val switchH = 14
+        val switchX = x2 - switchW - 5
+        val switchY = y + (rowH - switchH) / 2
+        val rowHover = mouseX in x1..x2 && mouseY in y..y2
+
+        renderToggleSwitch(guiGraphics, switchX, switchY, switchW, switchH, enabled, rowHover)
+
+        // Text (prevent overflow behind the toggle switch)
+        val maxTextW = switchX - (x1 + 6) - 4
+        val displayDesc = if (font.width(desc) > maxTextW) {
+            font.plainSubstrByWidth(desc, maxTextW)
+        } else {
+            desc
+        }
+        guiGraphics.drawString(font, title, x1 + 6, y + 2, CONTENT_TEXT, false)
+        guiGraphics.drawString(font, displayDesc, x1 + 6, y + 12, CONTENT_DIM, false)
+    }
+
+    private fun renderTriStateRow(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        y: Int,
+        rowH: Int = SETTINGS_ROW_H,
+        title: String,
+        desc: String,
+        currentMode: Int
+    ) {
+        val x1 = screenX + CONTENT_X
+        val x2 = x1 + LIST_WIDTH
+        val y2 = y + rowH
+
+        guiGraphics.fill(x1, y, x2, y2, SECTION_CONTENT_BG)
+
+        val btnW = 72
+        val btnH = 14
+        val segW = btnW / 3 // 24px cada segmento
         val btnX = x2 - btnW - 5
         val btnY = y + (rowH - btnH) / 2
-        val btnHover = mouseX in btnX..(btnX + btnW) && mouseY in btnY..(btnY + btnH)
 
-        val btnBg = if (enabled) (if (btnHover) theme.colors.primaryHover else theme.colors.success)
-        else (if (btnHover) 0xFF555555.toInt() else 0xFF333333.toInt())
+        guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, 0xFF18202E.toInt())
+        guiGraphics.renderOutline(btnX, btnY, btnW, btnH, 0xFF354054.toInt())
 
-        guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, btnBg)
+        val labels = listOf(lang("mode_full"), lang("mode_mini"), lang("mode_off"))
 
-        val btnText = if (enabled) lang("status_on") else lang("status_off")
-        guiGraphics.drawString(font, btnText, btnX + (btnW - font.width(btnText)) / 2, btnY + 4, 0xFFFFFFFF.toInt(), false)
+        for (i in 0..2) {
+            val segX = btnX + i * segW
+            val segHover = mouseX in segX..(segX + segW) && mouseY in btnY..(btnY + btnH)
+            val isSelected = (currentMode == i)
 
-        // Text (prevent overflow behind the toggle button)
+            if (isSelected) {
+                val segBg = if (segHover) theme.colors.primaryHover else theme.colors.primary
+                guiGraphics.fill(segX, btnY, segX + segW, btnY + btnH, segBg)
+            } else if (segHover) {
+                guiGraphics.fill(segX, btnY, segX + segW, btnY + btnH, 0xFF2A3448.toInt())
+            }
+
+            if (i > 0) {
+                guiGraphics.fill(segX, btnY, segX + 1, btnY + btnH, 0xFF354054.toInt())
+            }
+
+            val text = labels[i]
+            val textColor = if (isSelected) 0xFFFFFFFF.toInt() else 0xFF7E8C9B.toInt()
+            guiGraphics.drawString(font, text, segX + (segW - font.width(text)) / 2, btnY + 3, textColor, false)
+        }
+
         val maxTextW = btnX - (x1 + 6) - 4
         val displayDesc = if (font.width(desc) > maxTextW) {
             font.plainSubstrByWidth(desc, maxTextW)
         } else {
             desc
         }
-        guiGraphics.drawString(font, title, x1 + 6, y + 3, CONTENT_TEXT, false)
-        guiGraphics.drawString(font, displayDesc, x1 + 6, y + 14, CONTENT_DIM, false)
+        guiGraphics.drawString(font, title, x1 + 6, y + 2, CONTENT_TEXT, false)
+        guiGraphics.drawString(font, displayDesc, x1 + 6, y + 12, CONTENT_DIM, false)
+    }
+
+    private fun renderLanguageRow(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        y: Int,
+        rowH: Int = SETTINGS_ROW_H,
+        title: String,
+        desc: String,
+        language: String
+    ) {
+        val x1 = screenX + CONTENT_X
+        val x2 = x1 + LIST_WIDTH
+        val y2 = y + rowH
+
+        guiGraphics.fill(x1, y, x2, y2, SECTION_CONTENT_BG)
+
+        val btnW = 46
+        val btnH = 14
+        val segW = btnW / 2 // 23px cada
+        val btnX = x2 - btnW - 5
+        val btnY = y + (rowH - btnH) / 2
+
+        guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, 0xFF18202E.toInt())
+        guiGraphics.renderOutline(btnX, btnY, btnW, btnH, 0xFF354054.toInt())
+
+        val isEn = language.equals("en", ignoreCase = true)
+
+        // EN Segment
+        val enHover = mouseX in btnX..(btnX + segW) && mouseY in btnY..(btnY + btnH)
+        val enBg = if (isEn) (if (enHover) theme.colors.primaryHover else theme.colors.primary)
+                   else (if (enHover) 0xFF2A3448.toInt() else 0)
+        if (enBg != 0) guiGraphics.fill(btnX, btnY, btnX + segW, btnY + btnH, enBg)
+        val enColor = if (isEn) 0xFFFFFFFF.toInt() else 0xFF7E8C9B.toInt()
+        guiGraphics.drawString(font, "EN", btnX + (segW - font.width("EN")) / 2, btnY + 3, enColor, false)
+
+        // Divisória
+        guiGraphics.fill(btnX + segW, btnY, btnX + segW + 1, btnY + btnH, 0xFF354054.toInt())
+
+        // PT Segment
+        val ptX = btnX + segW
+        val ptHover = mouseX in ptX..(ptX + segW) && mouseY in btnY..(btnY + btnH)
+        val ptBg = if (!isEn) (if (ptHover) theme.colors.primaryHover else theme.colors.primary)
+                   else (if (ptHover) 0xFF2A3448.toInt() else 0)
+        if (ptBg != 0) guiGraphics.fill(ptX, btnY, ptX + segW, btnY + btnH, ptBg)
+        val ptColor = if (!isEn) 0xFFFFFFFF.toInt() else 0xFF7E8C9B.toInt()
+        guiGraphics.drawString(font, "PT", ptX + (segW - font.width("PT")) / 2, btnY + 3, ptColor, false)
+
+        // Text
+        val maxTextW = btnX - (x1 + 6) - 4
+        val displayDesc = if (font.width(desc) > maxTextW) {
+            font.plainSubstrByWidth(desc, maxTextW)
+        } else {
+            desc
+        }
+        guiGraphics.drawString(font, title, x1 + 6, y + 2, CONTENT_TEXT, false)
+        guiGraphics.drawString(font, displayDesc, x1 + 6, y + 12, CONTENT_DIM, false)
     }
 
     private fun renderTargetsListTab(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -746,59 +954,105 @@ class RotomAppScreen(
     }
 
     private fun handleSettingsClick(mx: Int, my: Int): Boolean {
-        var cy = screenY + 44
-        val rowH = 26
-        val rowGap = 3
-        val x2 = screenX + CONTENT_X + LIST_WIDTH
-        val btnW = 38
-        val btnH = 15
-        val btnX = x2 - btnW - 5
-
-        fun isClicked(y: Int): Boolean {
-            val btnY = y + (rowH - btnH) / 2
-            return mx in btnX..(btnX + btnW) && my in btnY..(btnY + btnH)
+        // Scrollbar dragging start
+        if (settingsMaxScroll > 0) {
+            val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
+            val trackY = screenY + SETTINGS_START_Y
+            val trackH = SETTINGS_END_Y - SETTINGS_START_Y
+            val totalH = 7 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
+            val handleH = maxOf(14, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
+            val handleY = trackY + (settingsScrollY.toFloat() / settingsMaxScroll * (trackH - handleH)).toInt()
+            if (mx in trackX..(trackX + SCROLLBAR_WIDTH) && my in handleY..(handleY + handleH)) {
+                draggingSettingsScrollbar = true
+                dragStartSettingsMouseY = my
+                dragStartSettingsScrollY = settingsScrollY
+                return true
+            }
         }
 
+        if (my !in (screenY + SETTINGS_START_Y)..(screenY + SETTINGS_END_Y)) return false
+        val x1 = screenX + CONTENT_X
+        val x2 = x1 + LIST_WIDTH
+        if (mx !in x1..x2) return false
+
+        var cy = screenY + SETTINGS_START_Y - settingsScrollY
+
+        fun isRowClicked(y: Int): Boolean = my in y..(y + SETTINGS_ROW_H)
+
         // 1. Radar Geral
-        if (isClicked(cy)) {
+        if (isRowClicked(cy)) {
             playClickSound()
             config.enabled = !config.enabled
             RotomRadarClientState.saveConfig()
             return true
         }
-        cy += rowH + rowGap
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
 
         // 2. Alerta Shiny
-        if (isClicked(cy)) {
+        if (isRowClicked(cy)) {
             playClickSound()
             config.shinyAlert = !config.shinyAlert
             RotomRadarClientState.saveConfig()
             return true
         }
-        cy += rowH + rowGap
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
 
         // 3. Alerta de Alvos
-        if (isClicked(cy)) {
+        if (isRowClicked(cy)) {
             playClickSound()
             config.targetAlert = !config.targetAlert
             RotomRadarClientState.saveConfig()
             return true
         }
-        cy += rowH + rowGap
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
 
         // 4. Som de Notificação
-        if (isClicked(cy)) {
+        if (isRowClicked(cy)) {
             playClickSound()
             config.soundAlert = !config.soundAlert
             RotomRadarClientState.saveConfig()
             return true
         }
-        cy += rowH + rowGap
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
 
         // 5. Auto Scanner Pokédex
-        if (isClicked(cy)) {
+        if (isRowClicked(cy)) {
             playClickSound()
             config.autoScanPokedex = !config.autoScanPokedex
+            RotomRadarClientState.saveConfig()
+            return true
+        }
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 6. Exibição na Tela (3 opções: Tudo / Mini / Off)
+        if (isRowClicked(cy)) {
+            val btnW = 72
+            val segW = btnW / 3
+            val btnX = x2 - btnW - 5
+            playClickSound()
+            if (mx in btnX..(btnX + btnW)) {
+                val segIdx = ((mx - btnX) / segW).coerceIn(0, 2)
+                config.scanDisplayMode = segIdx
+            } else {
+                config.scanDisplayMode = (config.scanDisplayMode + 1) % 3
+            }
+            RotomRadarClientState.saveConfig()
+            return true
+        }
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 7. Idioma do Rotom / Rotom Language
+        if (isRowClicked(cy)) {
+            val btnW = 46
+            val segW = btnW / 2
+            val btnX = x2 - btnW - 5
+            playClickSound()
+            if (mx in btnX..(btnX + btnW)) {
+                config.language = if (mx < btnX + segW) "en" else "pt"
+            } else {
+                config.language = if (config.language.equals("en", ignoreCase = true)) "pt" else "en"
+            }
+            com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.curiosityLanguage = config.language
             RotomRadarClientState.saveConfig()
             return true
         }
@@ -1001,10 +1255,15 @@ class RotomAppScreen(
 
     override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
         draggingScrollbar = false
+        draggingSettingsScrollbar = false
         return super.mouseReleased(mouseX, mouseY, button)
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
+        if (currentTab == Tab.SETTINGS && settingsMaxScroll > 0 && verticalAmount != 0.0) {
+            settingsScrollY = (settingsScrollY - verticalAmount.toInt() * SCROLL_SPEED).coerceIn(0, settingsMaxScroll)
+            return true
+        }
         if (currentTab == Tab.TARGETS && !isAddingTarget && maxScroll > 0 && verticalAmount != 0.0) {
             scrollY = (scrollY - verticalAmount.toInt() * SCROLL_SPEED).coerceIn(0, maxScroll)
             return true

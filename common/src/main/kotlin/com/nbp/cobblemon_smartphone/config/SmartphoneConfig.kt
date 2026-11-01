@@ -173,14 +173,17 @@ class SmartphoneConfig {
         /** Duração do escaneamento ativo em ticks (50 ticks = 2.5 segundos) */
         var scanDurationTicks: Int = 50
 
-        /** Tempo de voo e aproximação do Rotom até o Pokémon em ticks (18 ticks = ~0.9 segundos) */
-        var approachTicks: Int = 18
+        /** Tempo de voo e aproximação do Rotom até o Pokémon em ticks (38 ticks = ~1.9 segundos) */
+        var approachTicks: Int = 38
 
-        /** Tempo de voo e retorno do Rotom de volta ao ombro do jogador em ticks (16 ticks = ~0.8 segundos) */
-        var returnTicks: Int = 16
+        /** Tempo de voo e retorno do Rotom de volta ao ombro do jogador em ticks (28 ticks = ~1.4 segundos) */
+        var returnTicks: Int = 28
 
         /** Cooldown em segundos antes de poder escanear novamente a mesma entidade Pokémon */
         var rescanCooldownSeconds: Int = 90
+
+        /** Idioma padrão dos textos e curiosidades do Rotom ("en" = Inglês, "pt" = Português). Padrão: "en" */
+        var curiosityLanguage: String = "en"
 
         /** Se o Rotom Phone possui energia infinita / autoalimentação pelo Rotom elétrico (não precisando ser carregado) */
         var infiniteEnergy: Boolean = true

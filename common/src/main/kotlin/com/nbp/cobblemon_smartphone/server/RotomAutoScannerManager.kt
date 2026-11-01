@@ -35,9 +35,9 @@ object RotomAutoScannerManager {
 
     const val DEFAULT_SCAN_DISTANCE = 10.0
     const val DEFAULT_SCAN_DISTANCE_SQR = 100.0 // 10 blocks radius
-    const val DEFAULT_APPROACH_TICKS = 18 // ~0.9s flight arrival before scanning starts
+    const val DEFAULT_APPROACH_TICKS = 38 // ~1.9s flight arrival before scanning starts
     const val DEFAULT_SCAN_DURATION_TICKS = 50 // 2.5 seconds at 20 ticks per second
-    const val DEFAULT_RETURN_TICKS = 16 // ~0.8s flight back to player's shoulder
+    const val DEFAULT_RETURN_TICKS = 28 // ~1.4s flight back to player's shoulder
     const val DEFAULT_COOLDOWN_SECONDS = 90
 
     data class PlayerScanSession(
@@ -46,7 +46,8 @@ object RotomAutoScannerManager {
         var phase: ScanPhase = ScanPhase.IDLE,
         var phaseTicks: Int = 0,
         var prioritizedEntityId: Int? = null,
-        var isAlreadyRegistered: Boolean = false
+        var isAlreadyRegistered: Boolean = false,
+        var isDialogueOpen: Boolean = false
     )
 
     private val playerSessions = ConcurrentHashMap<UUID, PlayerScanSession>()
@@ -156,23 +157,38 @@ object RotomAutoScannerManager {
                 }
             }
 
-            // 2. Handle returning phase (Rotom flying back to player's shoulder)
+            val config = RotomServerManager.getPlayerConfig(player.uuid) ?: RotomRadarConfig()
+            val effectiveReturnTicks = when (config.scanDisplayMode) {
+                RotomRadarConfig.DISPLAY_FULL -> returnTicks
+                RotomRadarConfig.DISPLAY_BRIEF -> 4
+                else -> 0
+            }
+
+            // 2. Handle returning and reporting phase (Rotom flying back to player and talking/reporting)
             if (session.phase == ScanPhase.RETURNING) {
                 session.phaseTicks++
                 if (session.phaseTicks % 4 == 0) {
                     broadcastScanSync(player, session)
                 }
-                if (session.phaseTicks >= returnTicks) {
+                val safetyTimeout = returnTicks + 700
+                val canRelease = if (config.scanDisplayMode == RotomRadarConfig.DISPLAY_FULL) {
+                    (!session.isDialogueOpen && session.phaseTicks >= effectiveReturnTicks) || session.phaseTicks >= safetyTimeout
+                } else {
+                    session.phaseTicks >= effectiveReturnTicks
+                }
+
+                if (canRelease) {
+                    session.isDialogueOpen = false
                     session.phase = ScanPhase.IDLE
                     session.targetEntityId = -1
                     session.phaseTicks = 0
                     session.prioritizedEntityId = null
                     broadcastScanSync(player, session)
                 }
-                continue
+                if (session.phase == ScanPhase.RETURNING) {
+                    continue
+                }
             }
-
-            val config = RotomServerManager.getPlayerConfig(player.uuid) ?: RotomRadarConfig()
 
             // 3. Check if prioritized entity is active
             if (session.prioritizedEntityId != null) {
@@ -183,11 +199,13 @@ object RotomAutoScannerManager {
                     (!rotomConfig.requireLineOfSight || player.hasLineOfSight(target))
 
                 if (!isValid) {
-                    player.displayClientMessage(
-                        Component.translatable("message.cobblemon_smartphone.rotom_scan.target_lost")
-                            .withStyle(ChatFormatting.RED),
-                        true
-                    )
+                    if (!config.isSilentMode) {
+                        player.displayClientMessage(
+                            Component.translatable("message.cobblemon_smartphone.rotom_scan.target_lost")
+                                .withStyle(ChatFormatting.RED),
+                            true
+                        )
+                    }
                     session.prioritizedEntityId = null
                     session.phase = ScanPhase.RETURNING
                     session.phaseTicks = 0
@@ -344,20 +362,25 @@ object RotomAutoScannerManager {
             }
             CobblemonEvents.POKEMON_SCANNED.post(PokemonScannedEvent(player, pokeData, entity))
             ServerConfirmedRegisterPacket(pokeData.getApparentSpecies().resourceIdentifier, newInfo).sendToPlayer(player)
+        }
 
-            player.displayClientMessage(
-                Component.translatable("message.cobblemon_smartphone.rotom_scan.registered", pokemon.species.name)
-                    .withStyle(ChatFormatting.AQUA),
-                true
-            )
-        } else {
-            val ivDisplay = if (rotomConfig.revealIvPercentage) "$ivPercent%" else "??%"
-            val natureDisplay = if (rotomConfig.revealNature) nature else "??"
-            player.displayClientMessage(
-                Component.translatable("message.cobblemon_smartphone.rotom_scan.info", pokemon.species.name, level, natureDisplay, ivDisplay)
-                    .withStyle(ChatFormatting.AQUA),
-                true
-            )
+        val radarConfig = RotomServerManager.getPlayerConfig(player.uuid) ?: RotomRadarConfig()
+        if (!radarConfig.isSilentMode) {
+            if (isUnregistered && pokeData != null && rotomConfig.registerUnregisteredToDex) {
+                player.displayClientMessage(
+                    Component.translatable("message.cobblemon_smartphone.rotom_scan.registered", pokemon.species.name)
+                        .withStyle(ChatFormatting.AQUA),
+                    true
+                )
+            } else {
+                val ivDisplay = if (rotomConfig.revealIvPercentage) "$ivPercent%" else "??%"
+                val natureDisplay = if (rotomConfig.revealNature) nature else "??"
+                player.displayClientMessage(
+                    Component.translatable("message.cobblemon_smartphone.rotom_scan.info", pokemon.species.name, level, natureDisplay, ivDisplay)
+                        .withStyle(ChatFormatting.AQUA),
+                    true
+                )
+            }
         }
 
         // Consume energy if configured
@@ -366,15 +389,31 @@ object RotomAutoScannerManager {
             rotomPhone.consumeEnergy(rotomConfig.scanEnergyCost)
         }
 
+        // Se o Pokémon for uma variante que não possui curiosidade própria distinta,
+        // apenas escaneia/registra sem abrir o balão de diálogo de curiosidade na tela
+        val isVariant = (pokemon.form != pokemon.species.standardForm)
+        val hasDistinctCuriosity = if (isVariant) {
+            com.nbp.cobblemon_smartphone.curiosity.PokemonCuriosityRepository.hasDistinctFormCuriosity(
+                pokemon.species.name,
+                pokemon.form.name
+            )
+        } else {
+            true
+        }
+        val showDialogue = hasDistinctCuriosity
+
         // Send completion packet to player and nearby players
+        val nationalDexId = pokemon.species.nationalPokedexNumber
         val completePacket = RotomScanCompletePacket(
             scannerPlayerUuid = player.uuid,
             targetEntityId = entity.id,
             speciesName = pokemon.species.name,
+            nationalDexId = nationalDexId,
             isAlreadyRegistered = !isUnregistered,
             level = level,
             nature = if (rotomConfig.revealNature) nature else "",
-            ivPercent = if (rotomConfig.revealIvPercentage) ivPercent else -1
+            ivPercent = if (rotomConfig.revealIvPercentage) ivPercent else -1,
+            showDialogue = showDialogue
         )
         sendToNearby(player, completePacket)
 
@@ -382,11 +421,27 @@ object RotomAutoScannerManager {
         val cooldownMs = rotomConfig.rescanCooldownSeconds.coerceAtLeast(1) * 1000L
         scanCooldowns["${player.uuid}:${entity.id}"] = System.currentTimeMillis() + cooldownMs
 
+        val isFullDialogue = (radarConfig.scanDisplayMode == RotomRadarConfig.DISPLAY_FULL && showDialogue)
+
         // Transition into returning phase (Rotom gracefully flies back to shoulder)
         session.phase = ScanPhase.RETURNING
         session.phaseTicks = 0
         session.prioritizedEntityId = null
+        session.isDialogueOpen = isFullDialogue
         broadcastScanSync(player, session)
+    }
+
+    fun onDialogueClosed(player: ServerPlayer) {
+        val session = playerSessions[player.uuid] ?: return
+        session.isDialogueOpen = false
+        val returnTicks = CobblemonSmartphone.config.rotom.returnTicks.coerceAtLeast(1)
+        if (session.phase == ScanPhase.RETURNING && session.phaseTicks >= returnTicks) {
+            session.phase = ScanPhase.IDLE
+            session.targetEntityId = -1
+            session.phaseTicks = 0
+            session.prioritizedEntityId = null
+            broadcastScanSync(player, session)
+        }
     }
 
     private fun broadcastScanSync(player: ServerPlayer, session: PlayerScanSession) {

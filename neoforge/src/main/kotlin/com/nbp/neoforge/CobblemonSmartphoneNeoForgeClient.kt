@@ -24,6 +24,7 @@ object CobblemonSmartphoneNeoForgeClient {
     fun registerKeyMappings(event: RegisterKeyMappingsEvent) {
         event.register(OPEN_SMARTPHONE)
         event.register(SCANNER)
+        event.register(SmartphoneKeybinds.DISMISS_DIALOGUE)
         SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEach { event.register(it) }
         // Call hotkeys only make sense (and only appear in Controls) when Simple Voice Chat is present.
         if (VoiceChatBridge.isModPresent) {
