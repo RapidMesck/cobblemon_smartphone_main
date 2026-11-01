@@ -10,9 +10,14 @@ object RotomScanCompleteHandler : ClientNetworkPacketHandler<RotomScanCompletePa
     override fun handle(packet: RotomScanCompletePacket, client: Minecraft) {
         client.execute {
             RotomScannerClientState.onScanComplete(packet)
-            val config = com.nbp.cobblemon_smartphone.client.RotomRadarClientState.config
-            if (!config.isSilentMode) {
-                if (packet.showDialogue || config.isBriefMode) {
+            val isLocal = client.player?.uuid == packet.scannerPlayerUuid
+            if (isLocal) {
+                val config = com.nbp.cobblemon_smartphone.client.RotomRadarClientState.config
+                if (!config.isSilentMode) {
+                    RotomDialogueClientState.onScanComplete(packet)
+                }
+            } else {
+                if (packet.showDialogue) {
                     RotomDialogueClientState.onScanComplete(packet)
                 }
             }

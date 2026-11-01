@@ -86,6 +86,8 @@ object RotomDialogueClientState {
         current.isDismissing = true
         current.dismissStartTimeMs = System.currentTimeMillis()
         player.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1.25f)
+        // Informa o servidor imediatamente para replicar aos outros jogadores na sessão
+        com.nbp.cobblemon_smartphone.network.packet.CloseRotomDialoguePacket().sendToServer()
     }
 
     fun onScanComplete(packet: RotomScanCompletePacket) {
@@ -94,11 +96,21 @@ object RotomDialogueClientState {
 
         val radarLang = radarConfig.language
         val lang = if (radarLang.isNotBlank()) radarLang else RotomScannerClientState.clientConfig.curiosityLanguage
-        val isBrief = radarConfig.isBriefMode
-        val curiosity = PokemonCuriosityRepository.getCuriosity(packet.speciesName, packet.nationalDexId)
-        val title = curiosity?.name?.ifBlank { null } ?: packet.speciesName
-        val dexNum = curiosity?.pokedex_number?.ifBlank { null }
-            ?: if (packet.nationalDexId > 0) "#%04d".format(packet.nationalDexId) else ""
+        val rawSpecies = packet.speciesName
+        val parsedRes = net.minecraft.resources.ResourceLocation.tryParse(rawSpecies)
+        val speciesObj = if (parsedRes != null) com.cobblemon.mod.common.api.pokemon.PokemonSpecies.getByIdentifier(parsedRes) else null
+        val actualName = speciesObj?.translatedName?.string ?: speciesObj?.name ?: rawSpecies.substringAfter(':').replace('_', ' ').split(' ').joinToString(" ") { it.replaceFirstChar(Char::titlecase) }
+
+        val curiosity = PokemonCuriosityRepository.getCuriosity(actualName, packet.nationalDexId)
+        val isModWithoutCuriosity = (curiosity == null)
+        val isBrief = radarConfig.isBriefMode || isModWithoutCuriosity
+
+        val title = curiosity?.name?.ifBlank { null } ?: actualName
+        val dexNum = if (curiosity != null) {
+            curiosity.pokedex_number.ifBlank { null } ?: if (packet.nationalDexId > 0) "#%04d".format(packet.nationalDexId) else ""
+        } else {
+            if (packet.nationalDexId > 0 && parsedRes?.namespace == "cobblemon") "#%04d".format(packet.nationalDexId) else ""
+        }
         val curiosityText = curiosity?.getCleanDescription(lang)?.ifBlank { null }
             ?: if (lang.equals("pt", ignoreCase = true)) {
                 "Dados biológicos escaneados com sucesso! Este Pokémon agora está catalogado em sua Pokédex."
@@ -132,29 +144,41 @@ object RotomDialogueClientState {
 
     fun tick() {
         val mc = Minecraft.getInstance()
-        val player = mc.player ?: return
-        val current = activeDialogues[player.uuid] ?: run {
+        val localPlayer = mc.player
+        val now = System.currentTimeMillis()
+
+        // 1. Atualizar e expirar todos os diálogos ativos (tanto do jogador local quanto de outros no multiplayer)
+        val iterator = activeDialogues.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            val uuid = entry.key
+            val dialogue = entry.value
+
+            if (dialogue.isDismissing) {
+                if (now - dialogue.dismissStartTimeMs >= DISMISS_DURATION_MS) {
+                    iterator.remove()
+                }
+            } else if (now - dialogue.startTimeMs >= dialogue.maxDurationMs) {
+                dialogue.isDismissing = true
+                dialogue.dismissStartTimeMs = now
+                if (uuid == localPlayer?.uuid) {
+                    com.nbp.cobblemon_smartphone.network.packet.CloseRotomDialoguePacket().sendToServer()
+                }
+            }
+        }
+
+        // 2. Verificar tecla de atalho para fechar diálogo do jogador local
+        if (localPlayer == null) {
+            wasKeyDown = false
+            return
+        }
+        val current = activeDialogues[localPlayer.uuid]
+        if (current == null || current.isDismissing) {
             wasKeyDown = false
             return
         }
 
-        // Se estiver executando a animação de saída/fechamento
-        if (current.isDismissing) {
-            val elapsedDismiss = System.currentTimeMillis() - current.dismissStartTimeMs
-            if (elapsedDismiss >= DISMISS_DURATION_MS) {
-                activeDialogues.remove(player.uuid)
-                com.nbp.cobblemon_smartphone.network.packet.CloseRotomDialoguePacket().sendToServer()
-            }
-            return
-        }
-
-        // Auto-fechamento após a duração máxima (4.5s para rápido, 30s para normal)
-        if ((System.currentTimeMillis() - current.startTimeMs) >= current.maxDurationMs) {
-            dismissLocalDialogue()
-            return
-        }
-
-        // Verifica a tecla configurada em controles (default T, ou customizada pelo jogador)
+        // Verifica a tecla configurada em controles (default Y, ou customizada pelo jogador)
         val keyMapping = com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds.DISMISS_DIALOGUE
         val isDownNow = keyMapping.isDown
         if ((keyMapping.consumeClick() || (isDownNow && !wasKeyDown)) && mc.screen == null) {

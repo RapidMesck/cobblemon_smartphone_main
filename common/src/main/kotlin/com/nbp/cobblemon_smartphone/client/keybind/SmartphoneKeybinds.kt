@@ -24,7 +24,7 @@ object SmartphoneKeybinds {
 
     val DISMISS_DIALOGUE: KeyMapping = KeyMapping(
         "key.cobblemon_smartphone.dismiss_dialogue",
-        GLFW.GLFW_KEY_T,
+        GLFW.GLFW_KEY_Y,
         CATEGORY
     )
 

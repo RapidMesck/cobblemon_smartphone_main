@@ -27,68 +27,74 @@ object RotomAutoScannerRenderer {
         val mc = Minecraft.getInstance()
         val level = mc.level ?: return
         val camPos = camera.position
-
-        val lineBuffer = bufferSource.getBuffer(RenderType.lines())
         val age = (mc.player?.tickCount ?: 0).toFloat() + partialTick
 
-        for (scan in activeScans) {
-            if (scan.phase == com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_RETURNING ||
-                scan.phase == com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_IDLE) {
-                continue
+        try {
+            for (scan in activeScans) {
+                if (scan.phase == com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_RETURNING ||
+                    scan.phase == com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_IDLE) {
+                    continue
+                }
+
+                val entity = level.getEntity(scan.targetEntityId) ?: continue
+                if (!entity.isAlive) continue
+
+                // Interpolated entity position relative to camera
+                val entX = Mth.lerp(partialTick.toDouble(), entity.xOld, entity.x)
+                val entY = Mth.lerp(partialTick.toDouble(), entity.yOld, entity.y)
+                val entZ = Mth.lerp(partialTick.toDouble(), entity.zOld, entity.z)
+
+                val relX = (entX - camPos.x).toFloat()
+                val relY = (entY - camPos.y).toFloat()
+                val relZ = (entZ - camPos.z).toFloat()
+
+                poseStack.pushPose()
+                poseStack.translate(relX, relY, relZ)
+
+                val halfW = (entity.bbWidth * 0.55f).coerceAtLeast(0.35f)
+                val halfD = (entity.bbWidth * 0.55f).coerceAtLeast(0.35f)
+                val h = entity.bbHeight.coerceAtLeast(0.6f)
+
+                // Cybernetic Blue Colors
+                val r = if (scan.isPrioritized) 0.15f else 0.0f
+                val g = if (scan.isPrioritized) 0.95f else 0.85f
+                val b = 1.0f
+
+                if (scan.phase == com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_APPROACHING) {
+                    // Durante a aproximação suave do Rotom: apenas retículo suave indicando alvo travado
+                    val pulse = 0.40f + Mth.sin(age * 0.25f) * 0.15f
+                    val lineBuffer = bufferSource.getBuffer(RenderType.lines())
+                    renderCornerBrackets(poseStack, lineBuffer, -halfW, 0f, -halfD, halfW, h, halfD, r, g, b, pulse)
+                    (bufferSource as? MultiBufferSource.BufferSource)?.endBatch(RenderType.lines())
+                    renderApproachInfo(poseStack, bufferSource, camera, h, scan)
+                } else if (scan.phase == com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_SCANNING) {
+                    // Escaneamento ativo: efeito holográfico com anéis, laser de varredura e barra de progresso
+                    val alpha = 0.95f
+                    val lineBuffer = bufferSource.getBuffer(RenderType.lines())
+                    renderCornerBrackets(poseStack, lineBuffer, -halfW, 0f, -halfD, halfW, h, halfD, r, g, b, alpha)
+
+                    // 2. Concentric Holographic Rotating Rings
+                    val ringRadius1 = halfW * 1.35f
+                    val ringRadius2 = halfW * 1.55f
+                    val angle1 = age * 0.07f
+                    val angle2 = -age * 0.05f
+                    renderHoloRing(poseStack, lineBuffer, 0f, h * 0.2f, 0f, ringRadius1, angle1, 32, r, g, b, alpha * 0.8f)
+                    renderHoloRing(poseStack, lineBuffer, 0f, h * 0.8f, 0f, ringRadius2, angle2, 28, r, g, b, alpha * 0.75f)
+
+                    // 3. Sweeping Laser Scanline (moving up and down)
+                    val sweep = Mth.sin(age * 0.18f) * 0.5f + 0.5f
+                    val scanY = h * sweep
+                    renderHoloRing(poseStack, lineBuffer, 0f, scanY, 0f, halfW * 1.25f, age * 0.15f, 32, 0.3f, 1.0f, 1.0f, 1.0f)
+                    (bufferSource as? MultiBufferSource.BufferSource)?.endBatch(RenderType.lines())
+
+                    // 4. Floating 3D Holographic Info & Progress Indicator
+                    renderHoloInfo(poseStack, bufferSource, camera, entity, h, scan, partialTick)
+                }
+
+                poseStack.popPose()
             }
-
-            val entity = level.getEntity(scan.targetEntityId) ?: continue
-            if (!entity.isAlive) continue
-
-            // Interpolated entity position relative to camera
-            val entX = Mth.lerp(partialTick.toDouble(), entity.xOld, entity.x)
-            val entY = Mth.lerp(partialTick.toDouble(), entity.yOld, entity.y)
-            val entZ = Mth.lerp(partialTick.toDouble(), entity.zOld, entity.z)
-
-            val relX = (entX - camPos.x).toFloat()
-            val relY = (entY - camPos.y).toFloat()
-            val relZ = (entZ - camPos.z).toFloat()
-
-            poseStack.pushPose()
-            poseStack.translate(relX, relY, relZ)
-
-            val halfW = (entity.bbWidth * 0.55f).coerceAtLeast(0.35f)
-            val halfD = (entity.bbWidth * 0.55f).coerceAtLeast(0.35f)
-            val h = entity.bbHeight.coerceAtLeast(0.6f)
-
-            // Cybernetic Blue Colors
-            val r = if (scan.isPrioritized) 0.15f else 0.0f
-            val g = if (scan.isPrioritized) 0.95f else 0.85f
-            val b = 1.0f
-
-            if (scan.phase == com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_APPROACHING) {
-                // Durante a aproximação suave do Rotom: apenas retículo suave indicando alvo travado
-                val pulse = 0.40f + Mth.sin(age * 0.25f) * 0.15f
-                renderCornerBrackets(poseStack, lineBuffer, -halfW, 0f, -halfD, halfW, h, halfD, r, g, b, pulse)
-                renderApproachInfo(poseStack, bufferSource, camera, h, scan)
-            } else if (scan.phase == com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_SCANNING) {
-                // Escaneamento ativo: efeito holográfico com anéis, laser de varredura e barra de progresso
-                val alpha = 0.95f
-                renderCornerBrackets(poseStack, lineBuffer, -halfW, 0f, -halfD, halfW, h, halfD, r, g, b, alpha)
-
-                // 2. Concentric Holographic Rotating Rings
-                val ringRadius1 = halfW * 1.35f
-                val ringRadius2 = halfW * 1.55f
-                val angle1 = age * 0.07f
-                val angle2 = -age * 0.05f
-                renderHoloRing(poseStack, lineBuffer, 0f, h * 0.2f, 0f, ringRadius1, angle1, 32, r, g, b, alpha * 0.8f)
-                renderHoloRing(poseStack, lineBuffer, 0f, h * 0.8f, 0f, ringRadius2, angle2, 28, r, g, b, alpha * 0.75f)
-
-                // 3. Sweeping Laser Scanline (moving up and down)
-                val sweep = Mth.sin(age * 0.18f) * 0.5f + 0.5f
-                val scanY = h * sweep
-                renderHoloRing(poseStack, lineBuffer, 0f, scanY, 0f, halfW * 1.25f, age * 0.15f, 32, 0.3f, 1.0f, 1.0f, 1.0f)
-
-                // 4. Floating 3D Holographic Info & Progress Indicator
-                renderHoloInfo(poseStack, bufferSource, camera, entity, h, scan, partialTick)
-            }
-
-            poseStack.popPose()
+        } catch (_: Throwable) {
+            // Previne que qualquer falha de pipeline de renderização interrompa o loop do Minecraft
         }
     }
 

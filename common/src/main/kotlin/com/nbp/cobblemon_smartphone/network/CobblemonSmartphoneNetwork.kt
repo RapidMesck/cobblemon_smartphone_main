@@ -188,6 +188,7 @@ import com.nbp.cobblemon_smartphone.network.handler.CloseRotomDialogueHandler
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket
 import com.nbp.cobblemon_smartphone.network.packet.RotomScanCompletePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomConfigPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomDialogueClosePacket
 import com.nbp.cobblemon_smartphone.network.handler.SetSmartphoneOpenStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomEquipStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomSocialSessionHandler
@@ -199,6 +200,7 @@ import com.nbp.cobblemon_smartphone.network.handler.SetRotomScanPriorityHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomScanHandler
 import com.nbp.cobblemon_smartphone.network.handler.RotomScanCompleteHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomConfigHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomDialogueCloseHandler
 
 object CobblemonSmartphoneNetwork {
     val s2cPayloads = generateS2CPacketInfoList()
@@ -317,6 +319,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(SyncRotomScanPacket.ID, SyncRotomScanPacket::decode, SyncRotomScanHandler))
         list.add(PacketRegisterInfo(RotomScanCompletePacket.ID, RotomScanCompletePacket::decode, RotomScanCompleteHandler))
         list.add(PacketRegisterInfo(SyncRotomConfigPacket.ID, SyncRotomConfigPacket::decode, SyncRotomConfigHandler))
+        list.add(PacketRegisterInfo(SyncRotomDialogueClosePacket.ID, SyncRotomDialogueClosePacket::decode, SyncRotomDialogueCloseHandler))
 
         return list
     }

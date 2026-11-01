@@ -132,11 +132,21 @@ object PokemonCuriosityRepository {
 
     fun getCuriosity(speciesName: String, nationalDexId: Int? = null): PokemonCuriosity? {
         if (!initialized) init()
+        val cleanName = speciesName.substringAfter(':').trim()
+
+        // 1. Prioriza busca pelo nome exato / normalizado da espécie
+        val byName = getByName(cleanName)
+        if (byName != null) return byName
+
+        // 2. Só usa fallback por ID da Pokédex se o nome da espécie bater com o nome da curiosidade
+        // (evita pegar Pokémon original quando um mod usa o mesmo número de Pokédex)
         if (nationalDexId != null && nationalDexId > 0) {
             val byDex = byId[nationalDexId]
-            if (byDex != null) return byDex
+            if (byDex != null && (normalize(byDex.name) == normalize(cleanName) || cleanName.isBlank())) {
+                return byDex
+            }
         }
-        return getByName(speciesName)
+        return null
     }
 
     /**

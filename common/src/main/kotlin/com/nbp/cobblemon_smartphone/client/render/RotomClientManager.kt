@@ -199,8 +199,9 @@ object RotomClientManager {
             if (existing != null) {
                 val isLocalPlayer = (player == Minecraft.getInstance().player)
                 val isOpen = if (isLocalPlayer) isLocalScreenOpen else isPlayerOpen(player.uuid)
+                val isDialogue = com.nbp.cobblemon_smartphone.client.RotomDialogueClientState.hasActiveDialogue(player.uuid)
                 val distSqr = player.distanceToSqr(existing.anchorX, existing.anchorY - 1.0, existing.anchorZ)
-                if (now < existing.endTimeMs && !isOpen && distSqr <= 56.25) {
+                if (now < existing.endTimeMs && !isOpen && !isDialogue && distSqr <= 56.25) {
                     existing.lastActiveTime = now
                     return existing
                 } else {
@@ -226,6 +227,7 @@ object RotomClientManager {
         val isLocalPlayer = (player == Minecraft.getInstance().player)
         if (isLocalPlayer && isLocalScreenOpen) return null
         if (!isLocalPlayer && isPlayerOpen(player.uuid)) return null
+        if (com.nbp.cobblemon_smartphone.client.RotomDialogueClientState.hasActiveDialogue(player.uuid)) return null
 
         val validNearby = nearbyPlayers.filter { other ->
             !isPlayerOpen(other.uuid) && other.distanceToSqr(player) <= 36.0

@@ -141,6 +141,11 @@ class RotomPlayerRenderLayer(
             val player = mc.player ?: return
             if (player.isInvisible || player.isSleeping || player.isDeadOrDying || player.isSpectator) return
 
+            // Não precisa aparecer para o player em primeira pessoa quando estiver escaneando manualmente com a Pokédex
+            if (ScannerManager.isInUse()) {
+                return
+            }
+
             // Não renderiza em primeira pessoa se o Rotom estiver descansando no ombro!
             // Renderiza se estiver socializando, escaneando Pokémon selvagem, apresentando curiosidade no diálogo,
             // em modo Pokédex scanner/câmera social horizontal, ou em transição suave de abertura/retorno ao ombro.
@@ -213,6 +218,7 @@ class RotomPlayerRenderLayer(
             isFirstPersonPass: Boolean
         ) {
             if (player.isInvisible || player.isSleeping || player.isDeadOrDying) return
+            if (isFirstPersonPass && ScannerManager.isInUse()) return
 
             val smartphoneStack = RotomClientManager.getEffectiveRotomPhone(player) ?: return
             val color = (smartphoneStack.item as? SmartphoneItem)?.getColor()
@@ -313,29 +319,8 @@ class RotomPlayerRenderLayer(
                 targetGazePitch = -headPitch * 0.20f
             }
 
-            val eyeY = Mth.lerp(animState.crouchProgress, -0.38f, -0.15f)
-            val headYawRad = Math.toRadians(netHeadYaw.toDouble())
-            val headPitchRad = Math.toRadians(headPitch.toDouble())
-            val cosHeadPitch = Mth.cos(headPitchRad.toFloat())
-            val sinHeadPitch = Mth.sin(headPitchRad.toFloat())
-            val cosHeadYaw = Mth.cos(headYawRad.toFloat())
-            val sinHeadYaw = Mth.sin(headYawRad.toFloat())
-
-            val faceDist = if (hProg > 0.001f) Mth.lerp(hProg, FACE_VIEW_DISTANCE, 0.48f) else FACE_VIEW_DISTANCE
-            val targetFaceX = sinHeadYaw * cosHeadPitch * faceDist
-            val targetFaceY = eyeY + sinHeadPitch * faceDist
-            val targetFaceZ = -cosHeadYaw * cosHeadPitch * faceDist
-
-            val openTargetYaw = YAW_FACING_FRONT + netHeadYaw
-            val openTargetPitch = -headPitch
-
-            val finalTargetYaw = if (t > 0.0f) {
-                val diff = Mth.wrapDegrees(openTargetYaw - targetGazeYaw)
-                targetGazeYaw + diff * t
-            } else {
-                targetGazeYaw
-            }
-            val finalTargetPitch = Mth.lerp(t, targetGazePitch, openTargetPitch)
+            val finalTargetYaw = targetGazeYaw
+            val finalTargetPitch = targetGazePitch
 
             if (!animState.initialized) {
                 animState.currentYaw = finalTargetYaw
@@ -402,23 +387,28 @@ class RotomPlayerRenderLayer(
             val runBob = (Mth.sin(time * 0.35f) * 0.035f * limbSwingAmount) * (1.0f - t)
 
             val yShoulder = Mth.lerp(animState.crouchProgress, Y_SHOULDER_STANDING, Y_SHOULDER_CROUCHING)
-            val posX = Mth.lerp(t, X_SHOULDER + hoverX, targetFaceX)
-            val posY = Mth.lerp(t, yShoulder + hoverY + runBob + effectiveJumpLagY, targetFaceY)
-            val posZ = Mth.lerp(t, Z_SHOULDER + effectiveLagZ + hoverZ, targetFaceZ)
+            val posX = X_SHOULDER + hoverX
+            val posY = yShoulder + hoverY + runBob + effectiveJumpLagY
+            val posZ = Z_SHOULDER + effectiveLagZ + hoverZ
 
             val finalYaw = animState.currentYaw + idleSwayYaw
             val finalPitch = animState.currentPitch + idleSwayPitch
             val finalRoll = idleSwayRoll
 
             // 2. Consultar o gerenciador para obter o Ponto Âncora compartilhado (se houver uma interação ativa)
-            val sharedAnchor = if (t < 0.1f && hProg < 0.1f) {
-                RotomClientManager.getActiveSharedAnchor(player, nearbyPlayers, partialTick, now, isScreenOpen || isHorizontalMode)
+            val isDialogueActive = RotomDialogueClientState.hasActiveDialogue(player.uuid)
+            val isPhoneOpen = (t > 0.001f) || (hProg > 0.001f) || isScreenOpen || isHorizontalMode
+            val sharedAnchor = if (!isPhoneOpen && !isDialogueActive) {
+                RotomClientManager.getActiveSharedAnchor(player, nearbyPlayers, partialTick, now, isPhoneOpen)
             } else {
                 null
             }
 
             if (sharedAnchor != null) {
                 animState.lastAnchor = sharedAnchor
+            } else if (isPhoneOpen || isDialogueActive) {
+                animState.socialProgress = 0.0f
+                animState.lastAnchor = null
             }
 
             val targetSocial = if (sharedAnchor != null) 1.0f else 0.0f
@@ -743,6 +733,41 @@ class RotomPlayerRenderLayer(
                 val shoulderWorldYaw: Float
                 val baseModelScale: Float
 
+                // Posição exata dos olhos do jogador no espaço de mundo (independente de câmera e perspectiva)
+                val plX = Mth.lerp(partialTick.toDouble(), player.xOld, player.x)
+                val plEyeY = Mth.lerp(partialTick.toDouble(), player.yOld, player.y) + player.getEyeHeight(player.pose)
+                val plZ = Mth.lerp(partialTick.toDouble(), player.zOld, player.z)
+
+                // Direção para onde o crosshair do jogador está apontando
+                val lookYaw = if (isFirstPersonPass) mc.gameRenderer.mainCamera.yRot else Mth.rotLerp(partialTick, player.yHeadRotO, player.yHeadRot)
+                val lookPitch = if (isFirstPersonPass) mc.gameRenderer.mainCamera.xRot else Mth.lerp(partialTick, player.xRotO, player.xRot)
+
+                val lookYawRad = Math.toRadians(lookYaw.toDouble())
+                val lookPitchRad = Math.toRadians(lookPitch.toDouble())
+                val cosLookPitch = Mth.cos(lookPitchRad.toFloat())
+                val sinLookPitch = Mth.sin(lookPitchRad.toFloat())
+                val cosLookYaw = Mth.cos(lookYawRad.toFloat())
+                val sinLookYaw = Mth.sin(lookYawRad.toFloat())
+
+                val lookDirX = -sinLookYaw * cosLookPitch
+                val lookDirY = -sinLookPitch
+                val lookDirZ = cosLookYaw * cosLookPitch
+
+                val upDirX = -sinLookYaw * sinLookPitch
+                val upDirY = cosLookPitch
+                val upDirZ = cosLookYaw * sinLookPitch
+
+                // Posição no mundo exatamente na mira / crosshair do jogador (elevado ~4 pixels na vertical da visão)
+                val upOffset = 0.25f
+                val faceDist = if (hProg > 0.001f) Mth.lerp(hProg, 0.58f, 0.50f) else 0.58f
+                val openWorldX = plX + lookDirX * faceDist + upDirX * upOffset
+                val openWorldY = plEyeY + lookDirY * faceDist + upDirY * upOffset
+                val openWorldZ = plZ + lookDirZ * faceDist + upDirZ * upOffset
+
+                val openCamX = (openWorldX - camPos.x).toFloat()
+                val openCamY = (openWorldY - camPos.y).toFloat()
+                val openCamZ = (openWorldZ - camPos.z).toFloat()
+
                 if (isFirstPersonPass) {
                     val camYaw = mc.gameRenderer.mainCamera.yRot
                     val camPitch = mc.gameRenderer.mainCamera.xRot
@@ -798,20 +823,6 @@ class RotomPlayerRenderLayer(
                     val idleCamY = fpUp
                     val idleCamZ = (fwdZ * fpFwd + rightZ * fpRight).toFloat()
 
-                    val cPitchRad = Math.toRadians(camPitch.toDouble())
-                    val cYawRad = Math.toRadians(camYaw.toDouble())
-                    val lookX = -Math.sin(cYawRad) * Math.cos(cPitchRad)
-                    val lookY = -Math.sin(cPitchRad)
-                    val lookZ = Math.cos(cYawRad) * Math.cos(cPitchRad)
-
-                    val fpFaceDist = if (hProg > 0.001f) Mth.lerp(hProg, FACE_VIEW_DISTANCE, 0.52f) else FACE_VIEW_DISTANCE
-                    val fpDownOffset = if (hProg > 0.001f) Mth.lerp(hProg, 0.04f, 0.22f) else 0.04f
-                    val fpHoverY = if (hProg > 0.001f) (Mth.sin(time * 0.08f) * 0.008f) else 0.0f
-
-                    val openCamX = (lookX * fpFaceDist).toFloat()
-                    val openCamY = (lookY * fpFaceDist - fpDownOffset + fpHoverY).toFloat()
-                    val openCamZ = (lookZ * fpFaceDist).toFloat()
-
                     shoulderCamPos.set(
                         Mth.lerp(t, idleCamX, openCamX),
                         Mth.lerp(t, idleCamY, openCamY),
@@ -825,22 +836,30 @@ class RotomPlayerRenderLayer(
                     } else {
                         animState.fpCompanionYaw - 145.0f + idleSwayYaw
                     }
-                    val openFpWorldYaw = camYaw
+                    val openFpWorldYaw = lookYaw
                     shoulderWorldYaw = idleFpWorldYaw + Mth.wrapDegrees(openFpWorldYaw - idleFpWorldYaw) * t
                     // Mais próximo do ombro e com escala equilibrada (0.55f) para não parecer distante, ou 1.0f durante o diálogo
                     val fpScaleFactor = Mth.lerp(maxOf(t, socialT, scanT, dialogueT), 0.55f, 1.0f)
                     baseModelScale = 0.9375f * player.scale * fpScaleFactor
                 } else {
-                    // Em terceira pessoa ou jogadores remotos: extrai a posição exata do ombro no espaço da câmera
-                    poseStack.last().pose().transformPosition(posX, posY, posZ, shoulderCamPos)
-                    shoulderWorldYaw = bodyYaw + (finalYaw - YAW_FACING_FRONT)
+                    // Em terceira pessoa ou jogadores remotos: extrai a posição do ombro e interpola para a mira
+                    val idleShoulderCamPos = Vector3f()
+                    poseStack.last().pose().transformPosition(posX, posY, posZ, idleShoulderCamPos)
+
+                    shoulderCamPos.set(
+                        Mth.lerp(t, idleShoulderCamPos.x, openCamX),
+                        Mth.lerp(t, idleShoulderCamPos.y, openCamY),
+                        Mth.lerp(t, idleShoulderCamPos.z, openCamZ)
+                    )
+
+                    val idleWorldYaw = bodyYaw + (finalYaw - YAW_FACING_FRONT)
+                    val openWorldYaw = lookYaw
+                    shoulderWorldYaw = idleWorldYaw + Mth.wrapDegrees(openWorldYaw - idleWorldYaw) * t
                     baseModelScale = 0.9375f * player.scale
                 }
 
                 // Posição no mundo para Rotom vir à frente do jogador relatar a curiosidade (terceira pessoa)
-                val plX = Mth.lerp(partialTick.toDouble(), player.xOld, player.x)
-                val plY = Mth.lerp(partialTick.toDouble(), player.yOld, player.y)
-                val plZ = Mth.lerp(partialTick.toDouble(), player.zOld, player.z)
+                val plFeetY = Mth.lerp(partialTick.toDouble(), player.yOld, player.y)
                 val plYawRad = Math.toRadians(player.yRot.toDouble())
                 val plFwdX = -Math.sin(plYawRad)
                 val plFwdZ = Math.cos(plYawRad)
@@ -848,11 +867,11 @@ class RotomPlayerRenderLayer(
                 val plRightZ = -Math.sin(plYawRad)
 
                 val reportWorldX = plX + plFwdX * 0.95 + plRightX * 0.18
-                val reportWorldY = plY + player.eyeHeight * 0.88 + Math.sin(time * 0.15) * 0.04
+                val reportWorldY = plFeetY + player.eyeHeight * 0.88 + Math.sin(time * 0.15) * 0.04
                 val reportWorldZ = plZ + plFwdZ * 0.95 + plRightZ * 0.18
 
                 val toPlayerX = plX - reportWorldX
-                val toPlayerY = (plY + player.eyeHeight) - reportWorldY
+                val toPlayerY = (plFeetY + player.eyeHeight) - reportWorldY
                 val toPlayerZ = plZ - reportWorldZ
                 val distXZ = kotlin.math.sqrt(toPlayerX * toPlayerX + toPlayerZ * toPlayerZ).coerceAtLeast(0.05)
                 val reportWorldYaw = (Mth.atan2(toPlayerZ, toPlayerX) * (180.0 / Math.PI)).toFloat() - 90.0f
@@ -905,7 +924,13 @@ class RotomPlayerRenderLayer(
 
                 val effectiveReportYaw = if (dismissT > 0.0f) (reportWorldYaw + Mth.wrapDegrees(shoulderWorldYaw - reportWorldYaw) * dismissCurve) else reportWorldYaw
                 val currentWorldYaw = if (isFirstPersonPass) scanWorldYaw else (scanWorldYaw + Mth.wrapDegrees(effectiveReportYaw - scanWorldYaw) * dialogueT)
-                val currentPitch = if (isFirstPersonPass) scanPitch + talkPitch + exitPitch else Mth.lerp(dialogueT, scanPitch, reportWorldPitch)
+                val openPitch = lookPitch
+                val effectiveOpenPitch = Mth.lerp(t, scanPitch, openPitch)
+                val currentPitch = if (isFirstPersonPass) {
+                    if (dialogueT > 0.001f) scanPitch + talkPitch + exitPitch else effectiveOpenPitch
+                } else {
+                    if (dialogueT > 0.001f) Mth.lerp(dialogueT, scanPitch, reportWorldPitch) else effectiveOpenPitch
+                }
                 val currentRoll = if (isFirstPersonPass) scanRoll + talkRoll + exitRoll else Mth.lerp(dialogueT, scanRoll, reportWorldRoll + (if (dismissT > 0.0f) (Math.sin(dismissT.toDouble() * Math.PI) * 20.0).toFloat() else 0.0f))
 
                 // Reseta o PoseStack para o Espaço de Mundo puro (relativo à câmera),
@@ -926,11 +951,10 @@ class RotomPlayerRenderLayer(
                     poseStack.mulPose(Axis.ZP.rotationDegrees(effectiveBankRoll))
                 }
 
-                val facingYaw = if (hProg > 0.001f) Mth.lerp(hProg, YAW_FACING_FRONT, 0.0f) else YAW_FACING_FRONT
+                val facingYaw = if (t > 0.001f) Mth.lerp(t, YAW_FACING_FRONT, 0.0f) else YAW_FACING_FRONT
                 poseStack.mulPose(Axis.YP.rotationDegrees(facingYaw))
 
-                val fpTiltPitch = if (isFirstPersonPass && hProg > 0.001f) 10.0f * hProg else 0.0f
-                poseStack.mulPose(Axis.XP.rotationDegrees(currentPitch + fpTiltPitch))
+                poseStack.mulPose(Axis.XP.rotationDegrees(currentPitch))
                 poseStack.mulPose(Axis.ZP.rotationDegrees(currentRoll))
                 poseStack.scale(SCALE, -SCALE, -SCALE)
             } else {

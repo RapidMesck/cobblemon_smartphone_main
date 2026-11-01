@@ -12,6 +12,7 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.energy.consumeEnergy
 import com.nbp.cobblemon_smartphone.energy.hasEnoughEnergy
 import com.nbp.cobblemon_smartphone.network.packet.RotomScanCompletePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomDialogueClosePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket
 import com.nbp.cobblemon_smartphone.rotom.RotomRadarConfig
 import com.nbp.cobblemon_smartphone.util.RotomScannerHelper
@@ -111,7 +112,10 @@ object RotomAutoScannerManager {
     }
 
     fun onPlayerDisconnect(player: ServerPlayer) {
-        playerSessions.remove(player.uuid)
+        val session = playerSessions.remove(player.uuid)
+        if (session != null && session.isDialogueOpen) {
+            sendToNearby(player, SyncRotomDialogueClosePacket(player.uuid))
+        }
         val prefix = "${player.uuid}:"
         scanCooldowns.keys.removeIf { it.startsWith(prefix) }
     }
@@ -178,6 +182,9 @@ object RotomAutoScannerManager {
                 }
 
                 if (canRelease) {
+                    if (session.isDialogueOpen) {
+                        sendToNearby(player, SyncRotomDialogueClosePacket(player.uuid))
+                    }
                     session.isDialogueOpen = false
                     session.phase = ScanPhase.IDLE
                     session.targetEntityId = -1
@@ -389,39 +396,39 @@ object RotomAutoScannerManager {
             rotomPhone.consumeEnergy(rotomConfig.scanEnergyCost)
         }
 
-        // Se o Pokémon for uma variante que não possui curiosidade própria distinta,
-        // apenas escaneia/registra sem abrir o balão de diálogo de curiosidade na tela
+        // Se o Pokémon for de mod sem curiosidade cadastrada, ou uma variante que não possui curiosidade própria distinta,
+        // apenas escaneia/registra sem abrir o balão de diálogo de curiosidade na tela (vai para o modo mini)
+        val nationalDexId = pokemon.species.nationalPokedexNumber
         val isVariant = (pokemon.form != pokemon.species.standardForm)
-        val hasDistinctCuriosity = if (isVariant) {
-            com.nbp.cobblemon_smartphone.curiosity.PokemonCuriosityRepository.hasDistinctFormCuriosity(
-                pokemon.species.name,
-                pokemon.form.name
-            )
-        } else {
-            true
-        }
-        val showDialogue = hasDistinctCuriosity
+        val curiosity = com.nbp.cobblemon_smartphone.curiosity.PokemonCuriosityRepository.getCuriosity(
+            pokemon.species.name,
+            nationalDexId
+        )
+        val hasCuriosity = (curiosity != null) && (!isVariant || com.nbp.cobblemon_smartphone.curiosity.PokemonCuriosityRepository.hasDistinctFormCuriosity(
+            pokemon.species.name,
+            pokemon.form.name
+        ))
+        val showDialogue = hasCuriosity
+
+        val isFullDialogue = (radarConfig.scanDisplayMode == RotomRadarConfig.DISPLAY_FULL && showDialogue)
 
         // Send completion packet to player and nearby players
-        val nationalDexId = pokemon.species.nationalPokedexNumber
         val completePacket = RotomScanCompletePacket(
             scannerPlayerUuid = player.uuid,
             targetEntityId = entity.id,
-            speciesName = pokemon.species.name,
+            speciesName = pokemon.species.resourceIdentifier.toString(),
             nationalDexId = nationalDexId,
             isAlreadyRegistered = !isUnregistered,
             level = level,
             nature = if (rotomConfig.revealNature) nature else "",
             ivPercent = if (rotomConfig.revealIvPercentage) ivPercent else -1,
-            showDialogue = showDialogue
+            showDialogue = isFullDialogue
         )
         sendToNearby(player, completePacket)
 
         // Set cooldown so it won't repeatedly scan the same Pokémon
         val cooldownMs = rotomConfig.rescanCooldownSeconds.coerceAtLeast(1) * 1000L
         scanCooldowns["${player.uuid}:${entity.id}"] = System.currentTimeMillis() + cooldownMs
-
-        val isFullDialogue = (radarConfig.scanDisplayMode == RotomRadarConfig.DISPLAY_FULL && showDialogue)
 
         // Transition into returning phase (Rotom gracefully flies back to shoulder)
         session.phase = ScanPhase.RETURNING
@@ -433,7 +440,10 @@ object RotomAutoScannerManager {
 
     fun onDialogueClosed(player: ServerPlayer) {
         val session = playerSessions[player.uuid] ?: return
-        session.isDialogueOpen = false
+        if (session.isDialogueOpen) {
+            session.isDialogueOpen = false
+            sendToNearby(player, SyncRotomDialogueClosePacket(player.uuid))
+        }
         val returnTicks = CobblemonSmartphone.config.rotom.returnTicks.coerceAtLeast(1)
         if (session.phase == ScanPhase.RETURNING && session.phaseTicks >= returnTicks) {
             session.phase = ScanPhase.IDLE
@@ -442,6 +452,11 @@ object RotomAutoScannerManager {
             session.prioritizedEntityId = null
             broadcastScanSync(player, session)
         }
+    }
+
+    fun isPlayerInDialogueOrScanning(playerUuid: UUID): Boolean {
+        val session = playerSessions[playerUuid] ?: return false
+        return session.isDialogueOpen || session.phase == ScanPhase.SCANNING || session.phase == ScanPhase.APPROACHING
     }
 
     private fun broadcastScanSync(player: ServerPlayer, session: PlayerScanSession) {

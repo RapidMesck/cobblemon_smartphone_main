@@ -266,8 +266,9 @@ object RotomServerManager {
             val invalidParticipants = mutableListOf<UUID>()
             for (pUuid in session.participants) {
                 val p = playersByUuid[pUuid]
+                val isBusy = openPlayers.contains(pUuid) || RotomAutoScannerManager.isPlayerInDialogueOrScanning(pUuid)
                 val valid = p != null &&
-                    !openPlayers.contains(pUuid) &&
+                    !isBusy &&
                     !p.isSleeping &&
                     p.distanceToSqr(session.anchorX, session.anchorY - 1.0, session.anchorZ) <= 56.25
 
@@ -338,7 +339,8 @@ object RotomServerManager {
         for (session in activeSocialSessions.values) {
             for (candidate in playersWithRotom) {
                 if (playerToSession.containsKey(candidate.uuid)) continue
-                if (openPlayers.contains(candidate.uuid) || candidate.isSleeping) continue
+                val isBusy = openPlayers.contains(candidate.uuid) || RotomAutoScannerManager.isPlayerInDialogueOrScanning(candidate.uuid)
+                if (isBusy || candidate.isSleeping) continue
                 if (now < playerCooldowns.getOrDefault(candidate.uuid, 0L)) continue
 
                 val distSqr = candidate.distanceToSqr(session.anchorX, session.anchorY - 1.0, session.anchorZ)
@@ -369,6 +371,7 @@ object RotomServerManager {
         val idlePlayers = playersWithRotom.filter { p ->
             !playerToSession.containsKey(p.uuid) &&
             !openPlayers.contains(p.uuid) &&
+            !RotomAutoScannerManager.isPlayerInDialogueOrScanning(p.uuid) &&
             !p.isSleeping &&
             now >= playerCooldowns.getOrDefault(p.uuid, 0L)
         }

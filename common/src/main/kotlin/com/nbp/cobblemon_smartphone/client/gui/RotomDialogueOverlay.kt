@@ -26,20 +26,39 @@ object RotomDialogueOverlay {
     private fun resolvePokemonModel(dialogue: RotomDialogueClientState.ActiveDialogue): RenderablePokemon? {
         if (dialogue.cachedModel != null) return dialogue.cachedModel
         var species: Species? = null
-        if (dialogue.nationalDexId > 0) {
-            species = PokemonSpecies.getByPokedexNumber(dialogue.nationalDexId)
-                ?: PokemonSpecies.species.firstOrNull { it.nationalPokedexNumber == dialogue.nationalDexId }
+
+        // 1. Tenta carregar pelo ResourceLocation / ID exato da espécie (evita conflito de Pokédex numbers entre mods)
+        val parsedId = net.minecraft.resources.ResourceLocation.tryParse(dialogue.speciesName)
+        if (parsedId != null) {
+            species = PokemonSpecies.getByIdentifier(parsedId)
+        }
+
+        // 2. Tenta carregar pelo nome ou showdownId no catálogo Cobblemon
+        if (species == null) {
+            val nameOnly = dialogue.speciesName.substringAfter(':').lowercase()
+            species = PokemonSpecies.getByName(nameOnly)
         }
         if (species == null) {
             species = PokeInfoDataProvider.findSpecies(dialogue.speciesName)
         }
         if (species == null) {
             species = PokemonSpecies.species.firstOrNull {
-                it.name.equals(dialogue.speciesName, ignoreCase = true) ||
+                it.resourceIdentifier.toString().equals(dialogue.speciesName, ignoreCase = true) ||
                 it.resourceIdentifier.path.equals(dialogue.speciesName, ignoreCase = true) ||
+                it.name.equals(dialogue.speciesName, ignoreCase = true) ||
                 it.showdownId().equals(dialogue.speciesName, ignoreCase = true)
             }
         }
+
+        // 3. Fallback secundário por número da Pokédex apenas se não encontrou por ID
+        if (species == null && dialogue.nationalDexId > 0 && (parsedId == null || parsedId.namespace == "cobblemon")) {
+            val byDex = PokemonSpecies.getByPokedexNumber(dialogue.nationalDexId)
+                ?: PokemonSpecies.species.firstOrNull { it.nationalPokedexNumber == dialogue.nationalDexId }
+            if (byDex != null && (byDex.resourceIdentifier.path.equals(dialogue.speciesName.substringAfter(':'), ignoreCase = true) || dialogue.speciesName.isBlank())) {
+                species = byDex
+            }
+        }
+
         val resolved = if (species != null) RenderablePokemon(species, emptySet()) else null
         dialogue.cachedModel = resolved
         return resolved
@@ -196,7 +215,7 @@ object RotomDialogueOverlay {
             guiGraphics.fill(tx1, ty, tx2, ty + 1, colorBorder)
         }
 
-        val keyName = com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds.DISMISS_DIALOGUE.translatedKeyMessage.string.uppercase().ifBlank { "T" }
+        val keyName = com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds.DISMISS_DIALOGUE.translatedKeyMessage.string.uppercase().ifBlank { "Y" }
         val hint = if (isEn) "§8[$keyName to close]§r" else "§8[$keyName para fechar]§r"
         val dividerColor = (borderAlpha shl 24) or 0x1A4060
         val icon = "§6⚡§r "
@@ -205,7 +224,7 @@ object RotomDialogueOverlay {
             // MODO RÁPIDO / DESCOBERTA (Sem texto longo de curiosidade)
             // 1. Cabeçalho Dex
             val dexPrefix = if (dialogue.pokedexNumber.isNotBlank()) "§b${dialogue.pokedexNumber}§r" else ""
-            val headerTitle = "$icon§e§lRotom Dex §8• $dexPrefix"
+            val headerTitle = if (dexPrefix.isNotBlank()) "$icon§e§lRotom Dex §8• $dexPrefix" else "$icon§e§lRotom Dex"
             guiGraphics.drawString(font, headerTitle, boxX + PADDING, boxY + 5, 0xFFFFFFFF.toInt(), false)
 
             // Divisória
