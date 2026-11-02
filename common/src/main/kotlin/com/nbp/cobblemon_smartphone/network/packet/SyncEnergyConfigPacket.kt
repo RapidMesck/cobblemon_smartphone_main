@@ -26,9 +26,9 @@ class SyncEnergyConfigPacket(
             val baseCapacity = buffer.readVarInt()
             val maxReceive = buffer.readVarInt()
             val defaultCost = buffer.readVarInt()
-            val size = buffer.readVarInt()
+            val size = buffer.readVarInt().coerceIn(0, 1000)
             val costs = (0 until size).map {
-                val action = buffer.readUtf()
+                val action = buffer.readUtf(128)
                 val cost = buffer.readVarInt()
                 SmartphoneConfig.ActionCost(action, cost)
             }

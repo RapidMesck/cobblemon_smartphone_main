@@ -40,6 +40,19 @@ data class SmartphoneThemeColors(
 ) {
     val timeColor: Int get() = time ?: textSecondary
 
+    val isDark: Boolean get() {
+        val r = (surface shr 16) and 0xFF
+        val g = (surface shr 8) and 0xFF
+        val b = surface and 0xFF
+        return (0.299 * r + 0.587 * g + 0.114 * b) < 128.0
+    }
+
+    val contentGold: Int get() = if (isDark) gold else 0xFFB8860B.toInt()
+    val cardDisabledHeaderBg: Int get() = if (isDark) ((headerNavy and 0x00FFFFFF) or 0x88000000.toInt()) else 0xFF33474F.toInt()
+    val cardDisabledContentBg: Int get() = if (isDark) surfaceAlt else 0xFFB9C4C6.toInt()
+    val cardDisabledText: Int get() = textDarkMuted
+    val buttonDisabledBg: Int get() = surfaceAlt
+
     companion object {
         val DEFAULT = SmartphoneThemeColors()
 

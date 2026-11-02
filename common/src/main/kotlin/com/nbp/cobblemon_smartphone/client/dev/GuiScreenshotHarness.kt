@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.client.dev
 
 import com.mojang.blaze3d.platform.NativeImage
+import com.nbp.cobblemon_smartphone.api.SmartphoneActionOrder
 import com.nbp.cobblemon_smartphone.client.GpsClientState
 import com.nbp.cobblemon_smartphone.client.PokeInfoClientState
 import com.nbp.cobblemon_smartphone.client.StructureCompassClientState
@@ -260,12 +261,23 @@ object GuiScreenshotHarness {
         return listOf(
             // --- SMARTPHONE MAIN ---
             ScreenshotTask("smartphone_red", "smartphone", 131, 207, { SmartphoneScreen(SmartphoneColor.RED) }),
+            ScreenshotTask("smartphone_blue", "smartphone", 131, 207, { SmartphoneScreen(SmartphoneColor.BLUE) }),
+            ScreenshotTask("smartphone_green", "smartphone", 131, 207, { SmartphoneScreen(SmartphoneColor.GREEN) }),
+            ScreenshotTask("smartphone_yellow", "smartphone", 131, 207, { SmartphoneScreen(SmartphoneColor.YELLOW) }),
             ScreenshotTask("smartphone_black", "smartphone", 131, 207, { SmartphoneScreen(SmartphoneColor.BLACK) }),
             ScreenshotTask("smartphone_white", "smartphone", 131, 207, { SmartphoneScreen(SmartphoneColor.WHITE) }),
             ScreenshotTask("smartphone_pink", "smartphone", 131, 207, { SmartphoneScreen(SmartphoneColor.PINK) }),
+            ScreenshotTask("smartphone_cyan", "smartphone", 131, 207, { SmartphoneScreen(SmartphoneColor.CYAN) }),
+            ScreenshotTask("smartphone_rotom_red", "smartphone", 131, 207, {
+                SmartphoneActionOrder.setOrder(listOf("cobblemon_smartphone:rotom", "cobblemon_smartphone:pokeinfo", "cobblemon_smartphone:social", "cobblemon_smartphone:gps"))
+                val phone = net.minecraft.world.item.ItemStack(com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems.RED_SMARTPHONE)
+                com.nbp.cobblemon_smartphone.util.SmartphoneHelper.run { phone.setRotomPhone(true) }
+                SmartphoneScreen(SmartphoneColor.RED, phone)
+            }),
 
             // --- SETTINGS ---
             ScreenshotTask("smartphone_settings", "settings", 131, 207, { SmartphoneSettingsScreen(SmartphoneColor.RED) }),
+            ScreenshotTask("smartphone_settings_themes", "settings", 131, 207, { SmartphoneSettingsScreen(SmartphoneColor.RED, null, SmartphoneSettingsScreen.SettingsTab.THEMES) }),
 
             // --- POKEINFO ---
             ScreenshotTask(
@@ -473,6 +485,17 @@ object GuiScreenshotHarness {
                             enabled = false
                         )
                     )
+                    RotomAppScreen(SmartphoneColor.RED, null, RotomAppScreen.Tab.TARGETS, false)
+                }
+            ),
+            ScreenshotTask(
+                id = "rotom_targets_empty",
+                category = "rotom",
+                guiWidth = 211,
+                guiHeight = 207,
+                createScreen = {
+                    val config = com.nbp.cobblemon_smartphone.client.RotomRadarClientState.config
+                    config.targets.clear()
                     RotomAppScreen(SmartphoneColor.RED, null, RotomAppScreen.Tab.TARGETS, false)
                 }
             ),

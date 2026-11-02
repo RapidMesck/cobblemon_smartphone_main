@@ -35,6 +35,9 @@ object RotomAlertHandler : ClientNetworkPacketHandler<RotomAlertPacket> {
             // Display in action bar for immediate visual feedback and in chat so the coordinates/distance can be referenced
             player.displayClientMessage(message, true)
             player.displayClientMessage(message, false)
+
+            // Trigger Rotom HUD Hologram Tracker
+            com.nbp.cobblemon_smartphone.client.RotomTrackerClientState.onAlert(packet)
         }
     }
 }

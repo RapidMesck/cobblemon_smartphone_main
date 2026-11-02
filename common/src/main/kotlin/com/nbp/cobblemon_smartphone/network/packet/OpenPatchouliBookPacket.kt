@@ -8,13 +8,13 @@ class OpenPatchouliBookPacket(val bookId: String) : CobblemonSmartphoneNetworkPa
         val ID = smartphoneResource("open_patchouli_book")
 
         fun decode(buffer: RegistryFriendlyByteBuf): OpenPatchouliBookPacket {
-            return OpenPatchouliBookPacket(buffer.readUtf())
+            return OpenPatchouliBookPacket(buffer.readUtf(128))
         }
     }
 
     override val id = ID
 
     override fun encode(buffer: RegistryFriendlyByteBuf) {
-        buffer.writeUtf(bookId)
+        buffer.writeUtf(bookId, 128)
     }
 }

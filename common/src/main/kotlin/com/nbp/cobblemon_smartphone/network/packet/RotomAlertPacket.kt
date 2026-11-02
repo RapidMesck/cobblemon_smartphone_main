@@ -10,7 +10,12 @@ class RotomAlertPacket(
     val nature: String,
     val distance: Int,
     val isTargetMatch: Boolean,
-    val soundAlert: Boolean
+    val soundAlert: Boolean,
+    val targetEntityId: Int = -1,
+    val targetX: Double = 0.0,
+    val targetY: Double = 0.0,
+    val targetZ: Double = 0.0,
+    val speciesId: String = ""
 ) : CobblemonSmartphoneNetworkPacket<RotomAlertPacket> {
     companion object {
         val ID = smartphoneResource("rotom_alert")
@@ -23,7 +28,16 @@ class RotomAlertPacket(
             val distance = buffer.readVarInt()
             val isTargetMatch = buffer.readBoolean()
             val soundAlert = buffer.readBoolean()
-            return RotomAlertPacket(speciesName, isShiny, ivPercent, nature, distance, isTargetMatch, soundAlert)
+            val targetEntityId = if (buffer.isReadable) buffer.readVarInt() else -1
+            val hasCoords = buffer.readableBytes() >= 24
+            val targetX = if (hasCoords) buffer.readDouble() else 0.0
+            val targetY = if (hasCoords) buffer.readDouble() else 0.0
+            val targetZ = if (hasCoords) buffer.readDouble() else 0.0
+            val speciesId = if (buffer.isReadable) buffer.readUtf(128) else ""
+            return RotomAlertPacket(
+                speciesName, isShiny, ivPercent, nature, distance, isTargetMatch, soundAlert,
+                targetEntityId, targetX, targetY, targetZ, speciesId
+            )
         }
     }
 
@@ -37,5 +51,10 @@ class RotomAlertPacket(
         buffer.writeVarInt(distance)
         buffer.writeBoolean(isTargetMatch)
         buffer.writeBoolean(soundAlert)
+        buffer.writeVarInt(targetEntityId)
+        buffer.writeDouble(targetX)
+        buffer.writeDouble(targetY)
+        buffer.writeDouble(targetZ)
+        buffer.writeUtf(speciesId, 128)
     }
 }

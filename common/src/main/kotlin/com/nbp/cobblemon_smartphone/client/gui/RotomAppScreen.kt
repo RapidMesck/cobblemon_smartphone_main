@@ -200,7 +200,7 @@ class RotomAppScreen(
         speciesBox.setMaxLength(32)
         speciesBox.setBordered(false)
         speciesBox.setHint(Component.translatable("cobblemon_smartphone.rotom.species_hint"))
-        speciesBox.setTextColor(CONTENT_TEXT)
+        speciesBox.setTextColor(theme.colors.textDarkMuted)
         speciesBox.setResponder {
             getActiveSuggestions()
         }
@@ -280,15 +280,15 @@ class RotomAppScreen(
         val text1 = lang("tab_settings")
         val text2 = lang("tab_targets", config.targets.size)
 
-        val text1Color = if (currentTab == Tab.SETTINGS) 0xFFFFFFFF.toInt() else CONTENT_TEXT
-        val text2Color = if (currentTab == Tab.TARGETS) 0xFFFFFFFF.toInt() else CONTENT_TEXT
+        val text1Color = if (currentTab == Tab.SETTINGS) theme.colors.textPrimary else CONTENT_TEXT
+        val text2Color = if (currentTab == Tab.TARGETS) theme.colors.textPrimary else CONTENT_TEXT
 
         guiGraphics.drawString(font, text1, tab1X + (tabW - font.width(text1)) / 2, tabY + 4, text1Color, false)
         guiGraphics.drawString(font, text2, tab2X + (tabW - font.width(text2)) / 2, tabY + 4, text2Color, false)
     }
 
     private fun renderSettingsTab(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val totalRows = 7
+        val totalRows = 8
         val totalH = totalRows * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
         val viewH = SETTINGS_END_Y - SETTINGS_START_Y
         settingsMaxScroll = (totalH - viewH).coerceAtLeast(0)
@@ -362,6 +362,15 @@ class RotomAppScreen(
             desc = lang("setting_language_desc"),
             language = config.language
         )
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 8. Holograma de Rastreamento no HUD
+        renderSettingRow(
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
+            title = lang("setting_hud_tracker_title"),
+            desc = lang("setting_hud_tracker_desc"),
+            enabled = config.hudTracker
+        )
 
         guiGraphics.disableScissor()
         renderSettingsScrollbar(guiGraphics, mouseY)
@@ -372,7 +381,7 @@ class RotomAppScreen(
         val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
         val trackY = screenY + SETTINGS_START_Y
         val trackH = SETTINGS_END_Y - SETTINGS_START_Y
-        val totalH = 7 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
+        val totalH = 8 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
         val handleH = maxOf(14, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
         val handleY = trackY + (settingsScrollY.toFloat() / settingsMaxScroll * (trackH - handleH)).toInt()
 
@@ -399,11 +408,11 @@ class RotomAppScreen(
         hovered: Boolean
     ) {
         val trackBg = if (enabled) {
-            if (hovered) 0xFF00F0FF.toInt() else 0xFF00E5FF.toInt()
+            if (hovered) theme.colors.primaryHover else theme.colors.primary
         } else {
-            if (hovered) 0xFF353C4D.toInt() else 0xFF242A38.toInt()
+            if (hovered) theme.colors.surfaceHover else theme.colors.surfaceAlt
         }
-        val trackBorder = if (enabled) 0xFF00B0CC.toInt() else 0xFF3E485A.toInt()
+        val trackBorder = if (enabled) theme.colors.primaryBorder else ((theme.colors.primaryBorder and 0x00FFFFFF) or 0x66000000)
 
         // Pílula do trilho
         guiGraphics.fill(trackX + 2, trackY, trackX + trackW - 2, trackY + trackH, trackBg)
@@ -416,9 +425,9 @@ class RotomAppScreen(
         val knobX = if (enabled) (trackX + trackW - knobSize - 2) else (trackX + 2)
 
         val knobColor = if (enabled) {
-            0xFFFFFFFF.toInt()
+            theme.colors.textPrimary
         } else {
-            if (hovered) 0xFFC0C7D5.toInt() else 0xFF8A93A4.toInt()
+            if (hovered) theme.colors.textDarkMuted else ((theme.colors.textDarkMuted and 0x00FFFFFF) or 0x99000000.toInt())
         }
 
         guiGraphics.fill(knobX, knobY, knobX + knobSize, knobY + knobSize, knobColor)
@@ -482,8 +491,8 @@ class RotomAppScreen(
         val btnX = x2 - btnW - 5
         val btnY = y + (rowH - btnH) / 2
 
-        guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, 0xFF18202E.toInt())
-        guiGraphics.renderOutline(btnX, btnY, btnW, btnH, 0xFF354054.toInt())
+        guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, theme.colors.surfaceAlt)
+        guiGraphics.renderOutline(btnX, btnY, btnW, btnH, theme.colors.primaryBorder)
 
         val labels = listOf(lang("mode_full"), lang("mode_mini"), lang("mode_off"))
 
@@ -496,15 +505,15 @@ class RotomAppScreen(
                 val segBg = if (segHover) theme.colors.primaryHover else theme.colors.primary
                 guiGraphics.fill(segX, btnY, segX + segW, btnY + btnH, segBg)
             } else if (segHover) {
-                guiGraphics.fill(segX, btnY, segX + segW, btnY + btnH, 0xFF2A3448.toInt())
+                guiGraphics.fill(segX, btnY, segX + segW, btnY + btnH, theme.colors.surfaceHover)
             }
 
             if (i > 0) {
-                guiGraphics.fill(segX, btnY, segX + 1, btnY + btnH, 0xFF354054.toInt())
+                guiGraphics.fill(segX, btnY, segX + 1, btnY + btnH, theme.colors.primaryBorder)
             }
 
             val text = labels[i]
-            val textColor = if (isSelected) 0xFFFFFFFF.toInt() else 0xFF7E8C9B.toInt()
+            val textColor = if (isSelected) theme.colors.textPrimary else theme.colors.textDarkMuted
             guiGraphics.drawString(font, text, segX + (segW - font.width(text)) / 2, btnY + 3, textColor, false)
         }
 
@@ -540,29 +549,29 @@ class RotomAppScreen(
         val btnX = x2 - btnW - 5
         val btnY = y + (rowH - btnH) / 2
 
-        guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, 0xFF18202E.toInt())
-        guiGraphics.renderOutline(btnX, btnY, btnW, btnH, 0xFF354054.toInt())
+        guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, theme.colors.surfaceAlt)
+        guiGraphics.renderOutline(btnX, btnY, btnW, btnH, theme.colors.primaryBorder)
 
         val isEn = language.equals("en", ignoreCase = true)
 
         // EN Segment
         val enHover = mouseX in btnX..(btnX + segW) && mouseY in btnY..(btnY + btnH)
         val enBg = if (isEn) (if (enHover) theme.colors.primaryHover else theme.colors.primary)
-                   else (if (enHover) 0xFF2A3448.toInt() else 0)
+                   else (if (enHover) theme.colors.surfaceHover else 0)
         if (enBg != 0) guiGraphics.fill(btnX, btnY, btnX + segW, btnY + btnH, enBg)
-        val enColor = if (isEn) 0xFFFFFFFF.toInt() else 0xFF7E8C9B.toInt()
+        val enColor = if (isEn) theme.colors.textPrimary else theme.colors.textDarkMuted
         guiGraphics.drawString(font, "EN", btnX + (segW - font.width("EN")) / 2, btnY + 3, enColor, false)
 
         // Divisória
-        guiGraphics.fill(btnX + segW, btnY, btnX + segW + 1, btnY + btnH, 0xFF354054.toInt())
+        guiGraphics.fill(btnX + segW, btnY, btnX + segW + 1, btnY + btnH, theme.colors.primaryBorder)
 
         // PT Segment
         val ptX = btnX + segW
         val ptHover = mouseX in ptX..(ptX + segW) && mouseY in btnY..(btnY + btnH)
         val ptBg = if (!isEn) (if (ptHover) theme.colors.primaryHover else theme.colors.primary)
-                   else (if (ptHover) 0xFF2A3448.toInt() else 0)
+                   else (if (ptHover) theme.colors.surfaceHover else 0)
         if (ptBg != 0) guiGraphics.fill(ptX, btnY, ptX + segW, btnY + btnH, ptBg)
-        val ptColor = if (!isEn) 0xFFFFFFFF.toInt() else 0xFF7E8C9B.toInt()
+        val ptColor = if (!isEn) theme.colors.textPrimary else theme.colors.textDarkMuted
         guiGraphics.drawString(font, "PT", ptX + (segW - font.width("PT")) / 2, btnY + 3, ptColor, false)
 
         // Text
@@ -587,16 +596,44 @@ class RotomAppScreen(
 
         guiGraphics.fill(addBtnX, addBtnY, addBtnX + addBtnW, addBtnY + addBtnH, addBtnBg)
         val addText = lang("btn_add_target")
-        guiGraphics.drawString(font, addText, addBtnX + (addBtnW - font.width(addText)) / 2, addBtnY + 4, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, addText, addBtnX + (addBtnW - font.width(addText)) / 2, addBtnY + 4, theme.colors.textPrimary, false)
 
         if (config.targets.isEmpty()) {
-            val empty1 = lang("targets_empty_1")
-            val empty2 = lang("targets_empty_2")
-            val empty3 = lang("targets_empty_3")
-            val midY = screenY + 110
-            guiGraphics.drawString(font, empty1, screenX + (GUI_WIDTH - font.width(empty1)) / 2, midY, CONTENT_DIM, false)
-            guiGraphics.drawString(font, empty2, screenX + (GUI_WIDTH - font.width(empty2)) / 2, midY + 14, CONTENT_DIM, false)
-            guiGraphics.drawString(font, empty3, screenX + (GUI_WIDTH - font.width(empty3)) / 2, midY + 28, CONTENT_DIM, false)
+            val maxTextW = LIST_WIDTH - 16
+            val emptyTitle = lang("targets_empty_1")
+            val emptyDesc2 = lang("targets_empty_2")
+            val emptyDesc3 = lang("targets_empty_3")
+            val fullDesc = if (emptyDesc2.endsWith(" ") || emptyDesc3.startsWith(" ")) {
+                "$emptyDesc2$emptyDesc3"
+            } else {
+                "$emptyDesc2 $emptyDesc3"
+            }.trim()
+
+            val titleLines = font.split(Component.literal(emptyTitle), maxTextW)
+            val descLines = font.split(Component.literal(fullDesc), maxTextW)
+
+            val lineHeight = font.lineHeight
+            val descLineSpacing = lineHeight + 2
+            val titleSpacing = lineHeight + 4
+            val totalH = (titleLines.size * titleSpacing) + (descLines.size * descLineSpacing)
+
+            val availableTop = screenY + 68
+            val availableBottom = screenY + LIST_END_Y
+            var cy = availableTop + (availableBottom - availableTop - totalH) / 2
+
+            for (line in titleLines) {
+                val lw = font.width(line)
+                val lx = screenX + CONTENT_X + (LIST_WIDTH - lw) / 2
+                guiGraphics.drawString(font, line, lx, cy, CONTENT_TEXT, false)
+                cy += titleSpacing
+            }
+
+            for (line in descLines) {
+                val lw = font.width(line)
+                val lx = screenX + CONTENT_X + (LIST_WIDTH - lw) / 2
+                guiGraphics.drawString(font, line, lx, cy, CONTENT_DIM, false)
+                cy += descLineSpacing
+            }
             return
         }
 
@@ -633,7 +670,7 @@ class RotomAppScreen(
         guiGraphics.fill(x1, y, x2, y2, bg)
 
         // Border
-        val borderCol = if (target.enabled) theme.colors.primary else 0xFF888888.toInt()
+        val borderCol = if (target.enabled) theme.colors.primary else theme.colors.textDarkMuted
         guiGraphics.fill(x1, y, x1 + 2, y2, borderCol)
 
         // Line 1: Species name (constrained so it never overlaps buttons)
@@ -666,19 +703,19 @@ class RotomAppScreen(
         val toggleBtnH = 16
         val toggleHover = mouseX in toggleBtnX..(toggleBtnX + toggleBtnW) && mouseY in toggleBtnY..(toggleBtnY + toggleBtnH)
         val toggleBg = if (target.enabled) (if (toggleHover) theme.colors.primaryHover else theme.colors.success)
-        else (if (toggleHover) 0xFF555555.toInt() else 0xFF333333.toInt())
+        else (if (toggleHover) theme.colors.surfaceHover else theme.colors.surfaceAlt)
         guiGraphics.fill(toggleBtnX, toggleBtnY, toggleBtnX + toggleBtnW, toggleBtnY + toggleBtnH, toggleBg)
         val toggleText = if (target.enabled) "✓" else "✕"
-        guiGraphics.drawString(font, toggleText, toggleBtnX + 5, toggleBtnY + 4, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, toggleText, toggleBtnX + 5, toggleBtnY + 4, theme.colors.textPrimary, false)
 
         val delBtnX = x2 - 22
         val delBtnY = y + (CARD_HEIGHT - 16) / 2
         val delBtnW = 16
         val delBtnH = 16
         val delHover = mouseX in delBtnX..(delBtnX + delBtnW) && mouseY in delBtnY..(delBtnY + delBtnH)
-        val delBg = if (delHover) 0xFFCC2222.toInt() else theme.colors.danger
+        val delBg = if (delHover) theme.colors.danger else ((theme.colors.danger and 0x00FFFFFF) or 0xDD000000.toInt())
         guiGraphics.fill(delBtnX, delBtnY, delBtnX + delBtnW, delBtnY + delBtnH, delBg)
-        guiGraphics.drawString(font, "✕", delBtnX + 5, delBtnY + 4, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, "✕", delBtnX + 5, delBtnY + 4, theme.colors.textPrimary, false)
     }
 
     private fun renderAddTargetForm(
@@ -747,10 +784,10 @@ class RotomAppScreen(
         val shinyBtnH = 14
         val shinyHover = mouseX in shinyBtnX..(shinyBtnX + shinyBtnW) && mouseY in shinyY..(shinyY + shinyBtnH)
         val shinyBg = if (selectedShinyOnly) (if (shinyHover) theme.colors.primaryHover else theme.colors.success)
-        else (if (shinyHover) 0xFF555555.toInt() else 0xFF333333.toInt())
+        else (if (shinyHover) theme.colors.surfaceHover else theme.colors.surfaceAlt)
         guiGraphics.fill(shinyBtnX, shinyY, shinyBtnX + shinyBtnW, shinyY + shinyBtnH, shinyBg)
         val shinyText = if (selectedShinyOnly) lang("status_yes") else lang("status_no")
-        guiGraphics.drawString(font, shinyText, shinyBtnX + (shinyBtnW - font.width(shinyText)) / 2, shinyY + 3, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, shinyText, shinyBtnX + (shinyBtnW - font.width(shinyText)) / 2, shinyY + 3, theme.colors.textPrimary, false)
 
         // Action buttons: [ Save ] and [ Cancel ]
         val btnY = screenY + 172
@@ -761,14 +798,15 @@ class RotomAppScreen(
         val saveBg = if (saveBtnHover) theme.colors.primaryHover else theme.colors.success
         guiGraphics.fill(saveBtnX, btnY, saveBtnX + btnW, btnY + btnH, saveBg)
         val saveText = lang("btn_save_target")
-        guiGraphics.drawString(font, saveText, saveBtnX + (btnW - font.width(saveText)) / 2, btnY + 4, 0xFFFFFFFF.toInt(), false)
+        guiGraphics.drawString(font, saveText, saveBtnX + (btnW - font.width(saveText)) / 2, btnY + 4, theme.colors.textPrimary, false)
 
         val cancelBtnX = saveBtnX + btnW + 6
         val cancelBtnHover = mouseX in cancelBtnX..(cancelBtnX + btnW) && mouseY in btnY..(btnY + btnH)
-        val cancelBg = if (cancelBtnHover) 0xFF555555.toInt() else 0xFF333333.toInt()
+        val cancelBg = if (cancelBtnHover) theme.colors.surfaceHover else theme.colors.surfaceAlt
         guiGraphics.fill(cancelBtnX, btnY, cancelBtnX + btnW, btnY + btnH, cancelBg)
         val cancelText = lang("btn_cancel")
-        guiGraphics.drawString(font, cancelText, cancelBtnX + (btnW - font.width(cancelText)) / 2, btnY + 4, 0xFFFFFFFF.toInt(), false)
+        val cancelTextColor = if (cancelBtnHover) theme.colors.textDark else theme.colors.textDarkMuted
+        guiGraphics.drawString(font, cancelText, cancelBtnX + (btnW - font.width(cancelText)) / 2, btnY + 4, cancelTextColor, false)
 
         // Floating suggestion dropdown rendered above other form rows
         renderSuggestionDropdown(guiGraphics, mouseX, mouseY)
@@ -795,8 +833,8 @@ class RotomAppScreen(
         // Borda externa
         guiGraphics.fill(popupX, popupY, popupX + popupW, popupY + popupH, SECTION_TITLE_BG)
 
-        // Fundo interno escuro e nítido
-        guiGraphics.fill(popupX + 1, popupY + 1, popupX + popupW - 1, popupY + popupH - 1, 0xFF181C24.toInt())
+        // Fundo interno
+        guiGraphics.fill(popupX + 1, popupY + 1, popupX + popupW - 1, popupY + popupH - 1, theme.colors.headerNavy)
 
         for (i in suggestions.indices) {
             val suggestion = suggestions[i]
@@ -804,32 +842,30 @@ class RotomAppScreen(
             val isHovered = mouseX in popupX..(popupX + popupW) && mouseY in rowY..(rowY + rowH)
             val isSelected = i == selectedSuggestionIndex
 
-            val rowBg = if (isSelected) {
-                theme.colors.primaryHover
-            } else if (isHovered) {
-                0xFF2A3442.toInt()
-            } else {
-                if (i % 2 == 0) 0xFF181C24.toInt() else 0xFF1E232E.toInt()
+            val rowBg = when {
+                isSelected -> theme.colors.primaryHover
+                isHovered -> theme.colors.headerNavyLight
+                else -> if (i % 2 == 0) theme.colors.headerNavy else theme.colors.headerNavyLight
             }
             guiGraphics.fill(popupX + 1, rowY, popupX + popupW - 1, rowY + rowH, rowBg)
 
             // Marcador
-            val bulletColor = if (isSelected || isHovered) theme.colors.gold else 0xFF6D879B.toInt()
+            val bulletColor = if (isSelected || isHovered) theme.colors.gold else theme.colors.textMuted
             guiGraphics.drawString(font, "▸", popupX + 4, rowY + 3, bulletColor, false)
 
             // Nome da espécie
-            val nameColor = if (isSelected || isHovered) 0xFFFFFFFF.toInt() else 0xFFE0E6ED.toInt()
+            val nameColor = if (isSelected || isHovered) theme.colors.textPrimary else theme.colors.textSecondary
             guiGraphics.drawString(font, suggestion.name, popupX + 14, rowY + 3, nameColor, false)
 
             // Indicador de Inserir ou Número da Pokédex
             if (isHovered || isSelected) {
                 val insertBadge = lang("badge_insert")
-                val badgeColor = if (isSelected) 0xFFFFFFFF.toInt() else theme.colors.gold
+                val badgeColor = if (isSelected) theme.colors.textPrimary else theme.colors.gold
                 guiGraphics.drawString(font, insertBadge, popupX + popupW - font.width(insertBadge) - 4, rowY + 3, badgeColor, false)
             } else {
                 val dexText = if (suggestion.dexNumber > 0) "#%03d".format(suggestion.dexNumber) else ""
                 if (dexText.isNotEmpty()) {
-                    guiGraphics.drawString(font, dexText, popupX + popupW - font.width(dexText) - 5, rowY + 3, 0xFF8AA5AD.toInt(), false)
+                    guiGraphics.drawString(font, dexText, popupX + popupW - font.width(dexText) - 5, rowY + 3, theme.colors.textMuted, false)
                 }
             }
         }
@@ -851,8 +887,9 @@ class RotomAppScreen(
 
         // [<] button
         val leftBtnHover = mouseX in x1..(x1 + 16) && mouseY in y..(y + h)
-        guiGraphics.fill(x1, y, x1 + 16, y + h, if (leftBtnHover) theme.colors.surfaceHover else 0xFF333333.toInt())
-        guiGraphics.drawString(font, "<", x1 + 6, y + 3, 0xFFFFFFFF.toInt(), false)
+        val leftBtnBg = if (leftBtnHover) theme.colors.primaryHover else theme.colors.primary
+        guiGraphics.fill(x1, y, x1 + 16, y + h, leftBtnBg)
+        guiGraphics.drawString(font, "<", x1 + 6, y + 3, theme.colors.textPrimary, false)
 
         // Label
         guiGraphics.drawString(font, label, x1 + (w - font.width(label)) / 2, y + 3, CONTENT_TEXT, false)
@@ -860,8 +897,9 @@ class RotomAppScreen(
         // [>] button
         val rightX = x1 + w - 16
         val rightBtnHover = mouseX in rightX..(rightX + 16) && mouseY in y..(y + h)
-        guiGraphics.fill(rightX, y, rightX + 16, y + h, if (rightBtnHover) theme.colors.surfaceHover else 0xFF333333.toInt())
-        guiGraphics.drawString(font, ">", rightX + 6, y + 3, 0xFFFFFFFF.toInt(), false)
+        val rightBtnBg = if (rightBtnHover) theme.colors.primaryHover else theme.colors.primary
+        guiGraphics.fill(rightX, y, rightX + 16, y + h, rightBtnBg)
+        guiGraphics.drawString(font, ">", rightX + 6, y + 3, theme.colors.textPrimary, false)
     }
 
     private fun renderNumberSelector(
@@ -959,7 +997,7 @@ class RotomAppScreen(
             val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
             val trackY = screenY + SETTINGS_START_Y
             val trackH = SETTINGS_END_Y - SETTINGS_START_Y
-            val totalH = 7 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
+            val totalH = 8 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
             val handleH = maxOf(14, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
             val handleY = trackY + (settingsScrollY.toFloat() / settingsMaxScroll * (trackH - handleH)).toInt()
             if (mx in trackX..(trackX + SCROLLBAR_WIDTH) && my in handleY..(handleY + handleH)) {
@@ -1053,6 +1091,15 @@ class RotomAppScreen(
                 config.language = if (config.language.equals("en", ignoreCase = true)) "pt" else "en"
             }
             com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.curiosityLanguage = config.language
+            RotomRadarClientState.saveConfig()
+            return true
+        }
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 8. Holograma de Rastreamento no HUD
+        if (isRowClicked(cy)) {
+            playClickSound()
+            config.hudTracker = !config.hudTracker
             RotomRadarClientState.saveConfig()
             return true
         }

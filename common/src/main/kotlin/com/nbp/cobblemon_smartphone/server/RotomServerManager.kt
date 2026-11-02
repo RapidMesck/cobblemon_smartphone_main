@@ -521,7 +521,12 @@ object RotomServerManager {
                         nature = pokemon.nature.name.path,
                         distance = dist,
                         isTargetMatch = targetMatch != null,
-                        soundAlert = config.soundAlert
+                        soundAlert = config.soundAlert,
+                        targetEntityId = entity.id,
+                        targetX = entity.x,
+                        targetY = entity.y + entity.bbHeight * 0.5,
+                        targetZ = entity.z,
+                        speciesId = pokemon.species.resourceIdentifier.toString()
                     ).sendToPlayer(player)
                 }
             }

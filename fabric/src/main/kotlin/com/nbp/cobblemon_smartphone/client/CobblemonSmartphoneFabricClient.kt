@@ -4,7 +4,9 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphoneFabricNetworkManager
 import com.nbp.cobblemon_smartphone.client.dev.GuiScreenshotHarness
 import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
 import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
+import com.nbp.cobblemon_smartphone.client.RotomTrackerClientState
 import com.nbp.cobblemon_smartphone.client.gui.RotomDialogueOverlay
+import com.nbp.cobblemon_smartphone.client.gui.RotomTrackerOverlay
 import com.nbp.cobblemon_smartphone.client.gui.StructureCompassOverlay
 import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
@@ -35,6 +37,8 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             RefinedStorageAccessHolder.instance?.initializeClient()
         }
 
+        com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper.clientPlayerProvider = { Minecraft.getInstance().player }
+
         ModelLoadingPlugin.register { context ->
             SmartphoneColor.entries.forEach { color ->
                 context.addModels(color.getHandModelPath())
@@ -60,6 +64,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             }
             while (SmartphoneKeybinds.DISMISS_DIALOGUE.consumeClick()) {
                 RotomDialogueClientState.dismissLocalDialogue()
+                RotomTrackerClientState.dismiss()
             }
             SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEachIndexed { index, keyMapping ->
                 while (keyMapping.consumeClick()) {
@@ -78,6 +83,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             SocialPhotoClient.tick()
             GpsClientState.tick()
             StructureCompassClientState.tick()
+            RotomTrackerClientState.tick()
             GuiScreenshotHarness.tick(client)
         })
 
@@ -87,12 +93,14 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             StructureCompassOverlay.render(guiGraphics)
             SocialPhotoClient.renderCameraOverlay(guiGraphics)
             RotomDialogueOverlay.render(guiGraphics)
+            RotomTrackerOverlay.render(guiGraphics)
         })
 
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
             SocialClientSession.clear()
             GpsClientState.reset()
             StructureCompassClientState.reset()
+            RotomTrackerClientState.reset()
         }
 
         CobblemonSmartphoneFabricNetworkManager.registerClientHandlers()

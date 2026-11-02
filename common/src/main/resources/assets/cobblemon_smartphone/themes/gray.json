@@ -1,0 +1,37 @@
+{
+  "id": "cobblemon_smartphone:gray",
+  "name": "theme.cobblemon_smartphone.gray",
+  "wallpaper": "cobblemon_smartphone:textures/gui/wallpapers/gray.png",
+  "large_wallpaper": "cobblemon_smartphone:textures/gui/wallpapers/gray_large.png",
+  "elements": {
+    "home_button": "cobblemon_smartphone:textures/gui/themes/gray/elements/home_button.png",
+    "prev_button": "cobblemon_smartphone:textures/gui/themes/gray/elements/prev_button.png",
+    "next_button": "cobblemon_smartphone:textures/gui/themes/gray/elements/next_button.png",
+    "settings_button": "cobblemon_smartphone:textures/gui/themes/gray/elements/settings_button.png"
+  },
+  "colors": {
+    "primary": "#455A64",
+    "primary_hover": "#546E7A",
+    "primary_border": "#263238",
+    "surface": "#F4F6F7",
+    "surface_alt": "#ECEFF1",
+    "surface_hover": "#CFD8DC",
+    "header_navy": "#171D21",
+    "header_navy_light": "#263036",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#CFD8DC",
+    "text_muted": "#839296",
+    "text_dark": "#13181C",
+    "text_dark_muted": "#414D52",
+    "gold": "#FFD700",
+    "danger": "#EF4444",
+    "success": "#3AAA55",
+    "time": "#FFFFFF",
+    "battery_border": "#607D8B",
+    "battery_empty": "#171D21",
+    "battery_high": "#22C55E",
+    "battery_med": "#EAB308",
+    "battery_low": "#EF4444"
+  },
+  "order": 13
+}

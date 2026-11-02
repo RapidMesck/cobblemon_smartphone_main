@@ -72,7 +72,7 @@ class PokeInfoScreen(
         searchBox.setMaxLength(30)
         searchBox.setBordered(false)
         searchBox.setHint(Component.translatable("cobblemon_smartphone.pokeinfo.search"))
-        searchBox.setTextColor(0xFF888888.toInt())
+        searchBox.setTextColor(theme.colors.textDarkMuted)
         searchBox.setResponder { query -> onSearchChanged(query) }
         addRenderableWidget(searchBox)
 
@@ -305,7 +305,11 @@ class PokeInfoScreen(
         val hovered = mouseX >= x1 && mouseX <= x2 && mouseY >= y1 && mouseY <= y2
 
         // Card background
-        val bgColor = if (hovered) 0x4DFFFFFF.toInt() else 0xBF3A96B6.toInt()
+        val bgColor = if (hovered) {
+            (theme.colors.primaryHover and 0x00FFFFFF) or 0xDF000000.toInt()
+        } else {
+            (theme.colors.primary and 0x00FFFFFF) or 0xBF000000.toInt()
+        }
         guiGraphics.fill(x1, y1, x2, y2, bgColor)
 
         // Divider line between cards
@@ -315,13 +319,14 @@ class PokeInfoScreen(
 
         // Left: dex number + name + type
         val dexAndName = "#${String.format("%03d", species.dexNumber)} ${localizedPokemonName(species)}"
-        val textColor = if (hovered) 0xFFFFD700.toInt() else 0xFFFFFFFF.toInt()
+        val textColor = if (hovered) theme.colors.gold else theme.colors.textPrimary
         guiGraphics.drawString(font, dexAndName, x1 + 8, y1 + 3, textColor, false)
 
         // Type line
         val types = listOfNotNull(species.primaryType, species.secondaryType)
         val typeText = types.joinToString(" / ") { localizedTypeName(it) }
-        guiGraphics.drawString(font, typeText, x1 + 8, y1 + 15, 0xA0FFFFFF.toInt(), false)
+        val typeColor = (theme.colors.textSecondary and 0x00FFFFFF) or 0xB0000000.toInt()
+        guiGraphics.drawString(font, typeText, x1 + 8, y1 + 15, typeColor, false)
 
         // Right: mini 3D model
         val model = getModel(species)

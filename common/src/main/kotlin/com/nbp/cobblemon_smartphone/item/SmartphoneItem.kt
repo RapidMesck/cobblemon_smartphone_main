@@ -8,8 +8,7 @@ import com.cobblemon.mod.common.util.party
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.isModLoaded
 import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
-import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
-import com.nbp.cobblemon_smartphone.client.gui.SmartphoneScreen
+import com.nbp.cobblemon_smartphone.client.SmartphoneClientItemHandler
 import com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper
 import com.nbp.cobblemon_smartphone.energy.getEnergy
 import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
@@ -24,7 +23,6 @@ import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRibbonDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomAccessory
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomPhone
 import net.minecraft.ChatFormatting
-import net.minecraft.client.Minecraft
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
@@ -104,12 +102,12 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         // Se for um Rotom Phone e estiver mirando em um Pokémon dentro do raio configurado:
         if (stack.isRotomPhone()) {
             val scanDist = if (level.isClientSide) {
-                com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.scanRadius
+                SmartphoneClientItemHandler.getClientScanRadius()
             } else {
                 CobblemonSmartphone.config.rotom.scanRadius
             }
             val canScanManual = if (level.isClientSide) {
-                com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.enableManualScanPriority
+                SmartphoneClientItemHandler.isClientManualScanEnabled()
             } else {
                 CobblemonSmartphone.config.rotom.enableManualScanPriority
             }
@@ -118,7 +116,7 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
                 val targeted = com.nbp.cobblemon_smartphone.util.RotomScannerHelper.findTargetedPokemon(player, scanDist)
                 if (targeted != null && targeted.isAlive) {
                     if (level.isClientSide) {
-                        com.nbp.cobblemon_smartphone.network.packet.SetRotomScanPriorityPacket(targeted.id).sendToServer()
+                        SmartphoneClientItemHandler.sendScanPriorityPacket(targeted.id)
                         player.playSound(CobblemonSounds.POKEDEX_SCAN_OPEN, 0.7f, 1.2f)
                     } else if (player is ServerPlayer) {
                         com.nbp.cobblemon_smartphone.server.RotomAutoScannerManager.setPlayerPriorityTarget(player, targeted)
@@ -129,13 +127,7 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         }
 
         if (level.isClientSide()) {
-            // While Social is using the world as a camera view, right-click is the
-            // shutter button. Do not reopen the smartphone screen from the held item.
-            if (SocialPhotoClient.isCameraActive()) {
-                return InteractionResultHolder.success(stack)
-            }
-            Minecraft.getInstance().setScreen(SmartphoneScreen(model, stack))
-            player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.5f, 1f)
+            SmartphoneClientItemHandler.handleUseOnClient(player, model, stack)
         }
         return InteractionResultHolder.success(stack)
     }
@@ -156,14 +148,14 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         // Se o smartphone for um Rotom Phone: prioriza o escaneamento deste Pokémon!
         if (heldStack.isRotomPhone() || stack.isRotomPhone()) {
             val canScanManual = if (level.isClientSide) {
-                com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.enableManualScanPriority
+                SmartphoneClientItemHandler.isClientManualScanEnabled()
             } else {
                 CobblemonSmartphone.config.rotom.enableManualScanPriority
             }
 
             if (canScanManual && interactionTarget.isAlive) {
                 if (level.isClientSide) {
-                    com.nbp.cobblemon_smartphone.network.packet.SetRotomScanPriorityPacket(interactionTarget.id).sendToServer()
+                    SmartphoneClientItemHandler.sendScanPriorityPacket(interactionTarget.id)
                     player.playSound(CobblemonSounds.POKEDEX_SCAN_OPEN, 0.7f, 1.2f)
                 } else if (player is ServerPlayer) {
                     com.nbp.cobblemon_smartphone.server.RotomAutoScannerManager.setPlayerPriorityTarget(player, interactionTarget)

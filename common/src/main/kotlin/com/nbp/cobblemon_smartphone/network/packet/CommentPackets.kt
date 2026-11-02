@@ -12,7 +12,7 @@ class AddCommentPacket(
         val ID = smartphoneResource("add_comment")
         fun decode(buffer: RegistryFriendlyByteBuf) = AddCommentPacket(
             buffer.readVarLong(),
-            buffer.readUtf()
+            buffer.readUtf(1024)
         )
     }
 
@@ -20,7 +20,7 @@ class AddCommentPacket(
 
     override fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeVarLong(postId)
-        buffer.writeUtf(text)
+        buffer.writeUtf(text, 1024)
     }
 }
 

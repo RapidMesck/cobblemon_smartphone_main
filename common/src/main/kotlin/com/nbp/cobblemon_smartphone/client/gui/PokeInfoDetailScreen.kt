@@ -46,6 +46,7 @@ class PokeInfoDetailScreen(
     private val SECTION_CONTENT_BG get() = theme.colors.surface
     private val CONTENT_TEXT get() = theme.colors.textDark
     private val CONTENT_DIM get() = theme.colors.textDarkMuted
+    private val CONTENT_GOLD get() = theme.colors.contentGold
     private val SECTION_TITLE_COLOR get() = theme.colors.textPrimary
     private var screenX = 0
     private var screenY = 0
@@ -368,13 +369,13 @@ class PokeInfoDetailScreen(
             val hovered = mouseX in x1 until x2 && mouseY in y1 until (y1 + PAGE_TABS_HEIGHT)
             val background = when {
                 selected -> SECTION_TITLE_BG
-                hovered -> 0xFF2D7188.toInt()
-                else -> 0xCC173D4B.toInt()
+                hovered -> theme.colors.primaryHover
+                else -> (theme.colors.headerNavy and 0x00FFFFFF) or 0xCC000000.toInt()
             }
             guiGraphics.fill(x1, y1, x2, y1 + PAGE_TABS_HEIGHT, background)
 
             val label = lang(page.translationKey)
-            val color = if (selected || hovered) 0xFFFFFFFF.toInt() else 0xFFB8DCE8.toInt()
+            val color = if (selected || hovered) theme.colors.textPrimary else theme.colors.textSecondary
             draw(guiGraphics, label, x1 + (x2 - x1 - textWidth(label)) / 2, y1 + 2, color)
         }
     }
@@ -449,14 +450,14 @@ class PokeInfoDetailScreen(
             val lx = navCenter - 60
             val leftHover =
                 mouseX >= lx - 4 && mouseX <= lx + 10 && mouseY >= screenY + y - 2 && mouseY <= screenY + y + 10
-            draw(guiGraphics, "\u003C", lx, screenY + y, if (leftHover) 0xFFFFD700.toInt() else SECTION_TITLE_COLOR)
+            draw(guiGraphics, "\u003C", lx, screenY + y, if (leftHover) theme.colors.gold else SECTION_TITLE_COLOR)
         }
-        draw(guiGraphics, formName, navCenter - textWidth(formName) / 2, screenY + y, 0xFFFFFFFF.toInt())
+        draw(guiGraphics, formName, navCenter - textWidth(formName) / 2, screenY + y, theme.colors.textPrimary)
         if (currentFormIndex < forms.size - 1) {
             val rx = navCenter + 50
             val rightHover =
                 mouseX >= rx - 4 && mouseX <= rx + 10 && mouseY >= screenY + y - 2 && mouseY <= screenY + y + 10
-            draw(guiGraphics, "\u003E", rx, screenY + y, if (rightHover) 0xFFFFD700.toInt() else SECTION_TITLE_COLOR)
+            draw(guiGraphics, "\u003E", rx, screenY + y, if (rightHover) theme.colors.gold else SECTION_TITLE_COLOR)
         }
 
         return sy + totalH
@@ -1460,7 +1461,6 @@ class PokeInfoDetailScreen(
         private const val SECTION_PAD_BOTTOM = 4
         private const val TITLE_GAP = 13
         private const val CONTENT_GAP = 3
-        private const val CONTENT_GOLD = 0xFFB8860B.toInt()
         private const val CONTENT_WEAK = 0xFFCC3333.toInt()
         private const val CONTENT_COND = 0xFFCC6633.toInt()
         private const val CONTENT_RESIST = 0xFF339933.toInt()

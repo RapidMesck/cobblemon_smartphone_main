@@ -103,10 +103,6 @@ object SmartphoneEnergyHelper {
      * Returns true if the action is allowed to proceed.
      */
     fun checkAndConsumeEnergy(player: ServerPlayer, actionId: String): Boolean {
-        if (!CobblemonSmartphone.config.energy.enableEnergy) return true
-        val cost = CobblemonSmartphone.config.energy.getCost(actionId)
-        if (cost <= 0) return true
-
         val phone = SmartphoneHelper.getSmartphone(player)
         if (phone == null) {
             player.displayClientMessage(
@@ -115,6 +111,10 @@ object SmartphoneEnergyHelper {
             )
             return false
         }
+
+        if (!CobblemonSmartphone.config.energy.enableEnergy) return true
+        val cost = CobblemonSmartphone.config.energy.getCost(actionId)
+        if (cost <= 0) return true
 
         if (phone.isInfiniteEnergy()) {
             return true

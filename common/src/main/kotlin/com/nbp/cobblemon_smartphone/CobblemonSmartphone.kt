@@ -24,11 +24,9 @@ import com.nbp.cobblemon_smartphone.api.SmartphoneStorageLinkRegistry
 import com.nbp.cobblemon_smartphone.compat.tomsstorage.TomsStorageLink
 import com.nbp.cobblemon_smartphone.client.BuiltinResourcePack
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
-import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.config.SmartphoneConfig
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgrade
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
-import net.minecraft.client.Minecraft
 import net.minecraft.server.packs.PackType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory

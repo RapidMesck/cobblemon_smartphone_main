@@ -6,9 +6,9 @@ import com.cobblemon.mod.common.client.net.data.DataRegistrySyncPacketHandler
 import com.cobblemon.mod.neoforge.net.NeoForgePacketInfo
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.network.CobblemonSmartphoneNetwork
-import net.minecraft.client.Minecraft
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
+import net.neoforged.neoforge.network.PacketDistributor
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent
 import net.neoforged.neoforge.network.registration.HandlerThread
 
@@ -37,6 +37,6 @@ object CobblemonSmartphoneNeoForgeNetworkManager : NetworkManager {
     }
 
     override fun sendToServer(packet: NetworkPacket<*>) {
-        Minecraft.getInstance().connection?.send(packet)
+        PacketDistributor.sendToServer(packet)
     }
 }

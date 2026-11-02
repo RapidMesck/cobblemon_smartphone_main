@@ -70,6 +70,7 @@ class SocialPostDetailScreen(
     private val ROW_HOVER_BG get() = theme.colors.surfaceHover
     private val DANGER_COLOR get() = theme.colors.danger
     private val SHINY_COLOR get() = theme.colors.gold
+    private val ATTACHMENT_BG_COLOR get() = (theme.colors.primary and 0x00FFFFFF) or 0x55000000
 
     override fun isPauseScreen(): Boolean = false
 
@@ -89,7 +90,7 @@ class SocialPostDetailScreen(
         )
         input.setMaxLength(CobblemonSmartphone.config.social.maxCommentLength)
         input.setBordered(false)
-        input.setTextColor(0xFF333333.toInt())
+        input.setTextColor(theme.colors.textDarkMuted)
         addRenderableWidget(input)
         setInitialFocus(input)
 
@@ -191,7 +192,7 @@ class SocialPostDetailScreen(
 
         if (input.value.isEmpty() && !input.isFocused) {
             val placeholder = lang("comment_placeholder")
-            guiGraphics.drawString(font, placeholder, ix + 4, iy + 4, 0xFF999999.toInt(), false)
+            guiGraphics.drawString(font, placeholder, ix + 4, iy + 4, theme.colors.textDarkMuted, false)
         }
         input.render(guiGraphics, mouseX, mouseY, delta)
 
@@ -1311,7 +1312,6 @@ class SocialPostDetailScreen(
         const val POPUP_STAT_VALUES_X = 31
         const val POPUP_STAT_COLUMN_WIDTH = 20
 
-        const val ATTACHMENT_BG_COLOR = 0x553A96B6
         const val POPUP_OVERLAY_COLOR = 0x88071322.toInt()
         const val POKEBALL_FRAME_COUNT = 16L
         const val POKEBALL_FRAME_SIZE = 109

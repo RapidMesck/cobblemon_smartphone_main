@@ -75,11 +75,26 @@ data class SmartphoneTheme(
     fun getLargeFrameTexture(defaultColorTexture: ResourceLocation): ResourceLocation =
         largeFrame ?: defaultColorTexture
 
-    fun getAppIcon(actionId: String, defaultTexture: ResourceLocation): ResourceLocation =
-        appIcons[actionId] ?: defaultTexture
+    fun getAppIcon(actionId: String, defaultTexture: ResourceLocation): ResourceLocation {
+        appIcons[actionId]?.let { return it }
+        val fileName = defaultTexture.path.substringAfterLast('/')
+        appIcons[fileName]?.let { return it }
+        val baseName = fileName.removeSuffix(".png")
+        appIcons[baseName]?.let { return it }
+        return defaultTexture
+    }
 
-    fun getAppHoverIcon(actionId: String, defaultHoverTexture: ResourceLocation): ResourceLocation =
-        appHoverIcons[actionId] ?: appIcons[actionId] ?: defaultHoverTexture
+    fun getAppHoverIcon(actionId: String, defaultHoverTexture: ResourceLocation): ResourceLocation {
+        appHoverIcons[actionId]?.let { return it }
+        appIcons[actionId]?.let { return it }
+        val fileName = defaultHoverTexture.path.substringAfterLast('/')
+        appHoverIcons[fileName]?.let { return it }
+        val baseName = fileName.removeSuffix(".png")
+        appHoverIcons[baseName]?.let { return it }
+        appIcons[fileName]?.let { return it }
+        appIcons[baseName]?.let { return it }
+        return defaultHoverTexture
+    }
 
     fun getSocialPokeballTexture(): ResourceLocation =
         elements.socialPokeball ?: DEFAULT_POKEBALL_BACKGROUND

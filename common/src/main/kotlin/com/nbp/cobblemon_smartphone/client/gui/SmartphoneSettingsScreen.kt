@@ -28,7 +28,8 @@ import net.minecraft.world.item.ItemStack
 
 class SmartphoneSettingsScreen(
     private val color: SmartphoneColor,
-    private val smartphoneStack: ItemStack? = null
+    private val smartphoneStack: ItemStack? = null,
+    initialTab: SettingsTab = SettingsTab.APPS
 ) : Screen(Component.translatable("cobblemon_smartphone.screen.settings")) {
 
     private val orderedIds = SmartphoneActionOrder.apply(SmartphoneActionRegistry.getEnabledActions())
@@ -59,7 +60,7 @@ class SmartphoneSettingsScreen(
         THEMES
     }
 
-    private var currentTab = SettingsTab.APPS
+    private var currentTab = initialTab
     private var currentThemePage = 0
     private var selectedThemeId: String = SmartphoneTheme.DEFAULT_ID
 
@@ -124,7 +125,7 @@ class SmartphoneSettingsScreen(
             pagedIds().forEachIndexed { index, actionId ->
                 renderGridItem(guiGraphics, mouseX, mouseY, index, actionId, currentTheme)
             }
-            renderPageDots(guiGraphics)
+            renderPageDots(guiGraphics, currentTheme)
             renderSelector(guiGraphics, mouseX, mouseY, currentTheme)
             renderHoveredTooltip(guiGraphics, mouseX, mouseY)
         } else {
@@ -132,7 +133,7 @@ class SmartphoneSettingsScreen(
             pagedThemes().forEachIndexed { index, theme ->
                 renderThemeCard(guiGraphics, mouseX, mouseY, index, theme, currentTheme)
             }
-            renderThemePageDots(guiGraphics)
+            renderThemePageDots(guiGraphics, currentTheme)
             renderThemeHoveredTooltip(guiGraphics, mouseX, mouseY)
         }
 
@@ -691,7 +692,7 @@ class SmartphoneSettingsScreen(
         drawScaled(guiGraphics, hint, screenX + (GUI_WIDTH - width) / 2, screenY + HINT_Y, theme.colors.textSecondary, HINT_SCALE)
     }
 
-    private fun renderThemePageDots(guiGraphics: GuiGraphics) {
+    private fun renderThemePageDots(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
         val totalDots = (maxThemePage + 1).coerceAtMost(MAX_VISIBLE_DOTS)
         if (totalDots <= 1) return
 
@@ -705,7 +706,8 @@ class SmartphoneSettingsScreen(
                 guiGraphics = guiGraphics,
                 x = screenX + startX + i * (DOT_SIZE + DOT_SPACING),
                 y = screenY + DOT_Y + yOffset,
-                active = active
+                active = active,
+                activeColor = theme.colors.primary
             )
         }
     }
@@ -819,7 +821,7 @@ class SmartphoneSettingsScreen(
         )
     }
 
-    private fun renderPageDots(guiGraphics: GuiGraphics) {
+    private fun renderPageDots(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
         val totalPages = maxPage + 1
         if (totalPages <= 1) {
             return
@@ -841,7 +843,8 @@ class SmartphoneSettingsScreen(
                 guiGraphics,
                 screenX + startX + index * (DOT_SIZE + DOT_SPACING),
                 screenY + DOT_Y + yOffset,
-                active
+                active,
+                activeColor = theme.colors.primary
             )
         }
     }

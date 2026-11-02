@@ -226,11 +226,47 @@ class SmartphoneThemeTest {
 
     @Test
     fun `resolveCurrentTheme respects clientPreferredTheme`() {
-        SmartphoneThemeHelper.clientPreferredTheme = "cobblemon_smartphone:dark"
+        SmartphoneThemeHelper.clientPreferredTheme = "cobblemon_smartphone:red"
         val resolved = SmartphoneThemeHelper.resolveCurrentTheme(null)
-        // If dark is not registered in unit test environment, it falls back to DEFAULT or dark if found
         assertNotNull(resolved)
         SmartphoneThemeHelper.clientPreferredTheme = null
         assertEquals(SmartphoneTheme.DEFAULT, SmartphoneThemeHelper.resolveCurrentTheme(null))
+    }
+
+    @Test
+    fun `isDark and semantic helpers differentiate light and dark surfaces`() {
+        val lightTheme = SmartphoneThemeColors.DEFAULT
+        assertFalse(lightTheme.isDark)
+        assertEquals(0xFFB8860B.toInt(), lightTheme.contentGold)
+        assertEquals(0xFFB9C4C6.toInt(), lightTheme.cardDisabledContentBg)
+
+        val darkTheme = SmartphoneThemeColors.DARK
+        assertTrue(darkTheme.isDark)
+        assertEquals(darkTheme.gold, darkTheme.contentGold)
+        assertEquals(darkTheme.surfaceAlt, darkTheme.cardDisabledContentBg)
+    }
+
+    @Test
+    fun `getAppIcon resolves by actionId, filename or basename`() {
+        val rotomDefault = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/rotom.png")
+        val rotomHoverDefault = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/rotom_hover.png")
+        val redRotom = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/themes/red/buttons/rotom.png")
+        val redRotomHover = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/themes/red/buttons/rotom_hover.png")
+
+        val theme = SmartphoneTheme(
+            id = "cobblemon_smartphone:red",
+            name = Component.literal("Red"),
+            wallpaper = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/wallpapers/red.png"),
+            appIcons = mapOf("rotom.png" to redRotom),
+            appHoverIcons = mapOf("rotom_hover.png" to redRotomHover)
+        )
+
+        // Resolves via fileName fallback
+        assertEquals(redRotom, theme.getAppIcon("cobblemon_smartphone:rotom", rotomDefault))
+        assertEquals(redRotomHover, theme.getAppHoverIcon("cobblemon_smartphone:rotom", rotomHoverDefault))
+
+        // Non-mapped action falls back cleanly
+        val craftingDefault = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/crafting.png")
+        assertEquals(craftingDefault, theme.getAppIcon("cobblemon_smartphone:crafting", craftingDefault))
     }
 }

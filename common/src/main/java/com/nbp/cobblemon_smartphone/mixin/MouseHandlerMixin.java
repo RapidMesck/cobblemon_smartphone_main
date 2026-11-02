@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.mixin;
 
 import com.nbp.cobblemon_smartphone.client.gui.CallOverlay;
+import com.nbp.cobblemon_smartphone.client.gui.RotomTrackerOverlay;
 import net.minecraft.client.MouseHandler;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -8,9 +9,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Routes a left mouse press to the call overlay's buttons before the game handles it, so they're
+ * Routes a left mouse press to the overlays before the game handles it, so they're
  * clickable while no screen is open (the HUD never receives clicks on its own). Consumes the press
- * only when the overlay handled it.
+ * only when an overlay handled it.
  */
 @Mixin(MouseHandler.class)
 public class MouseHandlerMixin {
@@ -18,8 +19,10 @@ public class MouseHandlerMixin {
     @Inject(method = "onPress", at = @At("HEAD"), cancellable = true)
     private void cobblemonsmartphone$overlayClick(long window, int button, int action, int mods, CallbackInfo ci) {
         // GLFW_MOUSE_BUTTON_LEFT == 0, GLFW_PRESS == 1
-        if (button == 0 && action == 1 && CallOverlay.INSTANCE.handleClick()) {
-            ci.cancel();
+        if (button == 0 && action == 1) {
+            if (CallOverlay.INSTANCE.handleClick() || RotomTrackerOverlay.INSTANCE.handleClick()) {
+                ci.cancel();
+            }
         }
     }
 }

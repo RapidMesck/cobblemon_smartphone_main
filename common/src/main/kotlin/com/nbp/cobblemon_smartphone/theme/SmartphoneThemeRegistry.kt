@@ -10,6 +10,35 @@ object SmartphoneThemeRegistry {
     private val themes = mutableListOf<SmartphoneTheme>()
     private var lastResourceManager: ResourceManager? = null
 
+    val STANDARD_APP_BUTTONS = listOf(
+        "ae2", "cloud", "cobbledollars", "crafting", "fishnav", "gps", "heal",
+        "patchouli", "pc", "pokedex", "pokeinfo", "pokenav", "refinedstorage",
+        "rotom", "social", "structure_compass", "toms_storage", "trainer",
+        "waystone", "wireless"
+    )
+
+    val STANDARD_BUTTON_ACTIONS = mapOf(
+        "ae2" to listOf("cobblemon_smartphone:ae2_terminal", "cobblemon_smartphone:ae2_crafting_terminal"),
+        "cloud" to listOf("cobblemon_smartphone:cloud"),
+        "cobbledollars" to listOf("cobblemon_smartphone:cobbledollars_shop"),
+        "crafting" to listOf("cobblemon_smartphone:crafting"),
+        "fishnav" to listOf("cobblemon_smartphone:cobblenav_fishingnav"),
+        "gps" to listOf("cobblemon_smartphone:gps"),
+        "heal" to listOf("cobblemon_smartphone:heal"),
+        "pc" to listOf("cobblemon_smartphone:pc"),
+        "pokedex" to listOf("cobblemon_smartphone:pokedex"),
+        "pokeinfo" to listOf("cobblemon_smartphone:pokeinfo"),
+        "pokenav" to listOf("cobblemon_smartphone:cobblenav_pokenav"),
+        "refinedstorage" to listOf("cobblemon_smartphone:refinedstorage_grid"),
+        "rotom" to listOf("cobblemon_smartphone:rotom"),
+        "social" to listOf("cobblemon_smartphone:social"),
+        "structure_compass" to listOf("cobblemon_smartphone:structure_compass"),
+        "toms_storage" to listOf("cobblemon_smartphone:toms_storage_terminal"),
+        "trainer" to listOf("cobblemon_smartphone:rct_trainer_card"),
+        "waystone" to listOf("cobblemon_smartphone:waystones_warp_stone"),
+        "wireless" to listOf("cobblemon_smartphone:wireless")
+    )
+
     fun getThemes(): List<SmartphoneTheme> {
         val rm = try { net.minecraft.client.Minecraft.getInstance()?.resourceManager } catch (_: Exception) { null }
         if (rm != null && (lastResourceManager !== rm || themes.isEmpty())) {
@@ -229,12 +258,52 @@ object SmartphoneThemeRegistry {
                             }
                         }
 
-                        // Colors
-                        val baseColors = when (id) {
-                            "cobblemon_smartphone:dark" -> SmartphoneThemeColors.DARK
-                            "cobblemon_smartphone:rotom" -> SmartphoneThemeColors.ROTOM
-                            else -> SmartphoneThemeColors.DEFAULT
+                        // Auto-discover themed buttons and elements if available for this theme
+                        val themeSlug = id.substringAfter(':')
+                        for (btn in STANDARD_APP_BUTTONS) {
+                            val btnLoc = ResourceLocation.fromNamespaceAndPath(
+                                CobblemonSmartphone.ID,
+                                "textures/gui/themes/$themeSlug/buttons/$btn.png"
+                            )
+                            if (isTexturePresent(resourceManager, btnLoc)) {
+                                if (!appIcons.containsKey(btn)) appIcons[btn] = btnLoc
+                                if (!appIcons.containsKey("$btn.png")) appIcons["$btn.png"] = btnLoc
+                                STANDARD_BUTTON_ACTIONS[btn]?.forEach { actId ->
+                                    if (!appIcons.containsKey(actId)) appIcons[actId] = btnLoc
+                                }
+                            }
+                            val hoverLoc = ResourceLocation.fromNamespaceAndPath(
+                                CobblemonSmartphone.ID,
+                                "textures/gui/themes/$themeSlug/buttons/${btn}_hover.png"
+                            )
+                            if (isTexturePresent(resourceManager, hoverLoc)) {
+                                if (!appHoverIcons.containsKey(btn)) appHoverIcons[btn] = hoverLoc
+                                if (!appHoverIcons.containsKey("${btn}_hover.png")) appHoverIcons["${btn}_hover.png"] = hoverLoc
+                                STANDARD_BUTTON_ACTIONS[btn]?.forEach { actId ->
+                                    if (!appHoverIcons.containsKey(actId)) appHoverIcons[actId] = hoverLoc
+                                }
+                            }
                         }
+
+                        if (homeBtn == null) {
+                            val loc = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/themes/$themeSlug/elements/home_button.png")
+                            if (isTexturePresent(resourceManager, loc)) homeBtn = loc
+                        }
+                        if (prevBtn == null) {
+                            val loc = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/themes/$themeSlug/elements/prev_button.png")
+                            if (isTexturePresent(resourceManager, loc)) prevBtn = loc
+                        }
+                        if (nextBtn == null) {
+                            val loc = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/themes/$themeSlug/elements/next_button.png")
+                            if (isTexturePresent(resourceManager, loc)) nextBtn = loc
+                        }
+                        if (settingsBtn == null) {
+                            val loc = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, "textures/gui/themes/$themeSlug/elements/settings_button.png")
+                            if (isTexturePresent(resourceManager, loc)) settingsBtn = loc
+                        }
+
+                        // Colors
+                        val baseColors = SmartphoneThemeColors.DEFAULT
                         var themeColors = baseColors
                         if (obj.has("colors") && obj.get("colors").isJsonObject) {
                             val colObj = obj.getAsJsonObject("colors")
@@ -303,7 +372,9 @@ object SmartphoneThemeRegistry {
         // 4. Auto-discover PNG wallpapers/themes: assets/<namespace>/textures/gui/themes/*.png and wallpapers/*.png
         val pngDirs = listOf("textures/gui/themes", "textures/gui/wallpapers")
         for (dir in pngDirs) {
-            val pngResources = resourceManager.listResources(dir) { it.path.endsWith(".png") }
+            val pngResources = resourceManager.listResources(dir) {
+                it.path.endsWith(".png") && !it.path.contains("/buttons/") && !it.path.contains("/elements/")
+            }
             val (largePngs, regularPngs) = pngResources.entries.partition {
                 it.key.path.endsWith("_large.png") || it.key.path.endsWith("-large.png")
             }

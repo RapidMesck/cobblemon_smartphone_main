@@ -27,9 +27,16 @@ object PageDotRenderer {
         2, 3, 5, 6, 6, 6, 5, 3, 2,
     )
 
-    fun draw(guiGraphics: GuiGraphics, x: Int, y: Int, active: Boolean) {
+    fun draw(
+        guiGraphics: GuiGraphics,
+        x: Int,
+        y: Int,
+        active: Boolean,
+        activeColor: Int = 0x00FFFFFF,
+        inactiveColor: Int = 0x00000000
+    ) {
         val alpha = if (active) ACTIVE_ALPHA else INACTIVE_ALPHA
-        val rgb = if (active) 0x00FFFFFF else 0x00000000
+        val rgb = if (active) (activeColor and 0x00FFFFFF) else (inactiveColor and 0x00FFFFFF)
         alpha.forEachIndexed { index, value ->
             if (value == 0) return@forEachIndexed
             val px = index % SIZE

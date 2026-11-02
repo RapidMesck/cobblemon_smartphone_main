@@ -7,7 +7,7 @@ class ExecuteDatapackActionPacket(val actionId: String) : CobblemonSmartphoneNet
     companion object {
         val ID = smartphoneResource("execute_datapack_action")
         fun decode(buffer: RegistryFriendlyByteBuf): ExecuteDatapackActionPacket {
-            val actionId = buffer.readUtf()
+            val actionId = buffer.readUtf(128)
             return ExecuteDatapackActionPacket(actionId)
         }
     }
@@ -15,6 +15,6 @@ class ExecuteDatapackActionPacket(val actionId: String) : CobblemonSmartphoneNet
     override val id = ID
 
     override fun encode(buffer: RegistryFriendlyByteBuf) {
-        buffer.writeUtf(actionId)
+        buffer.writeUtf(actionId, 128)
     }
 }

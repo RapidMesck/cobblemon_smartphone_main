@@ -50,5 +50,7 @@ object CobblemonSmartphoneNeoForgeClient {
         } else {
             AE2AccessHolder.instance?.initializeClient()
         }
+
+        com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper.clientPlayerProvider = { net.minecraft.client.Minecraft.getInstance().player }
     }
 }

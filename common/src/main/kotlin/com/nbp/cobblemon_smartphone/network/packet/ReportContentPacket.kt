@@ -12,7 +12,7 @@ class ReportContentPacket(
     companion object {
         val ID = smartphoneResource("report_content")
         fun decode(buffer: RegistryFriendlyByteBuf): ReportContentPacket {
-            val type = ReportTargetType.valueOf(buffer.readUtf())
+            val type = runCatching { ReportTargetType.valueOf(buffer.readUtf(32)) }.getOrDefault(ReportTargetType.POST)
             val targetId = buffer.readVarLong()
             val reason = buffer.readUtf(256)
             return ReportContentPacket(type, targetId, reason)

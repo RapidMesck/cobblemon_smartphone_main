@@ -105,7 +105,7 @@ class SmartphoneScreen(
             renderBadge(guiGraphics, action.badgeCount(), x, y, theme)
         }
 
-        renderPageDots(guiGraphics)
+        renderPageDots(guiGraphics, theme)
         renderFooterButtons(guiGraphics, mouseX, mouseY, theme)
         renderHoveredTooltip(guiGraphics, mouseX, mouseY)
     }
@@ -341,7 +341,7 @@ class SmartphoneScreen(
         )
     }
 
-    private fun renderPageDots(guiGraphics: GuiGraphics) {
+    private fun renderPageDots(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
         val totalPages = maxPage + 1
         if (totalPages <= 1) {
             return
@@ -363,7 +363,8 @@ class SmartphoneScreen(
                 guiGraphics,
                 screenX + startX + index * (DOT_SIZE + DOT_SPACING),
                 screenY + DOT_Y + yOffset,
-                active
+                active,
+                activeColor = theme.colors.primary
             )
         }
     }

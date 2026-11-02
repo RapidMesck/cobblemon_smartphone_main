@@ -49,7 +49,8 @@ data class RotomRadarConfig(
     val targets: MutableList<RotomTarget> = mutableListOf(),
     var autoScanPokedex: Boolean = true,
     var language: String = "en",
-    var scanDisplayMode: Int = DISPLAY_FULL
+    var scanDisplayMode: Int = DISPLAY_FULL,
+    var hudTracker: Boolean = true
 ) {
     val showCuriosityText: Boolean
         get() = scanDisplayMode == DISPLAY_FULL
@@ -69,6 +70,7 @@ data class RotomRadarConfig(
         tag.putBoolean("autoScanPokedex", autoScanPokedex)
         tag.putString("language", language)
         tag.putInt("scanDisplayMode", scanDisplayMode)
+        tag.putBoolean("hudTracker", hudTracker)
 
         val list = ListTag()
         for (target in targets) {
@@ -98,7 +100,8 @@ data class RotomRadarConfig(
                 soundAlert = if (tag.contains("soundAlert")) tag.getBoolean("soundAlert") else true,
                 autoScanPokedex = if (tag.contains("autoScanPokedex")) tag.getBoolean("autoScanPokedex") else true,
                 language = if (tag.contains("language")) tag.getString("language") else "en",
-                scanDisplayMode = mode
+                scanDisplayMode = mode,
+                hudTracker = if (tag.contains("hudTracker")) tag.getBoolean("hudTracker") else true
             )
             if (tag.contains("targets", Tag.TAG_LIST.toInt())) {
                 val list = tag.getList("targets", Tag.TAG_COMPOUND.toInt())

@@ -2,9 +2,9 @@ package com.nbp.cobblemon_smartphone.theme
 
 import com.nbp.cobblemon_smartphone.util.PreferencesSaver
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
-import net.minecraft.client.Minecraft
 import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.component.CustomData
 
@@ -34,6 +34,9 @@ object SmartphoneThemeHelper {
     @Volatile
     var clientPreferredTheme: String? = null
 
+    @Volatile
+    var clientPlayerProvider: (() -> Player?)? = null
+
     fun resolveCurrentTheme(smartphoneStack: ItemStack?): SmartphoneTheme {
         if (smartphoneStack != null && !smartphoneStack.isEmpty) {
             val itemTheme = smartphoneStack.getTheme()
@@ -42,7 +45,7 @@ object SmartphoneThemeHelper {
             }
         }
 
-        val player = try { Minecraft.getInstance()?.player } catch (_: Exception) { null }
+        val player = clientPlayerProvider?.invoke()
         if (player != null) {
             // Also check any smartphone item on the player
             val playerPhone = SmartphoneHelper.getSmartphone(player)
@@ -68,6 +71,21 @@ object SmartphoneThemeHelper {
         val preferred = clientPreferredTheme
         if (!preferred.isNullOrBlank()) {
             return SmartphoneThemeRegistry.getTheme(preferred)
+        }
+
+        val phoneItem = smartphoneStack?.item
+        if (phoneItem is com.nbp.cobblemon_smartphone.item.SmartphoneItem) {
+            val colorTheme = SmartphoneThemeRegistry.getTheme("cobblemon_smartphone:${phoneItem.getColor().modelName}")
+            if (colorTheme.id != SmartphoneTheme.DEFAULT_ID) {
+                return colorTheme
+            }
+        }
+        val contextColor = SmartphoneHelper.contextColor
+        if (contextColor != null) {
+            val colorTheme = SmartphoneThemeRegistry.getTheme("cobblemon_smartphone:${contextColor.modelName}")
+            if (colorTheme.id != SmartphoneTheme.DEFAULT_ID) {
+                return colorTheme
+            }
         }
 
         return SmartphoneTheme.DEFAULT

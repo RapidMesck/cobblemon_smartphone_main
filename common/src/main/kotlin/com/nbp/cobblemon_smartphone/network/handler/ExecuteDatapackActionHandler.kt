@@ -26,6 +26,14 @@ object ExecuteDatapackActionHandler : ServerNetworkPacketHandler<ExecuteDatapack
                 return@execute
             }
 
+            if (SmartphoneHelper.getSmartphone(player) == null) {
+                player.displayClientMessage(
+                    Component.translatable("message.cobblemon_smartphone.no_smartphone").withColor(0xfd0100),
+                    true
+                )
+                return@execute
+            }
+
             val requiredUpgrade = DatapackActionLoader.getActionRequiredUpgrade(actionId)
             if (requiredUpgrade != null && !SmartphoneHelper.hasUpgradeOnAnySmartphone(player, requiredUpgrade, actionId)) {
                 CobblemonSmartphone.LOGGER.warn(

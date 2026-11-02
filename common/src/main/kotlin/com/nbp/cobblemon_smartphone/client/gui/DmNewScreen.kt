@@ -60,7 +60,7 @@ class DmNewScreen(
         searchBox.setHint(Component.translatable("cobblemon_smartphone.social.search_trainers"))
         searchBox.setMaxLength(32)
         searchBox.setBordered(false)
-        searchBox.setTextColor(theme.colors.textDark)
+        searchBox.setTextColor(theme.colors.textDarkMuted)
         addRenderableWidget(searchBox)
     }
 

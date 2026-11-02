@@ -217,12 +217,5 @@ object CallOverlay {
     private const val BUTTON_HEIGHT = 13
     private const val KEY_SCALE = 0.5f
     private const val KEY_PAD = 2
-
-    private const val PANEL_COLOR = 0xE01A1A1A.toInt()
-    private const val BORDER_COLOR = 0xFF3A96B6.toInt()
-    private const val NAME_COLOR = 0xFFFFFFFF.toInt()
-    private const val MUTED_COLOR = 0xFF8AA5AD.toInt()
-    private const val ACCEPT_COLOR = 0xFF3AAA55.toInt()
-    private const val DECLINE_COLOR = 0xFFCC3333.toInt()
     private const val KEY_BG_COLOR = 0xCC000000.toInt()
 }

@@ -40,7 +40,7 @@ class SyncRotomConfigPacket(
             val returnTicks = buffer.readVarInt()
             val infiniteEnergy = buffer.readBoolean()
             val enableSocialDataShare = if (buffer.isReadable) buffer.readBoolean() else true
-            val socialDataShareChance = if (buffer.isReadable) buffer.readDouble() else 0.35
+            val socialDataShareChance = if (buffer.readableBytes() >= 8) buffer.readDouble() else 0.35
             val curiosityLanguage = if (buffer.isReadable) buffer.readUtf(16) else "en"
             return SyncRotomConfigPacket(
                 enableScanner = enableScanner,

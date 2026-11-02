@@ -80,6 +80,7 @@ class SocialScreen(
     private val ACCENT_COLOR get() = theme.colors.primary
     private val SHINY_COLOR get() = theme.colors.gold
     private val DANGER_COLOR get() = theme.colors.danger
+    private val ATTACHMENT_BG_COLOR get() = (theme.colors.primary and 0x00FFFFFF) or 0x55000000
 
     /** Cached per post id so we don't rebuild a RenderablePokemon every frame. */
     private val renderableCache = mutableMapOf<Long, RenderablePokemon?>()
@@ -1787,8 +1788,6 @@ class SocialScreen(
         private const val LOADING_COLOR = 0xFFAAAAAA.toInt()
         private const val SEPARATOR_COLOR = 0x30FFFFFF.toInt()
         private const val DIVIDER_COLOR = 0x15FFFFFF.toInt()
-        private const val BUTTON_DISABLED_BG = 0xFFCCCCCC.toInt()
-        private const val ATTACHMENT_BG_COLOR = 0x553A96B6
         private const val POPUP_OVERLAY_COLOR = 0x88071322.toInt()
         private const val POPUP_Z = 1_000f
         private const val POKEBALL_FRAME_COUNT = 16L

@@ -28,8 +28,9 @@ object RotomAppAction : SmartphoneAction {
     }
 
     override fun isEnabled(): Boolean {
-        val player = Minecraft.getInstance().player ?: return false
-        val phone = SmartphoneHelper.contextSmartphone ?: SmartphoneHelper.getSmartphone(player) ?: return false
+        val phone = SmartphoneHelper.contextSmartphone
+            ?: Minecraft.getInstance().player?.let { SmartphoneHelper.getSmartphone(it) }
+            ?: return false
         return phone.isRotomPhone()
     }
 }

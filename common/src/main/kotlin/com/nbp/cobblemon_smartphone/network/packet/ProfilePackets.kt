@@ -51,7 +51,7 @@ class UpdateProfilePacket(
     companion object {
         val ID = smartphoneResource("update_profile")
         fun decode(buffer: RegistryFriendlyByteBuf) = UpdateProfilePacket(
-            buffer.readUtf(),
+            buffer.readUtf(512),
             buffer.readVarInt()
         )
     }
@@ -59,7 +59,7 @@ class UpdateProfilePacket(
     override val id = ID
 
     override fun encode(buffer: RegistryFriendlyByteBuf) {
-        buffer.writeUtf(bio)
+        buffer.writeUtf(bio, 512)
         buffer.writeVarInt(favoritePartySlot)
     }
 }

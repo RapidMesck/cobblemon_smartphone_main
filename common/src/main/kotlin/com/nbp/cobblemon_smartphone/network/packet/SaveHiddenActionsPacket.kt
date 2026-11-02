@@ -10,7 +10,7 @@ class SaveHiddenActionsPacket(val hidden: List<String>) : CobblemonSmartphoneNet
         private const val MAX_STRING_LENGTH = 256
 
         fun decode(buffer: RegistryFriendlyByteBuf): SaveHiddenActionsPacket {
-            val count = buffer.readVarInt().coerceAtMost(MAX_ENTRIES)
+            val count = buffer.readVarInt().coerceIn(0, MAX_ENTRIES)
             val hidden = (0 until count).map { buffer.readUtf(MAX_STRING_LENGTH) }
             return SaveHiddenActionsPacket(hidden)
         }

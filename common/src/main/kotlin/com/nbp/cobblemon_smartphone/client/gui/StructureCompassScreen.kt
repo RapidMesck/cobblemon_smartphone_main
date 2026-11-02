@@ -30,6 +30,10 @@ class StructureCompassScreen(
     private val CARD_HEADER_HOVER_BG get() = theme.colors.primaryHover
     private val CONTENT_TEXT get() = theme.colors.textDark
     private val CONTENT_DIM get() = theme.colors.textDarkMuted
+    private val CONTENT_GOLD get() = theme.colors.contentGold
+    private val CARD_HEADER_DISABLED_BG get() = theme.colors.cardDisabledHeaderBg
+    private val CARD_CONTENT_DISABLED_BG get() = theme.colors.cardDisabledContentBg
+    private val CARD_TEXT_DISABLED get() = theme.colors.cardDisabledText
     private var screenX = 0
     private var screenY = 0
     private var scrollY = 0
@@ -67,7 +71,7 @@ class StructureCompassScreen(
         searchBox.setMaxLength(30)
         searchBox.setBordered(false)
         searchBox.setHint(Component.translatable("cobblemon_smartphone.structure_compass.search"))
-        searchBox.setTextColor(0xFF888888.toInt())
+        searchBox.setTextColor(theme.colors.textDarkMuted)
         searchBox.setResponder { query -> onSearchChanged(query) }
         addRenderableWidget(searchBox)
 
@@ -336,7 +340,7 @@ class StructureCompassScreen(
         guiGraphics.fill(x1, y1, x2, headerY, headerBg)
         guiGraphics.fill(x1, headerY, x2, y2, contentBg)
 
-        val nameColor = if (trackable) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt()
+        val nameColor = if (trackable) theme.colors.textPrimary else theme.colors.textMuted
         val labelColor = if (trackable) CONTENT_DIM else CARD_TEXT_DISABLED
         val valueColor = if (trackable) CONTENT_TEXT else CARD_TEXT_DISABLED
         val goldColor = if (trackable) CONTENT_GOLD else CARD_TEXT_DISABLED
@@ -425,13 +429,6 @@ class StructureCompassScreen(
         private const val BACK_X = 20
         private const val BACK_Y = 14
         private const val STOP_RIGHT_MARGIN = 43
-
-        // Same palette PokeInfoDetailScreen uses for its section boxes, reused here so the
-        // structure cards read as the same kind of "field" instead of a flat translucent tint.
-        private const val CONTENT_GOLD = 0xFFB8860B.toInt()
-        private const val CARD_HEADER_DISABLED_BG = 0xFF33474F.toInt()
-        private const val CARD_CONTENT_DISABLED_BG = 0xFFB9C4C6.toInt()
-        private const val CARD_TEXT_DISABLED = 0xFF7A8688.toInt()
 
         private const val SEARCH_X = 22
         private const val SEARCH_Y = 28

@@ -87,6 +87,7 @@ class DmThreadScreen(
     private val DM_ATTACHMENT_BG get() = theme.colors.surface
     private val SHINY_COLOR get() = theme.colors.gold
     private val DANGER_BUTTON_COLOR get() = theme.colors.danger
+    private val DISABLED_COLOR get() = theme.colors.buttonDisabledBg
 
     private val messageCooldownSec get() = SocialClientSession.capabilities.messageCooldownSeconds
 
@@ -120,7 +121,7 @@ class DmThreadScreen(
         )
         input.setMaxLength(SocialClientSession.capabilities.maxMessageLength)
         input.setBordered(false)
-        input.setTextColor(0xFF888888.toInt())
+        input.setTextColor(theme.colors.textDarkMuted)
         addRenderableWidget(input)
         setInitialFocus(input)
     }
@@ -274,7 +275,7 @@ class DmThreadScreen(
                 "+ " + lang("follow")
             }
             val trimmedFText = font.plainSubstrByWidth(fText, fW - 4)
-            val fTextColor = if (isFollowed && !fHovered) CONTENT_TEXT else 0xFFFFFFFF.toInt()
+            val fTextColor = if (isFollowed && !fHovered) CONTENT_TEXT else theme.colors.textPrimary
             guiGraphics.drawString(font, trimmedFText, fX + (fW - font.width(trimmedFText)) / 2, btnY + 2, fTextColor, false)
 
             // 2. Battle button
@@ -316,7 +317,7 @@ class DmThreadScreen(
                 "+ " + lang("follow")
             }
             val trimmedFText = font.plainSubstrByWidth(fText, fW - 4)
-            val fTextColor = if (isFollowed && !fHovered) CONTENT_TEXT else 0xFFFFFFFF.toInt()
+            val fTextColor = if (isFollowed && !fHovered) CONTENT_TEXT else theme.colors.textPrimary
             guiGraphics.drawString(font, trimmedFText, fX + (fW - font.width(trimmedFText)) / 2, btnY + 2, fTextColor, false)
         }
     }
@@ -462,7 +463,7 @@ class DmThreadScreen(
             timestamp,
             x + bubbleWidth - BUBBLE_PAD - font.width(timestamp),
             y + height - font.lineHeight,
-            if (own) 0xFFBFE5EF.toInt() else SocialUi.MUTED,
+            if (own) theme.colors.textSecondary else theme.colors.textDarkMuted,
             false
         )
     }
@@ -1035,7 +1036,6 @@ class DmThreadScreen(
         private const val SCROLL_SPEED = 12
         private const val LOAD_MORE_THRESHOLD = 20
 
-        private const val DISABLED_COLOR = 0xFFCCCCCC.toInt()
         private const val OWN_ATTACHMENT_BORDER = 0xFFFFFFFF.toInt()
         private const val OWN_ATTACHMENT_MUTED = 0xFFBFE5EF.toInt()
         private const val GENDER_MALE_COLOR = 0xFF408CFF.toInt()

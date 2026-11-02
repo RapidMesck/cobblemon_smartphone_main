@@ -18,6 +18,14 @@ object OpenPatchouliBookHandler : ServerNetworkPacketHandler<OpenPatchouliBookPa
     }
 
     fun execute(player: ServerPlayer, bookId: String?) {
+        if (com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getSmartphone(player) == null) {
+            player.displayClientMessage(
+                Component.translatable("message.cobblemon_smartphone.no_smartphone").withColor(0xfd0100),
+                true
+            )
+            return
+        }
+
         if (!isModLoaded(PatchouliCompat.MOD_ID)) {
             player.displayClientMessage(
                 Component.translatable("message.nbp.patchouli.unavailable").withColor(0xfd0100),
