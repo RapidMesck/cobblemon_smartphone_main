@@ -141,14 +141,14 @@ class RotomPlayerRenderLayer(
             val player = mc.player ?: return
             if (player.isInvisible || player.isSleeping || player.isDeadOrDying || player.isSpectator) return
 
-            // Não precisa aparecer para o player em primeira pessoa quando estiver escaneando manualmente com a Pokédex
-            if (ScannerManager.isInUse()) {
+            // Não precisa aparecer para o player em primeira pessoa quando estiver escaneando manualmente com a Pokédex ou tirando foto
+            if (ScannerManager.isInUse() || SocialPhotoClient.isCameraActive()) {
                 return
             }
 
             // Não renderiza em primeira pessoa se o Rotom estiver descansando no ombro!
             // Renderiza se estiver socializando, escaneando Pokémon selvagem, apresentando curiosidade no diálogo,
-            // em modo Pokédex scanner/câmera social horizontal, ou em transição suave de abertura/retorno ao ombro.
+            // ou em transição suave de abertura/retorno ao ombro.
             val animState = playerAnimStates[player.uuid]
             val hasActiveSession = RotomClientManager.hasActiveSessionFor(player.uuid)
             val isTransitioningSocial = animState != null && animState.socialProgress > 0.001f
@@ -157,14 +157,11 @@ class RotomPlayerRenderLayer(
             val hasActiveDialogue = RotomDialogueClientState.shouldRotomFlyInFront(player.uuid)
             val isTransitioningDialogue = animState != null && animState.dialogueProgress > 0.001f
             val isDismissingDialogue = RotomDialogueClientState.isDismissing(player.uuid)
-            val isScanningPokedex = ScannerManager.isInUse()
-            val isSocialPhoto = SocialPhotoClient.isCameraActive()
-            val isTransitioningHorizontal = animState != null && animState.horizontalProgress > 0.001f
             val isTransitioningOpen = animState != null && animState.openProgress > 0.001f
 
             if (!hasActiveSession && !isTransitioningSocial && !hasActiveScan && !isScanningNow
                 && !hasActiveDialogue && !isTransitioningDialogue && !isDismissingDialogue
-                && !isScanningPokedex && !isSocialPhoto && !isTransitioningHorizontal && !isTransitioningOpen) {
+                && !isTransitioningOpen) {
                 return
             }
 
@@ -215,10 +212,11 @@ class RotomPlayerRenderLayer(
             ageInTicks: Float,
             netHeadYaw: Float,
             headPitch: Float,
-            isFirstPersonPass: Boolean
+            isFirstPersonPass: Boolean,
+            playerModel: PlayerModel<AbstractClientPlayer>? = null
         ) {
             if (player.isInvisible || player.isSleeping || player.isDeadOrDying) return
-            if (isFirstPersonPass && ScannerManager.isInUse()) return
+            if (isFirstPersonPass && (ScannerManager.isInUse() || SocialPhotoClient.isCameraActive())) return
 
             val smartphoneStack = RotomClientManager.getEffectiveRotomPhone(player) ?: return
             val color = (smartphoneStack.item as? SmartphoneItem)?.getColor()
@@ -229,6 +227,79 @@ class RotomPlayerRenderLayer(
             if (bakedModel == mc.modelManager.missingModel) return
 
             val isLocalPlayer = (player == mc.player)
+
+            // Modo Selfie:
+            val isSelfie = RotomClientManager.isPlayerSelfie(player.uuid)
+            if (isSelfie) {
+                if (isLocalPlayer) {
+                    // Para o próprio jogador no visor da selfie, a câmera é o próprio celular
+                    return
+                }
+                // Para quem vê de fora (outro jogador em multiplayer ou terceira pessoa):
+                // Renderiza o Rotom Phone na mão estendida simulando a selfie real!
+                if (playerModel != null) {
+                    poseStack.pushPose()
+                    playerModel.rightArm.translateAndRotate(poseStack)
+
+                    val isSlim = player.skin.model == net.minecraft.client.resources.PlayerSkin.Model.SLIM
+                    val handX = if (isSlim) -0.04 else -0.06
+                    poseStack.translate(handX, 0.58, -0.05)
+                    poseStack.scale(0.50f, -0.50f, -0.50f)
+
+                    // Orientação: tela virada para o rosto do jogador
+                    poseStack.mulPose(Axis.XP.rotationDegrees(80.0f))
+                    poseStack.mulPose(Axis.YP.rotationDegrees(15.0f))
+                    poseStack.mulPose(Axis.ZP.rotationDegrees(-90.0f))
+
+                    mc.itemRenderer.render(
+                        smartphoneStack,
+                        ItemDisplayContext.NONE,
+                        false,
+                        poseStack,
+                        bufferSource,
+                        packedLight,
+                        OverlayTexture.NO_OVERLAY,
+                        bakedModel
+                    )
+
+                    val accessory = smartphoneStack.getRotomAccessory()
+                    if (accessory != null) {
+                        val accessoryStack = SmartphoneHelper.createAccessoryStackFromPhone(smartphoneStack)
+                        if (accessoryStack != null) {
+                            val accBakedModel = mc.itemRenderer.getModel(accessoryStack, player.level(), player, 0)
+                            poseStack.pushPose()
+                            if (accessory == "bow") {
+                                poseStack.translate(0.096, -0.016, 0.065)
+                                poseStack.scale(0.22f, 0.22f, 0.22f)
+                                poseStack.mulPose(Axis.ZP.rotationDegrees(-18.0f))
+                            } else {
+                                poseStack.translate(0.0, -0.24, 0.065)
+                                poseStack.scale(0.22f, 0.22f, 0.22f)
+                            }
+                            mc.itemRenderer.render(
+                                accessoryStack,
+                                ItemDisplayContext.NONE,
+                                false,
+                                poseStack,
+                                bufferSource,
+                                packedLight,
+                                OverlayTexture.NO_OVERLAY,
+                                accBakedModel
+                            )
+                            poseStack.popPose()
+                        }
+                    }
+
+                    poseStack.popPose()
+                    return
+                }
+            }
+
+            // Em primeira pessoa tirando foto, não renderiza o celular na cara
+            if (isLocalPlayer && SocialPhotoClient.isCameraActive()) {
+                return
+            }
+
             val isScreenOpen = if (isLocalPlayer) {
                 isSmartphoneScreen(mc.screen)
             } else {
@@ -738,9 +809,17 @@ class RotomPlayerRenderLayer(
                 val plEyeY = Mth.lerp(partialTick.toDouble(), player.yOld, player.y) + player.getEyeHeight(player.pose)
                 val plZ = Mth.lerp(partialTick.toDouble(), player.zOld, player.z)
 
-                // Direção para onde o crosshair do jogador está apontando
-                val lookYaw = if (isFirstPersonPass) mc.gameRenderer.mainCamera.yRot else Mth.rotLerp(partialTick, player.yHeadRotO, player.yHeadRot)
-                val lookPitch = if (isFirstPersonPass) mc.gameRenderer.mainCamera.xRot else Mth.lerp(partialTick, player.xRotO, player.xRot)
+                // Direção para onde o crosshair / câmera do jogador está apontando
+                val (lookYaw, lookPitch) = if (isLocalPlayer) {
+                    val camera = mc.gameRenderer.mainCamera
+                    if (mc.options.cameraType == CameraType.THIRD_PERSON_FRONT) {
+                        (camera.yRot - 180.0f) to (-camera.xRot)
+                    } else {
+                        camera.yRot to camera.xRot
+                    }
+                } else {
+                    Mth.rotLerp(partialTick, player.yHeadRotO, player.yHeadRot) to Mth.lerp(partialTick, player.xRotO, player.xRot)
+                }
 
                 val lookYawRad = Math.toRadians(lookYaw.toDouble())
                 val lookPitchRad = Math.toRadians(lookPitch.toDouble())
@@ -1036,7 +1115,8 @@ class RotomPlayerRenderLayer(
             ageInTicks = ageInTicks,
             netHeadYaw = netHeadYaw,
             headPitch = headPitch,
-            isFirstPersonPass = false
+            isFirstPersonPass = false,
+            playerModel = this.parentModel
         )
     }
 }

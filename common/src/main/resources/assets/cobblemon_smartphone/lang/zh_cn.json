@@ -384,6 +384,8 @@
   "cobblemon_smartphone.social.camera": "相机",
   "cobblemon_smartphone.social.camera_cancel": "取消",
   "cobblemon_smartphone.social.camera_hint": "WASD 移动 • 拖动查看",
+  "cobblemon_smartphone.social.camera_selfie_mode": "自拍模式 • F5 切换",
+  "cobblemon_smartphone.social.camera_first_person_mode": "风景模式 • F5 自拍",
   "cobblemon_smartphone.social.camera_right_click": "右键点击拍照",
   "cobblemon_smartphone.social.cancel": "取消",
   "cobblemon_smartphone.social.compose_title": "新帖子",

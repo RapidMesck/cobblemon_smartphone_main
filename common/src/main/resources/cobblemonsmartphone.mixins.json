@@ -13,7 +13,9 @@
     "defaultRequire": 1
   },
     "client": [
+        "CameraMixin",
         "GuiGraphicsMixin",
+        "HumanoidModelMixin",
         "ItemColorsMixin",
         "ItemRendererMixin",
         "KeyboardHandlerMixin",
@@ -23,6 +25,7 @@
         "MixinPokedexUsageContext",
         "MixinItemInHandRenderer",
         "MouseHandlerMixin",
+        "ItemInHandLayerMixin",
         "PlayerRendererMixin",
         "ScreenRenderMixin"
     ]

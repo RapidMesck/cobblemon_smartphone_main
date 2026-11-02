@@ -231,6 +231,8 @@
   "cobblemon_smartphone.social.camera_cancel": "Cancelar",
   "cobblemon_smartphone.social.camera_hint": "WASD para mover • Arraste para olhar",
   "cobblemon_smartphone.social.camera_right_click": "Clique direito para tirar a foto",
+  "cobblemon_smartphone.social.camera_selfie_mode": "Modo Selfie • F5 para alternar",
+  "cobblemon_smartphone.social.camera_first_person_mode": "Modo Paisagem • F5 para Selfie",
   "cobblemon_smartphone.social.photo_uploading": "Enviando foto...",
   "cobblemon_smartphone.social.photo_ready": "Foto pronta",
   "cobblemon_smartphone.social.photo_failed": "Falha no envio",

@@ -15,7 +15,7 @@ import net.minecraft.server.level.ServerPlayer
 object SetSmartphoneOpenStateHandler : ServerNetworkPacketHandler<SetSmartphoneOpenStatePacket> {
     override fun handle(packet: SetSmartphoneOpenStatePacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            RotomServerManager.onPlayerSetOpen(player, packet.isOpen, packet.isHorizontal)
+            RotomServerManager.onPlayerSetOpen(player, packet.isOpen, packet.isHorizontal, packet.isSelfie)
         }
     }
 }
@@ -23,7 +23,7 @@ object SetSmartphoneOpenStateHandler : ServerNetworkPacketHandler<SetSmartphoneO
 object SyncSmartphoneOpenStateHandler : ClientNetworkPacketHandler<SyncSmartphoneOpenStatePacket> {
     override fun handle(packet: SyncSmartphoneOpenStatePacket, client: Minecraft) {
         client.execute {
-            RotomClientManager.setRemotePlayerOpen(packet.playerUuid, packet.isOpen, packet.isHorizontal)
+            RotomClientManager.setRemotePlayerOpen(packet.playerUuid, packet.isOpen, packet.isHorizontal, packet.isSelfie)
         }
     }
 }

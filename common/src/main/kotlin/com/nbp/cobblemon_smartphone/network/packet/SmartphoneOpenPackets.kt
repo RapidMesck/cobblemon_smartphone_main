@@ -10,14 +10,16 @@ import java.util.UUID
  */
 class SetSmartphoneOpenStatePacket(
     val isOpen: Boolean,
-    val isHorizontal: Boolean = false
+    val isHorizontal: Boolean = false,
+    val isSelfie: Boolean = false
 ) : CobblemonSmartphoneNetworkPacket<SetSmartphoneOpenStatePacket> {
     companion object {
         val ID = smartphoneResource("set_smartphone_open_state")
         fun decode(buffer: RegistryFriendlyByteBuf): SetSmartphoneOpenStatePacket {
             val isOpen = buffer.readBoolean()
             val isHorizontal = if (buffer.isReadable) buffer.readBoolean() else false
-            return SetSmartphoneOpenStatePacket(isOpen, isHorizontal)
+            val isSelfie = if (buffer.isReadable) buffer.readBoolean() else false
+            return SetSmartphoneOpenStatePacket(isOpen, isHorizontal, isSelfie)
         }
     }
 
@@ -26,17 +28,19 @@ class SetSmartphoneOpenStatePacket(
     override fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeBoolean(isOpen)
         buffer.writeBoolean(isHorizontal)
+        buffer.writeBoolean(isSelfie)
     }
 }
 
 /**
- * Envia do servidor para os clientes sincronizando o estado de abertura do smartphone de um jogador
- * e se está em orientação horizontal.
+ * Envia do servidor para os clientes sincronizando o estado de abertura do smartphone de um jogador,
+ * orientação horizontal e modo selfie.
  */
 class SyncSmartphoneOpenStatePacket(
     val playerUuid: UUID,
     val isOpen: Boolean,
-    val isHorizontal: Boolean = false
+    val isHorizontal: Boolean = false,
+    val isSelfie: Boolean = false
 ) : CobblemonSmartphoneNetworkPacket<SyncSmartphoneOpenStatePacket> {
     companion object {
         val ID = smartphoneResource("sync_smartphone_open_state")
@@ -44,7 +48,8 @@ class SyncSmartphoneOpenStatePacket(
             val playerUuid = buffer.readUUID()
             val isOpen = buffer.readBoolean()
             val isHorizontal = if (buffer.isReadable) buffer.readBoolean() else false
-            return SyncSmartphoneOpenStatePacket(playerUuid, isOpen, isHorizontal)
+            val isSelfie = if (buffer.isReadable) buffer.readBoolean() else false
+            return SyncSmartphoneOpenStatePacket(playerUuid, isOpen, isHorizontal, isSelfie)
         }
     }
 
@@ -54,6 +59,7 @@ class SyncSmartphoneOpenStatePacket(
         buffer.writeUUID(playerUuid)
         buffer.writeBoolean(isOpen)
         buffer.writeBoolean(isHorizontal)
+        buffer.writeBoolean(isSelfie)
     }
 }
 

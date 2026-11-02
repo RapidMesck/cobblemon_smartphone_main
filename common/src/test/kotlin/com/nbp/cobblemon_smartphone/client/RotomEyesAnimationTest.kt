@@ -15,7 +15,7 @@ class RotomEyesAnimationTest {
         assertNotNull(textureStream, "rotom_eyes.png must exist in classpath")
         val image = ImageIO.read(textureStream)
         assertEquals(16, image.width, "Texture width must be 16")
-        assertEquals(32, image.height, "Texture height must be 32 (two 16x16 frames)")
+        assertEquals(48, image.height, "Texture height must be 48 (three 16x16 frames: open, half-closed, fully-closed)")
 
         val metaStream = javaClass.getResourceAsStream("/assets/cobblemon_smartphone/textures/item/rotom_eyes.png.mcmeta")
         assertNotNull(metaStream, "rotom_eyes.png.mcmeta must exist in classpath")
@@ -24,7 +24,7 @@ class RotomEyesAnimationTest {
 
         val animSection = AnimationMetadataSection.SERIALIZER.fromJson(json.getAsJsonObject("animation"))
         assertNotNull(animSection)
-        val frameSize = animSection.calculateFrameSize(16, 32)
+        val frameSize = animSection.calculateFrameSize(16, 48)
         assertEquals(16, frameSize.width())
         assertEquals(16, frameSize.height())
     }

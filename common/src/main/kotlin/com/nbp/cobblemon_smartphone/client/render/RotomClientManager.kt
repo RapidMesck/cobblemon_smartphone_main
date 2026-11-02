@@ -21,8 +21,10 @@ import kotlin.random.Random
 object RotomClientManager {
     private var lastLocalOpen: Boolean? = null
     private var lastLocalHorizontal: Boolean? = null
+    private var lastLocalSelfie: Boolean? = null
     private val remoteOpenStates = ConcurrentHashMap<UUID, Boolean>()
     private val remoteHorizontalStates = ConcurrentHashMap<UUID, Boolean>()
+    private val remoteSelfieStates = ConcurrentHashMap<UUID, Boolean>()
 
     data class RemoteRotomVisual(
         val hasRotom: Boolean,
@@ -51,7 +53,15 @@ object RotomClientManager {
         return remoteHorizontalStates[uuid] == true
     }
 
-    fun setRemotePlayerOpen(uuid: UUID, isOpen: Boolean, isHorizontal: Boolean = false) {
+    fun isPlayerSelfie(uuid: UUID): Boolean {
+        val mc = Minecraft.getInstance()
+        if (mc.player?.uuid == uuid) {
+            return SocialPhotoClient.isCameraActive() && !mc.options.cameraType.isFirstPerson
+        }
+        return remoteSelfieStates[uuid] == true
+    }
+
+    fun setRemotePlayerOpen(uuid: UUID, isOpen: Boolean, isHorizontal: Boolean = false, isSelfie: Boolean = false) {
         if (isOpen) {
             remoteOpenStates[uuid] = true
             if (isHorizontal) {
@@ -59,9 +69,15 @@ object RotomClientManager {
             } else {
                 remoteHorizontalStates.remove(uuid)
             }
+            if (isSelfie) {
+                remoteSelfieStates[uuid] = true
+            } else {
+                remoteSelfieStates.remove(uuid)
+            }
         } else {
             remoteOpenStates.remove(uuid)
             remoteHorizontalStates.remove(uuid)
+            remoteSelfieStates.remove(uuid)
         }
     }
 
@@ -289,11 +305,12 @@ object RotomClientManager {
         return null
     }
 
-    fun updateLocalState(isOpen: Boolean, isHorizontal: Boolean = false) {
-        if (lastLocalOpen != isOpen || lastLocalHorizontal != isHorizontal) {
+    fun updateLocalState(isOpen: Boolean, isHorizontal: Boolean = false, isSelfie: Boolean = false) {
+        if (lastLocalOpen != isOpen || lastLocalHorizontal != isHorizontal || lastLocalSelfie != isSelfie) {
             lastLocalOpen = isOpen
             lastLocalHorizontal = isHorizontal
-            SetSmartphoneOpenStatePacket(isOpen, isHorizontal).sendToServer()
+            lastLocalSelfie = isSelfie
+            SetSmartphoneOpenStatePacket(isOpen, isHorizontal, isSelfie).sendToServer()
         }
     }
 
@@ -303,20 +320,23 @@ object RotomClientManager {
             remoteRotomVisuals.clear()
             remoteOpenStates.clear()
             remoteHorizontalStates.clear()
+            remoteSelfieStates.clear()
             activeSessions.clear()
             playerToSessionId.clear()
             fallbackCheckStates.clear()
             serverSocialSyncReceived = false
             lastLocalOpen = null
             lastLocalHorizontal = null
+            lastLocalSelfie = null
             return
         }
         val isScreenOpen = RotomPlayerRenderLayer.isSmartphoneScreen(mc.screen)
         val isScannerActive = ScannerManager.isInUse()
         val isPhotoActive = SocialPhotoClient.isCameraActive()
+        val isSelfieActive = isPhotoActive && !mc.options.cameraType.isFirstPerson
         val isOpen = isScreenOpen || isScannerActive || isPhotoActive
         val isHorizontal = isScannerActive || isPhotoActive
-        updateLocalState(isOpen, isHorizontal)
+        updateLocalState(isOpen, isHorizontal, isSelfieActive)
         com.nbp.cobblemon_smartphone.client.RotomScannerClientState.tick()
         com.nbp.cobblemon_smartphone.client.RotomDialogueClientState.tick()
     }

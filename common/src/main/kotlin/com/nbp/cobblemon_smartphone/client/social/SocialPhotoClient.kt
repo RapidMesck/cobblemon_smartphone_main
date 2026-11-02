@@ -51,7 +51,7 @@ object SocialPhotoClient {
     private val textures = linkedMapOf<UUID, TextureEntry>()
     private val dimensions = mutableMapOf<UUID, Pair<Int, Int>>()
 
-    fun isCameraActive(): Boolean = cameraActive
+    fun isCameraActive(): Boolean = cameraActive || captureArmed
 
     fun beginCapture(
         color: SmartphoneColor,
@@ -130,8 +130,17 @@ object SocialPhotoClient {
         drawCorner(guiGraphics, width - 11, 10, -1, 1)
         drawCorner(guiGraphics, 10, height - 11, 1, -1)
         drawCorner(guiGraphics, width - 11, height - 11, -1, -1)
-        val hint = net.minecraft.network.chat.Component.translatable("cobblemon_smartphone.social.camera_right_click").string
         val font = client.font
+        val modeKey = if (!client.options.cameraType.isFirstPerson) {
+            "cobblemon_smartphone.social.camera_selfie_mode"
+        } else {
+            "cobblemon_smartphone.social.camera_first_person_mode"
+        }
+        val modeHint = net.minecraft.network.chat.Component.translatable(modeKey).string
+        guiGraphics.fill(cx - font.width(modeHint) / 2 - 5, 12, cx + font.width(modeHint) / 2 + 5, 27, 0xB0071322.toInt())
+        guiGraphics.drawString(font, modeHint, cx - font.width(modeHint) / 2, 15, OVERLAY_WHITE, false)
+
+        val hint = net.minecraft.network.chat.Component.translatable("cobblemon_smartphone.social.camera_right_click").string
         guiGraphics.fill(cx - font.width(hint) / 2 - 5, height - 27, cx + font.width(hint) / 2 + 5, height - 12, 0xB0071322.toInt())
         guiGraphics.drawString(font, hint, cx - font.width(hint) / 2, height - 24, OVERLAY_WHITE, false)
     }
