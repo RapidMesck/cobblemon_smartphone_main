@@ -10,6 +10,7 @@ import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRotomAccessory
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.isRotomPhone
 import net.minecraft.client.Camera
 import net.minecraft.client.CameraType
 import net.minecraft.client.Minecraft
@@ -143,6 +144,12 @@ class RotomPlayerRenderLayer(
 
             // Não precisa aparecer para o player em primeira pessoa quando estiver escaneando manualmente com a Pokédex ou tirando foto
             if (ScannerManager.isInUse() || SocialPhotoClient.isCameraActive()) {
+                return
+            }
+
+            // Se o smartphone na mão do jogador possuir o upgrade do Rotom, ele fica na mão
+            // (renderizado pelo ItemInHandRenderer) e sai de volta do jogador em primeira pessoa
+            if (player.mainHandItem.isRotomPhone() || player.offhandItem.isRotomPhone()) {
                 return
             }
 
@@ -313,6 +320,14 @@ class RotomPlayerRenderLayer(
 
             if (isLocalPlayer) {
                 RotomClientManager.updateLocalState(isScreenOpen || isHorizontalMode, isHorizontalMode)
+            }
+
+            // Se o smartphone na mão do jogador possuir o upgrade do Rotom, o Rotom sai de volta do jogador
+            // e fica na mão como de padrão (renderizado pelo ItemInHandLayer com o modelo do Rotom)
+            val isHoldingRotom = player.mainHandItem.isRotomPhone() || player.offhandItem.isRotomPhone()
+            if (isHoldingRotom) {
+                playerAnimStates[player.uuid]?.lastRenderTime = 0L
+                return
             }
 
             val animState = playerAnimStates.computeIfAbsent(player.uuid) { RotomAnimState() }

@@ -9,6 +9,9 @@ import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.net.messages.client.pokedex.ServerConfirmedRegisterPacket
 import com.cobblemon.mod.common.pokemon.Pokemon
+import com.cobblemon.mod.common.util.isInBattle
+import com.cobblemon.mod.common.util.party
+import com.cobblemon.mod.common.util.pc
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
 import com.nbp.cobblemon_smartphone.network.packet.RotomAlertPacket
@@ -20,16 +23,23 @@ import com.nbp.cobblemon_smartphone.rotom.RotomRadarConfig
 import com.nbp.cobblemon_smartphone.rotom.RotomRadarStorage
 import com.nbp.cobblemon_smartphone.rotom.RotomTarget
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.clearFusedPokemon
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getBowtieDyeColor
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getFusedPokemon
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRibbonDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRotomAccessory
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.isRotomPhone
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.saveFusedPokemon
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomPhone
 import net.minecraft.ChatFormatting
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.network.chat.Component
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
 import net.minecraft.world.item.DyeColor
+import net.minecraft.world.item.ItemStack
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
@@ -670,5 +680,214 @@ object RotomServerManager {
                 level.sendParticles(ParticleTypes.HAPPY_VILLAGER, session.anchorX, session.anchorY, session.anchorZ, 8, 0.35, 0.35, 0.35, 0.02)
             }
         }
+    }
+
+    fun fuseRotom(player: ServerPlayer, entityUuid: UUID): Boolean {
+        val level = player.serverLevel()
+        val entity = level.getEntity(entityUuid) as? PokemonEntity ?: return false
+        if (!entity.isAlive || entity.isBattling || player.isInBattle()) return false
+        if (player.distanceToSqr(entity) > 64.0) return false
+
+        val pokemon = entity.pokemon
+        val isRotom = pokemon.species.name.equals("rotom", ignoreCase = true) ||
+            pokemon.species.resourceIdentifier.path == "rotom"
+        if (!isRotom) return false
+        if (entity.ownerUUID != player.uuid) return false
+
+        val party = player.party()
+        val rotomInParty = party.find { it.uuid == pokemon.uuid }
+        if (rotomInParty == null) {
+            player.displayClientMessage(
+                Component.translatable("message.cobblemon_smartphone.rotom_not_in_party")
+                    .withStyle(ChatFormatting.RED),
+                true
+            )
+            return false
+        }
+
+        // Find eligible smartphone: check main hand, off hand, then inventory
+        val phoneStack = player.mainHandItem.takeIf { it.item is SmartphoneItem && !it.isRotomPhone() }
+            ?: player.offhandItem.takeIf { it.item is SmartphoneItem && !it.isRotomPhone() }
+            ?: player.inventory.items.firstOrNull { it.item is SmartphoneItem && !it.isRotomPhone() }
+
+        if (phoneStack == null) {
+            player.displayClientMessage(
+                Component.translatable("message.cobblemon_smartphone.no_smartphone_to_fuse")
+                    .withStyle(ChatFormatting.RED),
+                true
+            )
+            return false
+        }
+
+        // Return any held or cosmetic items
+        val heldItem = rotomInParty.heldItem()
+        if (!heldItem.isEmpty) {
+            if (!player.inventory.add(heldItem.copy())) {
+                player.drop(heldItem.copy(), false)
+            }
+        }
+        val cosmeticItem = rotomInParty.cosmeticItem()
+        if (!cosmeticItem.isEmpty) {
+            if (!player.inventory.add(cosmeticItem.copy())) {
+                player.drop(cosmeticItem.copy(), false)
+            }
+        }
+
+        // Save full Rotom Pokemon data into the smartphone
+        phoneStack.saveFusedPokemon(rotomInParty, level.registryAccess())
+        phoneStack.setRotomPhone(true)
+
+        // Play cry and effects
+        entity.cry()
+        val eyePos = entity.eyePosition
+        val blockPos = entity.blockPosition()
+
+        // Remove from party and discard entity
+        party.remove(rotomInParty)
+        entity.discard()
+
+        level.playSound(
+            null,
+            blockPos,
+            SoundEvents.LIGHTNING_BOLT_THUNDER,
+            SoundSource.PLAYERS,
+            0.7f,
+            1.4f
+        )
+        level.playSound(
+            null,
+            blockPos,
+            SoundEvents.LIGHTNING_BOLT_IMPACT,
+            SoundSource.PLAYERS,
+            0.5f,
+            1.2f
+        )
+
+        level.sendParticles(
+            ParticleTypes.ELECTRIC_SPARK,
+            eyePos.x,
+            eyePos.y,
+            eyePos.z,
+            35,
+            0.3,
+            0.3,
+            0.3,
+            0.15
+        )
+        level.sendParticles(
+            ParticleTypes.FLASH,
+            eyePos.x,
+            eyePos.y,
+            eyePos.z,
+            1,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        )
+
+        player.containerMenu.broadcastChanges()
+        player.inventoryMenu.broadcastChanges()
+
+        player.displayClientMessage(
+            Component.translatable("message.cobblemon_smartphone.became_rotom")
+                .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD),
+            true
+        )
+        return true
+    }
+
+    fun defuseRotom(player: ServerPlayer, targetPhoneStack: ItemStack? = null): Boolean {
+        if (player.isInBattle()) {
+            player.displayClientMessage(
+                Component.translatable("message.cobblemon_smartphone.cannot_defuse_in_battle")
+                    .withStyle(ChatFormatting.RED),
+                true
+            )
+            return false
+        }
+
+        val phoneStack = targetPhoneStack?.takeIf { it.isRotomPhone() }
+            ?: player.mainHandItem.takeIf { it.isRotomPhone() }
+            ?: player.offhandItem.takeIf { it.isRotomPhone() }
+            ?: SmartphoneHelper.getSmartphoneImpl?.invoke(player)?.takeIf { it.isRotomPhone() }
+            ?: player.inventory.items.firstOrNull { it.isRotomPhone() }
+
+        if (phoneStack == null) {
+            player.displayClientMessage(
+                Component.translatable("message.cobblemon_smartphone.no_rotom_phone_equipped")
+                    .withStyle(ChatFormatting.RED),
+                true
+            )
+            return false
+        }
+
+        val level = player.serverLevel()
+        val rotom = phoneStack.getFusedPokemon(level.registryAccess())
+            ?: PokemonSpecies.getByName("rotom")?.create(20)
+
+        if (rotom == null) {
+            return false
+        }
+
+        // Return any accessory first
+        val returnedStack = SmartphoneHelper.createAccessoryStackFromPhone(phoneStack)
+        if (returnedStack != null) {
+            if (!player.inventory.add(returnedStack)) {
+                player.drop(returnedStack, false)
+            }
+        }
+
+        // Clear fused Pokemon & Rotom status
+        phoneStack.clearFusedPokemon()
+
+        // Add Rotom to party or PC
+        val party = player.party()
+        val addedToParty = party.add(rotom)
+        if (!addedToParty) {
+            val pc = player.pc()
+            pc.add(rotom)
+        }
+
+        val blockPos = player.blockPosition()
+        level.playSound(
+            null,
+            blockPos,
+            SoundEvents.BEACON_DEACTIVATE,
+            SoundSource.PLAYERS,
+            0.7f,
+            1.4f
+        )
+        level.playSound(
+            null,
+            blockPos,
+            SoundEvents.LIGHTNING_BOLT_IMPACT,
+            SoundSource.PLAYERS,
+            0.4f,
+            1.2f
+        )
+
+        level.sendParticles(
+            ParticleTypes.ELECTRIC_SPARK,
+            player.x,
+            player.eyeY,
+            player.z,
+            25,
+            0.3,
+            0.3,
+            0.3,
+            0.1
+        )
+
+        player.containerMenu.broadcastChanges()
+        player.inventoryMenu.broadcastChanges()
+
+        val msgKey = if (addedToParty) "message.cobblemon_smartphone.rotom_defused_party" else "message.cobblemon_smartphone.rotom_defused_pc"
+        player.displayClientMessage(
+            Component.translatable(msgKey)
+                .withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD),
+            true
+        )
+        return true
     }
 }

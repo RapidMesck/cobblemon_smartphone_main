@@ -1,5 +1,6 @@
 package com.nbp.cobblemon_smartphone.item
 
+import com.nbp.cobblemon_smartphone.server.RotomServerManager
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getBowtieDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRibbonDyeColor
@@ -8,6 +9,7 @@ import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setAccessoryDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomAccessory
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
 import net.minecraft.world.InteractionHand
@@ -104,10 +106,17 @@ class RotomAccessoryItem(
 
         // Item Removedor de Gênero / Acessório
         if (accessoryType == "remove") {
+            if (player.isCrouching) {
+                if (!level.isClientSide && player is ServerPlayer) {
+                    RotomServerManager.defuseRotom(player, rotomPhone)
+                }
+                return InteractionResultHolder.sidedSuccess(heldStack, level.isClientSide)
+            }
+
             if (currentAccessory == null) {
                 if (level.isClientSide) {
                     player.displayClientMessage(
-                        Component.translatable("message.cobblemon_smartphone.no_accessory_to_remove")
+                        Component.translatable("message.cobblemon_smartphone.remover_defuse_hint")
                             .withStyle(ChatFormatting.YELLOW),
                         true
                     )

@@ -38,11 +38,14 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
         }
 
         com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper.clientPlayerProvider = { Minecraft.getInstance().player }
+        RotomInteractionClientHandler.register()
 
         ModelLoadingPlugin.register { context ->
             SmartphoneColor.entries.forEach { color ->
                 context.addModels(color.getHandModelPath())
+                context.addModels(color.getRotomModelPath())
             }
+            context.addModels(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "item/rotom"))
         }
 
         KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.OPEN_SMARTPHONE)

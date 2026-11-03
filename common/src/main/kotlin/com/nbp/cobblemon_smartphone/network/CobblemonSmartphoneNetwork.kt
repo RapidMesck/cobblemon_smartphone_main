@@ -185,6 +185,10 @@ import com.nbp.cobblemon_smartphone.network.packet.RotomAlertPacket
 import com.nbp.cobblemon_smartphone.network.packet.SetRotomScanPriorityPacket
 import com.nbp.cobblemon_smartphone.network.packet.CloseRotomDialoguePacket
 import com.nbp.cobblemon_smartphone.network.handler.CloseRotomDialogueHandler
+import com.nbp.cobblemon_smartphone.network.packet.FuseRotomPacket
+import com.nbp.cobblemon_smartphone.network.packet.DefuseRotomPacket
+import com.nbp.cobblemon_smartphone.network.handler.FuseRotomHandler
+import com.nbp.cobblemon_smartphone.network.handler.DefuseRotomHandler
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket
 import com.nbp.cobblemon_smartphone.network.packet.RotomScanCompletePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomConfigPacket
@@ -520,6 +524,8 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(SaveRotomRadarPacket.ID, SaveRotomRadarPacket::decode, SaveRotomRadarHandler))
         list.add(PacketRegisterInfo(SetRotomScanPriorityPacket.ID, SetRotomScanPriorityPacket::decode, SetRotomScanPriorityHandler))
         list.add(PacketRegisterInfo(CloseRotomDialoguePacket.ID, CloseRotomDialoguePacket::decode, CloseRotomDialogueHandler))
+        list.add(PacketRegisterInfo(FuseRotomPacket.ID, FuseRotomPacket::decode, FuseRotomHandler))
+        list.add(PacketRegisterInfo(DefuseRotomPacket.ID, DefuseRotomPacket::decode, DefuseRotomHandler))
 
         return list
     }

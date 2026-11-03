@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.api.gui.blitk
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.nbp.cobblemon_smartphone.client.RotomRadarClientState
+import com.nbp.cobblemon_smartphone.network.packet.DefuseRotomPacket
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.rotom.RotomRadarConfig
 import com.nbp.cobblemon_smartphone.rotom.RotomTarget
@@ -41,6 +42,7 @@ class RotomAppScreen(
 
     private var currentTab = initialTab
     private var isAddingTarget = initialAddingTarget
+    private var showDefuseConfirmation = false
 
     // Target form inputs
     private lateinit var speciesBox: EditBox
@@ -258,6 +260,10 @@ class RotomAppScreen(
                 }
             }
         }
+
+        if (showDefuseConfirmation) {
+            renderDefuseConfirmation(guiGraphics, mouseX, mouseY)
+        }
     }
 
     private fun renderTabs(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -288,7 +294,7 @@ class RotomAppScreen(
     }
 
     private fun renderSettingsTab(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val totalRows = 8
+        val totalRows = 9
         val totalH = totalRows * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
         val viewH = SETTINGS_END_Y - SETTINGS_START_Y
         settingsMaxScroll = (totalH - viewH).coerceAtLeast(0)
@@ -371,6 +377,14 @@ class RotomAppScreen(
             desc = lang("setting_hud_tracker_desc"),
             enabled = config.hudTracker
         )
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 9. Desfundir Rotom
+        renderDefuseRow(
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
+            title = lang("setting_defuse_title"),
+            desc = lang("setting_defuse_desc")
+        )
 
         guiGraphics.disableScissor()
         renderSettingsScrollbar(guiGraphics, mouseY)
@@ -381,7 +395,7 @@ class RotomAppScreen(
         val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
         val trackY = screenY + SETTINGS_START_Y
         val trackH = SETTINGS_END_Y - SETTINGS_START_Y
-        val totalH = 8 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
+        val totalH = 9 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
         val handleH = maxOf(14, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
         val handleY = trackY + (settingsScrollY.toFloat() / settingsMaxScroll * (trackH - handleH)).toInt()
 
@@ -583,6 +597,105 @@ class RotomAppScreen(
         }
         guiGraphics.drawString(font, title, x1 + 6, y + 2, CONTENT_TEXT, false)
         guiGraphics.drawString(font, displayDesc, x1 + 6, y + 12, CONTENT_DIM, false)
+    }
+
+    private fun renderDefuseRow(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        y: Int,
+        rowH: Int = SETTINGS_ROW_H,
+        title: String,
+        desc: String
+    ) {
+        val x1 = screenX + CONTENT_X
+        val x2 = x1 + LIST_WIDTH
+        val y2 = y + rowH
+
+        guiGraphics.fill(x1, y, x2, y2, SECTION_CONTENT_BG)
+
+        val btnW = 54
+        val btnH = 14
+        val btnX = x2 - btnW - 5
+        val btnY = y + (rowH - btnH) / 2
+        val hovered = mouseX in btnX..(btnX + btnW) && mouseY in btnY..(btnY + btnH)
+
+        val btnBg = if (hovered) 0xFFD32F2F.toInt() else 0xFFB71C1C.toInt()
+        val border = if (hovered) 0xFFFFCDD2.toInt() else 0xFFE57373.toInt()
+
+        guiGraphics.fill(btnX, btnY, btnX + btnW, btnY + btnH, btnBg)
+        guiGraphics.renderOutline(btnX, btnY, btnW, btnH, border)
+
+        val btnText = lang("btn_defuse")
+        val textX = btnX + (btnW - font.width(btnText)) / 2
+        val textY = btnY + (btnH - font.lineHeight) / 2 + 1
+        guiGraphics.drawString(font, btnText, textX, textY, 0xFFFFFFFF.toInt(), false)
+
+        val maxTextW = btnX - (x1 + 6) - 4
+        val displayDesc = if (font.width(desc) > maxTextW) {
+            font.plainSubstrByWidth(desc, maxTextW)
+        } else {
+            desc
+        }
+        guiGraphics.drawString(font, title, x1 + 6, y + 2, 0xFFFF8A80.toInt(), false)
+        guiGraphics.drawString(font, displayDesc, x1 + 6, y + 12, CONTENT_DIM, false)
+    }
+
+    private fun renderDefuseConfirmation(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val overlayX1 = screenX + CONTENT_X
+        val overlayX2 = overlayX1 + LIST_WIDTH
+        val overlayY1 = screenY + 28
+        val overlayY2 = screenY + 195
+
+        // Dim background
+        guiGraphics.fill(overlayX1, overlayY1, overlayX2, overlayY2, 0xD0000000.toInt())
+
+        val dialogW = LIST_WIDTH - 16
+        val dialogH = 84
+        val dialogX = overlayX1 + 8
+        val dialogY = overlayY1 + (overlayY2 - overlayY1 - dialogH) / 2
+
+        // Card background & outline
+        guiGraphics.fill(dialogX, dialogY, dialogX + dialogW, dialogY + dialogH, SECTION_CONTENT_BG)
+        guiGraphics.renderOutline(dialogX, dialogY, dialogW, dialogH, 0xFFE57373.toInt())
+
+        // Title
+        val title = lang("dialog_defuse_title")
+        val titleX = dialogX + (dialogW - font.width(title)) / 2
+        guiGraphics.drawString(font, title, titleX, dialogY + 8, 0xFFFF5252.toInt(), false)
+
+        // Description
+        val desc1 = lang("dialog_defuse_desc_1")
+        val desc2 = lang("dialog_defuse_desc_2")
+        val desc1X = dialogX + (dialogW - font.width(desc1)) / 2
+        val desc2X = dialogX + (dialogW - font.width(desc2)) / 2
+        guiGraphics.drawString(font, desc1, desc1X, dialogY + 24, CONTENT_TEXT, false)
+        guiGraphics.drawString(font, desc2, desc2X, dialogY + 36, CONTENT_DIM, false)
+
+        // Buttons: Cancel (left) and Confirm (right)
+        val btnW = 56
+        val btnH = 16
+        val btnY = dialogY + dialogH - btnH - 10
+        val cancelX = dialogX + 12
+        val confirmX = dialogX + dialogW - btnW - 12
+
+        val cancelHovered = mouseX in cancelX..(cancelX + btnW) && mouseY in btnY..(btnY + btnH)
+        val confirmHovered = mouseX in confirmX..(confirmX + btnW) && mouseY in btnY..(btnY + btnH)
+
+        // Cancel button
+        val cancelBg = if (cancelHovered) theme.colors.surfaceHover else theme.colors.surfaceAlt
+        guiGraphics.fill(cancelX, btnY, cancelX + btnW, btnY + btnH, cancelBg)
+        guiGraphics.renderOutline(cancelX, btnY, btnW, btnH, theme.colors.primaryBorder)
+        val cancelText = lang("btn_cancel")
+        guiGraphics.drawString(font, cancelText, cancelX + (btnW - font.width(cancelText)) / 2, btnY + 4, CONTENT_TEXT, false)
+
+        // Confirm button
+        val confirmBg = if (confirmHovered) 0xFFD32F2F.toInt() else 0xFFB71C1C.toInt()
+        val confirmBorder = if (confirmHovered) 0xFFFFCDD2.toInt() else 0xFFE57373.toInt()
+        guiGraphics.fill(confirmX, btnY, confirmX + btnW, btnY + btnH, confirmBg)
+        guiGraphics.renderOutline(confirmX, btnY, btnW, btnH, confirmBorder)
+        val confirmText = lang("btn_confirm")
+        guiGraphics.drawString(font, confirmText, confirmX + (btnW - font.width(confirmText)) / 2, btnY + 4, 0xFFFFFFFF.toInt(), false)
     }
 
     private fun renderTargetsListTab(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -948,6 +1061,39 @@ class RotomAppScreen(
         val mx = mouseX.toInt()
         val my = mouseY.toInt()
 
+        if (showDefuseConfirmation) {
+            val overlayX1 = screenX + CONTENT_X
+            val overlayX2 = overlayX1 + LIST_WIDTH
+            val overlayY1 = screenY + 28
+            val overlayY2 = screenY + 195
+
+            val dialogW = LIST_WIDTH - 16
+            val dialogH = 84
+            val dialogX = overlayX1 + 8
+            val dialogY = overlayY1 + (overlayY2 - overlayY1 - dialogH) / 2
+
+            val btnW = 56
+            val btnH = 16
+            val btnY = dialogY + dialogH - btnH - 10
+            val cancelX = dialogX + 12
+            val confirmX = dialogX + dialogW - btnW - 12
+
+            if (mx in cancelX..(cancelX + btnW) && my in btnY..(btnY + btnH)) {
+                playClickSound()
+                showDefuseConfirmation = false
+                return true
+            }
+
+            if (mx in confirmX..(confirmX + btnW) && my in btnY..(btnY + btnH)) {
+                playClickSound()
+                DefuseRotomPacket().sendToServer()
+                Minecraft.getInstance().setScreen(null)
+                return true
+            }
+
+            return true
+        }
+
         // Back button
         if (isInBackButton(mx, my)) {
             playClickSound()
@@ -997,7 +1143,7 @@ class RotomAppScreen(
             val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
             val trackY = screenY + SETTINGS_START_Y
             val trackH = SETTINGS_END_Y - SETTINGS_START_Y
-            val totalH = 8 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
+            val totalH = 9 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
             val handleH = maxOf(14, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
             val handleY = trackY + (settingsScrollY.toFloat() / settingsMaxScroll * (trackH - handleH)).toInt()
             if (mx in trackX..(trackX + SCROLLBAR_WIDTH) && my in handleY..(handleY + handleH)) {
@@ -1101,6 +1247,14 @@ class RotomAppScreen(
             playClickSound()
             config.hudTracker = !config.hudTracker
             RotomRadarClientState.saveConfig()
+            return true
+        }
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 9. Desfundir Rotom
+        if (isRowClicked(cy)) {
+            playClickSound()
+            showDefuseConfirmation = true
             return true
         }
 

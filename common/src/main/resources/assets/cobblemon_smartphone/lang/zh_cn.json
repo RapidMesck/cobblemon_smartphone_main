@@ -533,5 +533,19 @@
   "cobblemon_smartphone.rotom.tracker_in_range": "在范围内！",
   "cobblemon_smartphone.rotom.tracker_resolved": "已达成！",
   "cobblemon_smartphone.rotom.tracker_close_hint": "[%s] 关闭",
-  "cobblemon_smartphone.rotom.tracker_level": "同高度"
+  "cobblemon_smartphone.rotom.tracker_level": "同高度",
+  "cobblemon_smartphone.interact.fuse_rotom": "与智能手机融合",
+  "cobblemon_smartphone.interact.fuse_rotom_no_phone": "需要未融合的智能手机",
+  "message.cobblemon_smartphone.rotom_defused_party": "⚡ 洛托姆已从智能手机解除融合并返回队伍！",
+  "message.cobblemon_smartphone.rotom_defused_pc": "⚡ 队伍已满！洛托姆已从智能手机解除融合并传送至电脑。",
+  "message.cobblemon_smartphone.cannot_defuse_in_battle": "战斗中无法解除洛托姆融合！",
+  "message.cobblemon_smartphone.no_smartphone_to_fuse": "你没有可以与洛托姆融合的智能手机！",
+  "message.cobblemon_smartphone.remover_defuse_hint": "没有可移除的配件。潜行并使用以解除融合！",
+  "cobblemon_smartphone.rotom.setting_defuse_title": "解除洛托姆融合",
+  "cobblemon_smartphone.rotom.setting_defuse_desc": "将洛托姆释放回队伍中",
+  "cobblemon_smartphone.rotom.btn_defuse": "解除融合",
+  "cobblemon_smartphone.rotom.dialog_defuse_title": "解除洛托姆融合？",
+  "cobblemon_smartphone.rotom.dialog_defuse_desc_1": "洛托姆将离开智能手机",
+  "cobblemon_smartphone.rotom.dialog_defuse_desc_2": "并返回你的宝可梦队伍。",
+  "cobblemon_smartphone.rotom.btn_confirm": "确认"
 }

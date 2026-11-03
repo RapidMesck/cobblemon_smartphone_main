@@ -54,7 +54,7 @@ public abstract class ItemRendererMixin {
                 || transformType == ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
 
         if (isHandContext) {
-            ResourceLocation handModelLocation = smartphone.getHandModel();
+            ResourceLocation handModelLocation = smartphone.getHandModel(stack);
             return Minecraft.getInstance()
                     .getModelManager()
                     .getModel(new ModelResourceLocation(handModelLocation, "inventory"));

@@ -1,10 +1,12 @@
 package com.nbp.cobblemon_smartphone.util
 
+import com.cobblemon.mod.common.pokemon.Pokemon
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
+import net.minecraft.core.RegistryAccess
 import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.world.entity.player.Player
@@ -30,6 +32,7 @@ object SmartphoneHelper {
 
     const val ROTOM_PHONE_TAG = "is_rotom"
     const val ROTOM_PHONE_ALT_TAG = "rotom_phone"
+    const val ROTOM_DATA_TAG = "fused_rotom_data"
     const val ROTOM_ACCESSORY_TAG = "rotom_accessory"
     const val ROTOM_RIBBON_COLOR_TAG = "rotom_ribbon_color"
     const val ROTOM_ACCESSORY_COLOR_TAG = "rotom_accessory_color"
@@ -165,6 +168,38 @@ object SmartphoneHelper {
         val tag = existingData?.copyTag() ?: CompoundTag()
         tag.putBoolean(ROTOM_PHONE_TAG, isRotom)
         tag.putBoolean(ROTOM_PHONE_ALT_TAG, isRotom)
+        this.set(DataComponents.CUSTOM_DATA, CustomData.of(tag))
+    }
+
+    fun ItemStack.saveFusedPokemon(pokemon: Pokemon, registryAccess: RegistryAccess) {
+        val existingData = this.get(DataComponents.CUSTOM_DATA)
+        val tag = existingData?.copyTag() ?: CompoundTag()
+        val rotomTag = pokemon.saveToNBT(registryAccess)
+        tag.put(ROTOM_DATA_TAG, rotomTag)
+        this.set(DataComponents.CUSTOM_DATA, CustomData.of(tag))
+    }
+
+    fun ItemStack.getFusedPokemon(registryAccess: RegistryAccess): Pokemon? {
+        val customData = this.get(DataComponents.CUSTOM_DATA) ?: return null
+        val tag = customData.copyTag()
+        if (!tag.contains(ROTOM_DATA_TAG)) return null
+        return try {
+            val rotomTag = tag.getCompound(ROTOM_DATA_TAG)
+            Pokemon().loadFromNBT(registryAccess, rotomTag)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun ItemStack.clearFusedPokemon() {
+        val existingData = this.get(DataComponents.CUSTOM_DATA) ?: return
+        val tag = existingData.copyTag()
+        tag.remove(ROTOM_DATA_TAG)
+        tag.remove(ROTOM_PHONE_TAG)
+        tag.remove(ROTOM_PHONE_ALT_TAG)
+        tag.remove(ROTOM_ACCESSORY_TAG)
+        tag.remove(ROTOM_RIBBON_COLOR_TAG)
+        tag.remove(ROTOM_ACCESSORY_COLOR_TAG)
         this.set(DataComponents.CUSTOM_DATA, CustomData.of(tag))
     }
 

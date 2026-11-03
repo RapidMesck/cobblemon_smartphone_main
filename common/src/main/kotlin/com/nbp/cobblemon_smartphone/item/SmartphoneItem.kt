@@ -3,6 +3,7 @@ package com.nbp.cobblemon_smartphone.item
 import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.block.PokeSnackBlock
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import com.cobblemon.mod.common.net.messages.client.ui.InteractPokemonUIPacket
 import com.cobblemon.mod.common.util.isInBattle
 import com.cobblemon.mod.common.util.party
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
@@ -56,12 +57,33 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         return model.getHandModelPath()
     }
 
+    fun getHandModel(stack: ItemStack): ResourceLocation {
+        if (stack.isRotomPhone()) {
+            return model.getRotomModelPath()
+        }
+        return model.getHandModelPath()
+    }
+
 
     companion object {
         const val MAX_STACK = 1
         const val BASE_REGISTRY_KEY = "_smartphone"
         const val TRANSLATION_KEY = "item.cobblemon_smartphone."
         const val BASE_TOOLTIP_TRANSLATION_KEY = "item.cobblemon_smartphone."
+
+        private val showInteractionWheelMethod by lazy {
+            try {
+                PokemonEntity::class.java.getDeclaredMethod(
+                    "showInteractionWheel",
+                    ServerPlayer::class.java,
+                    ItemStack::class.java
+                ).apply {
+                    isAccessible = true
+                }
+            } catch (e: Throwable) {
+                null
+            }
+        }
     }
 
     override fun use(
@@ -173,127 +195,51 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
             return InteractionResult.PASS
         }
 
-        // Cannot transform if Rotom or player is currently in battle
+        // Cannot interact if Rotom or player is currently in battle
         if (interactionTarget.isBattling || (player is ServerPlayer && player.isInBattle())) {
             return InteractionResult.sidedSuccess(level.isClientSide)
         }
 
-        // Client side check: confirm ownership before claiming success
-        if (level.isClientSide) {
-            if (interactionTarget.ownerUUID != player.uuid) {
+        if (interactionTarget.ownerUUID != player.uuid) {
+            if (level.isClientSide) {
                 player.displayClientMessage(
                     Component.translatable("message.cobblemon_smartphone.rotom_not_in_party")
                         .withStyle(ChatFormatting.RED),
                     true
                 )
-                return InteractionResult.sidedSuccess(true)
             }
-            // Update client-side item stack so render layer and tooltip reflect Rotom Phone immediately
-            heldStack.setRotomPhone(true)
-            stack.setRotomPhone(true)
-            player.setItemInHand(usedHand, heldStack)
-            return InteractionResult.sidedSuccess(true)
+            return InteractionResult.sidedSuccess(level.isClientSide)
         }
 
-        // Server-side: verify Rotom is in the player's party, consume it and transform the smartphone
+        // Open the Pokémon interaction wheel (radial menu) so the player can choose "Fundir com o Smartphone"
         if (player is ServerPlayer) {
-            val party = player.party()
-            val rotomInParty = party.find { it.uuid == pokemon.uuid }
-
-            if (rotomInParty == null) {
-                // Revert prediction if server rejected
-                heldStack.setRotomPhone(false)
-                stack.setRotomPhone(false)
-                player.setItemInHand(usedHand, heldStack)
-                player.containerMenu.broadcastChanges()
-                player.inventoryMenu.broadcastChanges()
-
-                player.displayClientMessage(
-                    Component.translatable("message.cobblemon_smartphone.rotom_not_in_party")
-                        .withStyle(ChatFormatting.RED),
-                    true
-                )
-                return InteractionResult.sidedSuccess(false)
-            }
-
-            // Return any held item or cosmetic item to the player
-            val heldItem = rotomInParty.heldItem()
-            if (!heldItem.isEmpty) {
-                if (!player.inventory.add(heldItem.copy())) {
-                    player.drop(heldItem.copy(), false)
+            try {
+                if (showInteractionWheelMethod != null) {
+                    showInteractionWheelMethod?.invoke(interactionTarget, player, heldStack)
+                } else {
+                    val canMount = interactionTarget.canSitOnShoulder() && pokemon in player.party()
+                    val canHeld = !(pokemon.heldItem().isEmpty && heldStack.isEmpty)
+                    val canCosmetic = !pokemon.cosmeticItem.isEmpty && heldStack.isEmpty
+                    InteractPokemonUIPacket(
+                        interactionTarget.uuid,
+                        canMount,
+                        canHeld,
+                        canCosmetic,
+                        false
+                    ).sendToPlayer(player)
                 }
+            } catch (e: Throwable) {
+                val canMount = interactionTarget.canSitOnShoulder() && pokemon in player.party()
+                val canHeld = !(pokemon.heldItem().isEmpty && heldStack.isEmpty)
+                val canCosmetic = !pokemon.cosmeticItem.isEmpty && heldStack.isEmpty
+                InteractPokemonUIPacket(
+                    interactionTarget.uuid,
+                    canMount,
+                    canHeld,
+                    canCosmetic,
+                    false
+                ).sendToPlayer(player)
             }
-            val cosmeticItem = rotomInParty.cosmeticItem()
-            if (!cosmeticItem.isEmpty) {
-                if (!player.inventory.add(cosmeticItem.copy())) {
-                    player.drop(cosmeticItem.copy(), false)
-                }
-            }
-
-            // Transform the smartphone into a Rotom Phone
-            heldStack.setRotomPhone(true)
-            stack.setRotomPhone(true)
-            player.setItemInHand(usedHand, heldStack)
-            player.containerMenu.broadcastChanges()
-            player.inventoryMenu.broadcastChanges()
-
-            // Play Rotom's cry
-            interactionTarget.cry()
-
-            // Remove Rotom from party and discard world entity
-            party.remove(rotomInParty)
-            interactionTarget.discard()
-
-            val eyePos = interactionTarget.eyePosition
-            val blockPos = interactionTarget.blockPosition()
-
-            level.playSound(
-                null,
-                blockPos,
-                SoundEvents.LIGHTNING_BOLT_THUNDER,
-                SoundSource.PLAYERS,
-                0.7f,
-                1.4f
-            )
-            level.playSound(
-                null,
-                blockPos,
-                SoundEvents.LIGHTNING_BOLT_IMPACT,
-                SoundSource.PLAYERS,
-                0.5f,
-                1.2f
-            )
-
-            if (level is ServerLevel) {
-                level.sendParticles(
-                    ParticleTypes.ELECTRIC_SPARK,
-                    eyePos.x,
-                    eyePos.y,
-                    eyePos.z,
-                    35,
-                    0.3,
-                    0.3,
-                    0.3,
-                    0.15
-                )
-                level.sendParticles(
-                    ParticleTypes.FLASH,
-                    eyePos.x,
-                    eyePos.y,
-                    eyePos.z,
-                    1,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                )
-            }
-
-            player.displayClientMessage(
-                Component.translatable("message.cobblemon_smartphone.became_rotom")
-                    .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD),
-                true
-            )
         }
 
         return InteractionResult.sidedSuccess(level.isClientSide)
