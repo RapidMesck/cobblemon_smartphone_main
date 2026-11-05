@@ -48,6 +48,7 @@ object RotomServerManager {
     private val openPlayers = ConcurrentHashMap.newKeySet<UUID>()
     private val horizontalPlayers = ConcurrentHashMap.newKeySet<UUID>()
     private val selfiePlayers = ConcurrentHashMap.newKeySet<UUID>()
+    private val photoPlayers = ConcurrentHashMap.newKeySet<UUID>()
     private val playerConfigs = ConcurrentHashMap<UUID, RotomRadarConfig>()
     // Cooldown map: key = "playerUuid:entityUuid", value = expiration timestamp ms
     private val alertCooldowns = ConcurrentHashMap<String, Long>()
@@ -87,7 +88,17 @@ object RotomServerManager {
 
     fun getPlayerConfig(playerUuid: UUID): RotomRadarConfig? = playerConfigs[playerUuid]
 
-    fun onPlayerSetOpen(player: ServerPlayer, isOpen: Boolean, isHorizontal: Boolean = false, isSelfie: Boolean = false) {
+    fun isPlayerInPhotoMode(uuid: UUID): Boolean = photoPlayers.contains(uuid) || selfiePlayers.contains(uuid)
+    fun isPlayerSelfie(uuid: UUID): Boolean = selfiePlayers.contains(uuid)
+    fun isPlayerOpen(uuid: UUID): Boolean = openPlayers.contains(uuid)
+
+    fun onPlayerSetOpen(
+        player: ServerPlayer,
+        isOpen: Boolean,
+        isHorizontal: Boolean = false,
+        isSelfie: Boolean = false,
+        isPhotoMode: Boolean = false
+    ) {
         if (isOpen) {
             openPlayers.add(player.uuid)
             if (isHorizontal) {
@@ -100,14 +111,20 @@ object RotomServerManager {
             } else {
                 selfiePlayers.remove(player.uuid)
             }
+            if (isPhotoMode) {
+                photoPlayers.add(player.uuid)
+            } else {
+                photoPlayers.remove(player.uuid)
+            }
         } else {
             openPlayers.remove(player.uuid)
             horizontalPlayers.remove(player.uuid)
             selfiePlayers.remove(player.uuid)
+            photoPlayers.remove(player.uuid)
         }
 
         // Broadcast para todos os outros jogadores sincronizarem a animação
-        val syncPacket = SyncSmartphoneOpenStatePacket(player.uuid, isOpen, isHorizontal, isSelfie)
+        val syncPacket = SyncSmartphoneOpenStatePacket(player.uuid, isOpen, isHorizontal, isSelfie, isPhotoMode)
         for (other in player.server.playerList.players) {
             if (other.uuid != player.uuid) {
                 syncPacket.sendToPlayer(other)
@@ -120,15 +137,16 @@ object RotomServerManager {
         for (openUuid in openPlayers) {
             val isHorizontal = horizontalPlayers.contains(openUuid)
             val isSelfie = selfiePlayers.contains(openUuid)
-            SyncSmartphoneOpenStatePacket(openUuid, true, isHorizontal, isSelfie).sendToPlayer(player)
+            val isPhoto = photoPlayers.contains(openUuid)
+            SyncSmartphoneOpenStatePacket(openUuid, true, isHorizontal, isSelfie, isPhoto).sendToPlayer(player)
         }
 
-        // Envia o estado visual de Rotom Phone de todos os jogadores online
+        // Envia o estado visual de Smartphone / Rotom Phone de todos os jogadores online
         for ((uuid, snap) in equippedSnapshots) {
-            if (snap.hasRotom) {
+            if (snap.phoneColor.isNotBlank()) {
                 SyncRotomEquipStatePacket(
                     playerUuid = uuid,
-                    hasRotom = true,
+                    hasRotom = snap.hasRotom,
                     phoneColor = snap.phoneColor,
                     accessory = snap.accessory,
                     ribbonColor = snap.ribbonColor
@@ -222,8 +240,9 @@ object RotomServerManager {
 
         horizontalPlayers.remove(player.uuid)
         selfiePlayers.remove(player.uuid)
+        photoPlayers.remove(player.uuid)
         if (openPlayers.remove(player.uuid)) {
-            val syncPacket = SyncSmartphoneOpenStatePacket(player.uuid, false, false, false)
+            val syncPacket = SyncSmartphoneOpenStatePacket(player.uuid, false, false, false, false)
             for (other in player.server.playerList.players) {
                 if (other.uuid != player.uuid) {
                     syncPacket.sendToPlayer(other)
@@ -235,17 +254,21 @@ object RotomServerManager {
     private fun updateEquippedRotomsAndSocialSessions(server: MinecraftServer, now: Long) {
         val players = server.playerList.players
 
-        // 1. Sincronizar estado de Rotom Phone equipado/inventário de cada jogador
+        // 1. Sincronizar estado de Smartphone / Rotom Phone equipado/inventário de cada jogador
         val playersWithRotom = mutableListOf<ServerPlayer>()
         for (player in players) {
-            val stack = SmartphoneHelper.getEquippedRotomPhone(player)
+            val rotomStack = SmartphoneHelper.getEquippedRotomPhone(player)
+            val stack = rotomStack ?: SmartphoneHelper.getSmartphone(player)
+            val isRotom = stack?.isRotomPhone() == true
             val snapshot = if (stack != null && player.isAlive && !player.isInvisible) {
-                playersWithRotom.add(player)
+                if (isRotom) {
+                    playersWithRotom.add(player)
+                }
                 val color = (stack.item as? SmartphoneItem)?.getColor()?.name ?: "RED"
-                val acc = stack.getRotomAccessory() ?: ""
+                val acc = if (isRotom) (stack.getRotomAccessory() ?: "") else ""
                 val defaultColor = if (acc == "bow") DyeColor.PINK else DyeColor.LIGHT_BLUE
                 val accColor = (if (acc == "bow") stack.getRibbonDyeColor() else stack.getBowtieDyeColor()) ?: defaultColor
-                EquippedRotomSnapshot(true, color, acc, accColor.serializedName)
+                EquippedRotomSnapshot(isRotom, color, acc, accColor.serializedName)
             } else {
                 EquippedRotomSnapshot(false, "", "", "")
             }

@@ -45,6 +45,10 @@ class RotomPlayerRenderLayer(
             ModelResourceLocation(color.getRotomModelPath(), "inventory")
         }
 
+        val SMARTPHONE_HAND_MODELS = SmartphoneColor.entries.associateWith { color ->
+            ModelResourceLocation(color.getHandModelPath(), "inventory")
+        }
+
         // Escala geral do Rotom
         const val SCALE = 1.10f
 
@@ -225,14 +229,11 @@ class RotomPlayerRenderLayer(
             if (player.isInvisible || player.isSleeping || player.isDeadOrDying) return
             if (isFirstPersonPass && (ScannerManager.isInUse() || SocialPhotoClient.isCameraActive())) return
 
-            val smartphoneStack = RotomClientManager.getEffectiveRotomPhone(player) ?: return
-            val color = (smartphoneStack.item as? SmartphoneItem)?.getColor()
-            val modelLocation = color?.let { ROTOM_COLOR_MODELS[it] } ?: ROTOM_MODEL_LOCATION
+            val smartphoneStack = RotomClientManager.getEffectiveSmartphone(player) ?: return
+            val color = (smartphoneStack.item as? SmartphoneItem)?.getColor() ?: SmartphoneColor.RED
+            val isRotom = smartphoneStack.isRotomPhone()
 
             val mc = Minecraft.getInstance()
-            val bakedModel = mc.modelManager.getModel(modelLocation)
-            if (bakedModel == mc.modelManager.missingModel) return
-
             val isLocalPlayer = (player == mc.player)
 
             // Modo Selfie:
@@ -243,64 +244,98 @@ class RotomPlayerRenderLayer(
                     return
                 }
                 // Para quem vê de fora (outro jogador em multiplayer ou terceira pessoa):
-                // Renderiza o Rotom Phone na mão estendida simulando a selfie real!
+                // Renderiza o Smartphone / Rotom Phone na mão estendida simulando a selfie real!
                 if (playerModel != null) {
-                    poseStack.pushPose()
-                    playerModel.rightArm.translateAndRotate(poseStack)
-
-                    val isSlim = player.skin.model == net.minecraft.client.resources.PlayerSkin.Model.SLIM
-                    val handX = if (isSlim) -0.04 else -0.06
-                    poseStack.translate(handX, 0.58, -0.05)
-                    poseStack.scale(0.50f, -0.50f, -0.50f)
-
-                    // Orientação: tela virada para o rosto do jogador
-                    poseStack.mulPose(Axis.XP.rotationDegrees(80.0f))
-                    poseStack.mulPose(Axis.YP.rotationDegrees(15.0f))
-                    poseStack.mulPose(Axis.ZP.rotationDegrees(-90.0f))
-
-                    mc.itemRenderer.render(
-                        smartphoneStack,
-                        ItemDisplayContext.NONE,
-                        false,
-                        poseStack,
-                        bufferSource,
-                        packedLight,
-                        OverlayTexture.NO_OVERLAY,
-                        bakedModel
-                    )
-
-                    val accessory = smartphoneStack.getRotomAccessory()
-                    if (accessory != null) {
-                        val accessoryStack = SmartphoneHelper.createAccessoryStackFromPhone(smartphoneStack)
-                        if (accessoryStack != null) {
-                            val accBakedModel = mc.itemRenderer.getModel(accessoryStack, player.level(), player, 0)
-                            poseStack.pushPose()
-                            if (accessory == "bow") {
-                                poseStack.translate(0.096, -0.016, 0.065)
-                                poseStack.scale(0.22f, 0.22f, 0.22f)
-                                poseStack.mulPose(Axis.ZP.rotationDegrees(-18.0f))
-                            } else {
-                                poseStack.translate(0.0, -0.24, 0.065)
-                                poseStack.scale(0.22f, 0.22f, 0.22f)
-                            }
-                            mc.itemRenderer.render(
-                                accessoryStack,
-                                ItemDisplayContext.NONE,
-                                false,
-                                poseStack,
-                                bufferSource,
-                                packedLight,
-                                OverlayTexture.NO_OVERLAY,
-                                accBakedModel
-                            )
-                            poseStack.popPose()
-                        }
+                    val bakedModel = if (isRotom) {
+                        val modelLocation = ROTOM_COLOR_MODELS[color] ?: ROTOM_MODEL_LOCATION
+                        mc.modelManager.getModel(modelLocation)
+                    } else {
+                        val modelLocation = SMARTPHONE_HAND_MODELS[color]
+                            ?: SMARTPHONE_HAND_MODELS[SmartphoneColor.RED]!!
+                        mc.modelManager.getModel(modelLocation)
                     }
 
-                    poseStack.popPose()
+                    if (bakedModel != mc.modelManager.missingModel) {
+                        poseStack.pushPose()
+                        playerModel.rightArm.translateAndRotate(poseStack)
+
+                        val isSlim = player.skin.model == net.minecraft.client.resources.PlayerSkin.Model.SLIM
+                        val handX = if (isSlim) -0.04 else -0.0625
+                        poseStack.translate(handX, 0.62, 0.0)
+
+                        if (isRotom) {
+                            // Orientação calibrada para o Rotom Phone:
+                            // Topo/antena reto para cima, rosto do Rotom virado para a câmera da selfie
+                            poseStack.mulPose(Axis.XP.rotationDegrees(-96.92f))
+                            poseStack.mulPose(Axis.YP.rotationDegrees(-16.04f))
+                            poseStack.mulPose(Axis.ZP.rotationDegrees(12.61f))
+                            poseStack.scale(1.05f, 1.05f, 1.05f)
+                            // Elevação para o celular emergir do punho e centralização dos vértices
+                            poseStack.translate(-0.00625, 0.241875, -0.045625)
+                        } else {
+                            // Orientação calibrada para o Smartphone normal:
+                            // Topo reto para cima, tela virada para o jogador e traseira/lente para a câmera da selfie
+                            poseStack.mulPose(Axis.XP.rotationDegrees(83.08f))
+                            poseStack.mulPose(Axis.YP.rotationDegrees(16.04f))
+                            poseStack.mulPose(Axis.ZP.rotationDegrees(167.39f))
+                            poseStack.scale(1.05f, 1.05f, 1.05f)
+                            // Elevação para o celular emergir do punho e centralização dos vértices
+                            poseStack.translate(0.100, 0.346875, -0.053125)
+                        }
+
+                        mc.itemRenderer.render(
+                            smartphoneStack,
+                            ItemDisplayContext.NONE,
+                            false,
+                            poseStack,
+                            bufferSource,
+                            packedLight,
+                            OverlayTexture.NO_OVERLAY,
+                            bakedModel
+                        )
+
+                        if (isRotom) {
+                            val accessory = smartphoneStack.getRotomAccessory()
+                            if (accessory != null) {
+                                val accessoryStack = SmartphoneHelper.createAccessoryStackFromPhone(smartphoneStack)
+                                if (accessoryStack != null) {
+                                    val accBakedModel = mc.itemRenderer.getModel(accessoryStack, player.level(), player, 0)
+                                    poseStack.pushPose()
+                                    if (accessory == "bow") {
+                                        poseStack.translate(0.096, 0.16, 0.065)
+                                        poseStack.scale(0.22f, 0.22f, 0.22f)
+                                        poseStack.mulPose(Axis.ZP.rotationDegrees(-18.0f))
+                                    } else {
+                                        poseStack.translate(0.0, -0.08, 0.065)
+                                        poseStack.scale(0.22f, 0.22f, 0.22f)
+                                    }
+                                    mc.itemRenderer.render(
+                                        accessoryStack,
+                                        ItemDisplayContext.NONE,
+                                        false,
+                                        poseStack,
+                                        bufferSource,
+                                        packedLight,
+                                        OverlayTexture.NO_OVERLAY,
+                                        accBakedModel
+                                    )
+                                    poseStack.popPose()
+                                }
+                            }
+                        }
+
+                        poseStack.popPose()
+                    }
                     return
                 }
             }
+
+            // A partir daqui, são funcionalidades exclusivas do companheiro Rotom Phone (ombro, voo, dança, scan, diálogo)
+            if (!isRotom) return
+
+            val modelLocation = ROTOM_COLOR_MODELS[color] ?: ROTOM_MODEL_LOCATION
+            val bakedModel = mc.modelManager.getModel(modelLocation)
+            if (bakedModel == mc.modelManager.missingModel) return
 
             // Em primeira pessoa tirando foto, não renderiza o celular na cara
             if (isLocalPlayer && SocialPhotoClient.isCameraActive()) {
@@ -319,7 +354,7 @@ class RotomPlayerRenderLayer(
             }
 
             if (isLocalPlayer) {
-                RotomClientManager.updateLocalState(isScreenOpen || isHorizontalMode, isHorizontalMode)
+                RotomClientManager.updateLocalState(isScreenOpen || isHorizontalMode, isHorizontalMode, isSelfie, SocialPhotoClient.isCameraActive())
             }
 
             // Se o smartphone na mão do jogador possuir o upgrade do Rotom, o Rotom sai de volta do jogador

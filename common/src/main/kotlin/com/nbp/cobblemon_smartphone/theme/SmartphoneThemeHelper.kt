@@ -73,21 +73,6 @@ object SmartphoneThemeHelper {
             return SmartphoneThemeRegistry.getTheme(preferred)
         }
 
-        val phoneItem = smartphoneStack?.item
-        if (phoneItem is com.nbp.cobblemon_smartphone.item.SmartphoneItem) {
-            val colorTheme = SmartphoneThemeRegistry.getTheme("cobblemon_smartphone:${phoneItem.getColor().modelName}")
-            if (colorTheme.id != SmartphoneTheme.DEFAULT_ID) {
-                return colorTheme
-            }
-        }
-        val contextColor = SmartphoneHelper.contextColor
-        if (contextColor != null) {
-            val colorTheme = SmartphoneThemeRegistry.getTheme("cobblemon_smartphone:${contextColor.modelName}")
-            if (colorTheme.id != SmartphoneTheme.DEFAULT_ID) {
-                return colorTheme
-            }
-        }
-
         return SmartphoneTheme.DEFAULT
     }
 }

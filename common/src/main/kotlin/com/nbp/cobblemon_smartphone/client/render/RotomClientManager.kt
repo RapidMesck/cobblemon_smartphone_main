@@ -6,6 +6,7 @@ import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.SetSmartphoneOpenStatePacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.isRotomPhone
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setAccessoryDyeColor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomAccessory
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.setRotomPhone
@@ -22,9 +23,11 @@ object RotomClientManager {
     private var lastLocalOpen: Boolean? = null
     private var lastLocalHorizontal: Boolean? = null
     private var lastLocalSelfie: Boolean? = null
+    private var lastLocalPhoto: Boolean? = null
     private val remoteOpenStates = ConcurrentHashMap<UUID, Boolean>()
     private val remoteHorizontalStates = ConcurrentHashMap<UUID, Boolean>()
     private val remoteSelfieStates = ConcurrentHashMap<UUID, Boolean>()
+    private val remotePhotoStates = ConcurrentHashMap<UUID, Boolean>()
 
     data class RemoteRotomVisual(
         val hasRotom: Boolean,
@@ -54,14 +57,28 @@ object RotomClientManager {
     }
 
     fun isPlayerSelfie(uuid: UUID): Boolean {
-        val mc = Minecraft.getInstance()
-        if (mc.player?.uuid == uuid) {
+        val mc = runCatching { Minecraft.getInstance() }.getOrNull()
+        if (mc?.player?.uuid == uuid) {
             return SocialPhotoClient.isCameraActive() && !mc.options.cameraType.isFirstPerson
         }
         return remoteSelfieStates[uuid] == true
     }
 
-    fun setRemotePlayerOpen(uuid: UUID, isOpen: Boolean, isHorizontal: Boolean = false, isSelfie: Boolean = false) {
+    fun isPlayerInPhotoMode(uuid: UUID): Boolean {
+        val mc = runCatching { Minecraft.getInstance() }.getOrNull()
+        if (mc?.player?.uuid == uuid) {
+            return SocialPhotoClient.isCameraActive()
+        }
+        return remotePhotoStates[uuid] == true
+    }
+
+    fun setRemotePlayerOpen(
+        uuid: UUID,
+        isOpen: Boolean,
+        isHorizontal: Boolean = false,
+        isSelfie: Boolean = false,
+        isPhotoMode: Boolean = false
+    ) {
         if (isOpen) {
             remoteOpenStates[uuid] = true
             if (isHorizontal) {
@@ -74,10 +91,16 @@ object RotomClientManager {
             } else {
                 remoteSelfieStates.remove(uuid)
             }
+            if (isPhotoMode) {
+                remotePhotoStates[uuid] = true
+            } else {
+                remotePhotoStates.remove(uuid)
+            }
         } else {
             remoteOpenStates.remove(uuid)
             remoteHorizontalStates.remove(uuid)
             remoteSelfieStates.remove(uuid)
+            remotePhotoStates.remove(uuid)
         }
     }
 
@@ -89,7 +112,7 @@ object RotomClientManager {
         ribbonColor: String
     ) {
         serverSocialSyncReceived = true
-        if (!hasRotom) {
+        if (phoneColor.isBlank()) {
             remoteRotomVisuals.remove(uuid)
             return
         }
@@ -114,15 +137,17 @@ object RotomClientManager {
             SmartphoneColor.BLACK -> CobblemonSmartphoneItems.BLACK_SMARTPHONE
         }
         val stack = ItemStack(baseItem)
-        stack.setRotomPhone(true)
-        if (accessory.isNotBlank()) {
-            stack.setRotomAccessory(accessory)
-            val defaultColor = if (accessory == "bow") DyeColor.PINK else DyeColor.LIGHT_BLUE
-            val dye = DyeColor.byName(ribbonColor, defaultColor) ?: defaultColor
-            stack.setAccessoryDyeColor(dye)
+        if (hasRotom) {
+            stack.setRotomPhone(true)
+            if (accessory.isNotBlank()) {
+                stack.setRotomAccessory(accessory)
+                val defaultColor = if (accessory == "bow") DyeColor.PINK else DyeColor.LIGHT_BLUE
+                val dye = DyeColor.byName(ribbonColor, defaultColor) ?: defaultColor
+                stack.setAccessoryDyeColor(dye)
+            }
         }
         remoteRotomVisuals[uuid] = RemoteRotomVisual(
-            hasRotom = true,
+            hasRotom = hasRotom,
             phoneColor = phoneColor,
             accessory = accessory,
             ribbonColor = ribbonColor,
@@ -131,14 +156,22 @@ object RotomClientManager {
     }
 
     /**
-     * Retorna o ItemStack do Rotom Phone do jogador (checando inventário local/mãos primeiro
+     * Retorna o ItemStack do Smartphone (seja Rotom Phone ou normal) do jogador (checando inventário local/mãos primeiro
      * e usando o estado sincronizado pelo servidor para jogadores remotos com o item no inventário).
      */
-    fun getEffectiveRotomPhone(player: Player): ItemStack? {
-        val direct = SmartphoneHelper.getEquippedRotomPhone(player)
+    fun getEffectiveSmartphone(player: Player): ItemStack? {
+        val direct = SmartphoneHelper.getSmartphone(player)
         if (direct != null) return direct
         if (player == Minecraft.getInstance().player) return null
         return remoteRotomVisuals[player.uuid]?.cachedStack
+    }
+
+    /**
+     * Retorna o ItemStack do Rotom Phone do jogador (se possuir o upgrade do Rotom).
+     */
+    fun getEffectiveRotomPhone(player: Player): ItemStack? {
+        val stack = getEffectiveSmartphone(player)
+        return if (stack != null && stack.isRotomPhone()) stack else null
     }
 
     fun hasActiveSessionFor(uuid: UUID): Boolean {
@@ -305,12 +338,18 @@ object RotomClientManager {
         return null
     }
 
-    fun updateLocalState(isOpen: Boolean, isHorizontal: Boolean = false, isSelfie: Boolean = false) {
-        if (lastLocalOpen != isOpen || lastLocalHorizontal != isHorizontal || lastLocalSelfie != isSelfie) {
+    fun updateLocalState(
+        isOpen: Boolean,
+        isHorizontal: Boolean = false,
+        isSelfie: Boolean = false,
+        isPhotoMode: Boolean = false
+    ) {
+        if (lastLocalOpen != isOpen || lastLocalHorizontal != isHorizontal || lastLocalSelfie != isSelfie || lastLocalPhoto != isPhotoMode) {
             lastLocalOpen = isOpen
             lastLocalHorizontal = isHorizontal
             lastLocalSelfie = isSelfie
-            SetSmartphoneOpenStatePacket(isOpen, isHorizontal, isSelfie).sendToServer()
+            lastLocalPhoto = isPhotoMode
+            SetSmartphoneOpenStatePacket(isOpen, isHorizontal, isSelfie, isPhotoMode).sendToServer()
         }
     }
 
@@ -321,6 +360,7 @@ object RotomClientManager {
             remoteOpenStates.clear()
             remoteHorizontalStates.clear()
             remoteSelfieStates.clear()
+            remotePhotoStates.clear()
             activeSessions.clear()
             playerToSessionId.clear()
             fallbackCheckStates.clear()
@@ -328,6 +368,7 @@ object RotomClientManager {
             lastLocalOpen = null
             lastLocalHorizontal = null
             lastLocalSelfie = null
+            lastLocalPhoto = null
             return
         }
         val isScreenOpen = RotomPlayerRenderLayer.isSmartphoneScreen(mc.screen)
@@ -336,7 +377,7 @@ object RotomClientManager {
         val isSelfieActive = isPhotoActive && !mc.options.cameraType.isFirstPerson
         val isOpen = isScreenOpen || isScannerActive || isPhotoActive
         val isHorizontal = isScannerActive || isPhotoActive
-        updateLocalState(isOpen, isHorizontal, isSelfieActive)
+        updateLocalState(isOpen, isHorizontal, isSelfieActive, isPhotoActive)
         com.nbp.cobblemon_smartphone.client.RotomScannerClientState.tick()
         com.nbp.cobblemon_smartphone.client.RotomDialogueClientState.tick()
     }

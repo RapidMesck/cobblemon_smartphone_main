@@ -56,6 +56,7 @@ object RotomAutoScannerManager {
 
     fun setPlayerPriorityTarget(player: ServerPlayer, target: PokemonEntity) {
         if (!CobblemonSmartphone.config.features.enableScanner) return
+        if (RotomServerManager.isPlayerInPhotoMode(player.uuid)) return
         val rotomConfig = CobblemonSmartphone.config.rotom
 
         if (!rotomConfig.enableManualScanPriority) {
@@ -96,6 +97,10 @@ object RotomAutoScannerManager {
         }
 
         val session = playerSessions.computeIfAbsent(player.uuid) { PlayerScanSession(player.uuid) }
+        if (session.isDialogueOpen) {
+            session.isDialogueOpen = false
+            sendToNearby(player, SyncRotomDialogueClosePacket(player.uuid))
+        }
         session.prioritizedEntityId = target.id
         session.targetEntityId = target.id
         session.phase = ScanPhase.APPROACHING
@@ -149,6 +154,19 @@ object RotomAutoScannerManager {
                 continue
             }
 
+            // Bloqueia o scan e retorna o Rotom caso o jogador esteja no modo foto (câmera / selfie)
+            if (RotomServerManager.isPlayerInPhotoMode(player.uuid)) {
+                if (session.targetEntityId != -1 && session.phase != ScanPhase.IDLE && session.phase != ScanPhase.RETURNING) {
+                    session.phase = ScanPhase.RETURNING
+                    session.phaseTicks = 0
+                    session.prioritizedEntityId = null
+                    broadcastScanSync(player, session)
+                }
+                if (session.phase != ScanPhase.RETURNING) {
+                    continue
+                }
+            }
+
             // Check energy if enabled
             if (CobblemonSmartphone.config.energy.enableEnergy && rotomConfig.scanEnergyCost > 0) {
                 if (!rotomPhone.hasEnoughEnergy(rotomConfig.scanEnergyCost)) {
@@ -191,6 +209,7 @@ object RotomAutoScannerManager {
                     session.phaseTicks = 0
                     session.prioritizedEntityId = null
                     broadcastScanSync(player, session)
+                    continue
                 }
                 if (session.phase == ScanPhase.RETURNING) {
                     continue
@@ -234,6 +253,16 @@ object RotomAutoScannerManager {
                         session.phaseTicks = 0
                         broadcastScanSync(player, session)
                     }
+                    continue
+                }
+
+                // Bloqueia o auto scan se o Rotom estiver falando/apresentando uma curiosidade sobre o Pokémon
+                if (session.isDialogueOpen) {
+                    continue
+                }
+
+                // Bloqueia o auto scan se o jogador estiver em modo foto (câmera / selfie)
+                if (RotomServerManager.isPlayerInPhotoMode(player.uuid)) {
                     continue
                 }
 
@@ -396,19 +425,17 @@ object RotomAutoScannerManager {
             rotomPhone.consumeEnergy(rotomConfig.scanEnergyCost)
         }
 
-        // Se o Pokémon for de mod sem curiosidade cadastrada, ou uma variante que não possui curiosidade própria distinta,
-        // apenas escaneia/registra sem abrir o balão de diálogo de curiosidade na tela (vai para o modo mini)
+        // Se o Pokémon tiver curiosidade cadastrada e o modo de exibição for completo,
+        // o diálogo é aberto e o auto scan fica bloqueado até o término/fechamento do diálogo
         val nationalDexId = pokemon.species.nationalPokedexNumber
-        val isVariant = (pokemon.form != pokemon.species.standardForm)
         val curiosity = com.nbp.cobblemon_smartphone.curiosity.PokemonCuriosityRepository.getCuriosity(
             pokemon.species.name,
             nationalDexId
+        ) ?: com.nbp.cobblemon_smartphone.curiosity.PokemonCuriosityRepository.getCuriosity(
+            pokemon.species.resourceIdentifier.path,
+            nationalDexId
         )
-        val hasCuriosity = (curiosity != null) && (!isVariant || com.nbp.cobblemon_smartphone.curiosity.PokemonCuriosityRepository.hasDistinctFormCuriosity(
-            pokemon.species.name,
-            pokemon.form.name
-        ))
-        val showDialogue = hasCuriosity
+        val showDialogue = (curiosity != null)
 
         val isFullDialogue = (radarConfig.scanDisplayMode == RotomRadarConfig.DISPLAY_FULL && showDialogue)
 

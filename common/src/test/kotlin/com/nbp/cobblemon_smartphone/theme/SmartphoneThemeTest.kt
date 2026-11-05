@@ -234,6 +234,13 @@ class SmartphoneThemeTest {
     }
 
     @Test
+    fun `resolveCurrentTheme does not automatically change theme based on contextColor or item when unset`() {
+        com.nbp.cobblemon_smartphone.util.SmartphoneHelper.contextColor = com.nbp.cobblemon_smartphone.item.SmartphoneColor.RED
+        assertEquals(SmartphoneTheme.DEFAULT, SmartphoneThemeHelper.resolveCurrentTheme(null))
+        com.nbp.cobblemon_smartphone.util.SmartphoneHelper.contextColor = null
+    }
+
+    @Test
     fun `isDark and semantic helpers differentiate light and dark surfaces`() {
         val lightTheme = SmartphoneThemeColors.DEFAULT
         assertFalse(lightTheme.isDark)

@@ -6,12 +6,13 @@ import java.util.UUID
 
 /**
  * Envia do cliente para o servidor informando se a tela do smartphone foi aberta ou fechada,
- * e se está em modo horizontal (scanner de pokédex ou câmera fotográfica).
+ * se está em modo horizontal (scanner de pokédex ou câmera fotográfica), modo selfie e modo foto.
  */
 class SetSmartphoneOpenStatePacket(
     val isOpen: Boolean,
     val isHorizontal: Boolean = false,
-    val isSelfie: Boolean = false
+    val isSelfie: Boolean = false,
+    val isPhotoMode: Boolean = false
 ) : CobblemonSmartphoneNetworkPacket<SetSmartphoneOpenStatePacket> {
     companion object {
         val ID = smartphoneResource("set_smartphone_open_state")
@@ -19,7 +20,8 @@ class SetSmartphoneOpenStatePacket(
             val isOpen = buffer.readBoolean()
             val isHorizontal = if (buffer.isReadable) buffer.readBoolean() else false
             val isSelfie = if (buffer.isReadable) buffer.readBoolean() else false
-            return SetSmartphoneOpenStatePacket(isOpen, isHorizontal, isSelfie)
+            val isPhotoMode = if (buffer.isReadable) buffer.readBoolean() else false
+            return SetSmartphoneOpenStatePacket(isOpen, isHorizontal, isSelfie, isPhotoMode)
         }
     }
 
@@ -29,18 +31,20 @@ class SetSmartphoneOpenStatePacket(
         buffer.writeBoolean(isOpen)
         buffer.writeBoolean(isHorizontal)
         buffer.writeBoolean(isSelfie)
+        buffer.writeBoolean(isPhotoMode)
     }
 }
 
 /**
  * Envia do servidor para os clientes sincronizando o estado de abertura do smartphone de um jogador,
- * orientação horizontal e modo selfie.
+ * orientação horizontal, modo selfie e modo foto.
  */
 class SyncSmartphoneOpenStatePacket(
     val playerUuid: UUID,
     val isOpen: Boolean,
     val isHorizontal: Boolean = false,
-    val isSelfie: Boolean = false
+    val isSelfie: Boolean = false,
+    val isPhotoMode: Boolean = false
 ) : CobblemonSmartphoneNetworkPacket<SyncSmartphoneOpenStatePacket> {
     companion object {
         val ID = smartphoneResource("sync_smartphone_open_state")
@@ -49,7 +53,8 @@ class SyncSmartphoneOpenStatePacket(
             val isOpen = buffer.readBoolean()
             val isHorizontal = if (buffer.isReadable) buffer.readBoolean() else false
             val isSelfie = if (buffer.isReadable) buffer.readBoolean() else false
-            return SyncSmartphoneOpenStatePacket(playerUuid, isOpen, isHorizontal, isSelfie)
+            val isPhotoMode = if (buffer.isReadable) buffer.readBoolean() else false
+            return SyncSmartphoneOpenStatePacket(playerUuid, isOpen, isHorizontal, isSelfie, isPhotoMode)
         }
     }
 
@@ -60,6 +65,7 @@ class SyncSmartphoneOpenStatePacket(
         buffer.writeBoolean(isOpen)
         buffer.writeBoolean(isHorizontal)
         buffer.writeBoolean(isSelfie)
+        buffer.writeBoolean(isPhotoMode)
     }
 }
 
