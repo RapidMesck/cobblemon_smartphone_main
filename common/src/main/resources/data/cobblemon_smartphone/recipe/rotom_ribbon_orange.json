@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "cobblemon_smartphone:rotom_ribbon",
+  "pattern": [
+    "W",
+    "S"
+  ],
+  "key": {
+    "W": {
+      "item": "minecraft:orange_wool"
+    },
+    "S": {
+      "item": "minecraft:string"
+    }
+  },
+  "result": {
+    "id": "cobblemon_smartphone:rotom_ribbon",
+    "count": 1,
+    "components": {
+      "minecraft:dyed_color": {
+        "rgb": 16351261,
+        "show_in_tooltip": false
+      },
+      "minecraft:custom_data": {
+        "rotom_accessory_color": "orange",
+        "rotom_ribbon_color": "orange"
+      }
+    }
+  }
+}
