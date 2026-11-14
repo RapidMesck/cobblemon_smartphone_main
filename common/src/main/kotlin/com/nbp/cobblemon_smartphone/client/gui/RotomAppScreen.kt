@@ -163,6 +163,7 @@ class RotomAppScreen(
         private const val SETTINGS_END_Y = 195
         private const val SETTINGS_ROW_H = 22
         private const val SETTINGS_ROW_GAP = 2
+        private const val SETTINGS_TOTAL_ROWS = 11
         private const val LIST_START_Y = 70
         private const val LIST_END_Y = 195
         private const val CARD_HEIGHT = 34
@@ -232,7 +233,7 @@ class RotomAppScreen(
         SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
         blitk(
             matrixStack = matrices,
-            texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()),
+            texture = com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper.resolveLargeFrameTexture(smartphoneStack, theme, color),
             x = screenX,
             y = screenY,
             width = GUI_WIDTH,
@@ -294,7 +295,7 @@ class RotomAppScreen(
     }
 
     private fun renderSettingsTab(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val totalRows = 9
+        val totalRows = SETTINGS_TOTAL_ROWS
         val totalH = totalRows * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
         val viewH = SETTINGS_END_Y - SETTINGS_START_Y
         settingsMaxScroll = (totalH - viewH).coerceAtLeast(0)
@@ -379,7 +380,25 @@ class RotomAppScreen(
         )
         cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
 
-        // 9. Desfundir Rotom
+        // 9. Inverter Direção da Câmera
+        renderSettingRow(
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
+            title = lang("setting_invert_direction_title"),
+            desc = lang("setting_invert_direction_desc"),
+            enabled = config.invertCameraDirection
+        )
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 10. Auto Ajuste de Direção
+        renderSettingRow(
+            guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
+            title = lang("setting_auto_direction_title"),
+            desc = lang("setting_auto_direction_desc"),
+            enabled = config.autoAdjustDirection
+        )
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 11. Desfundir Rotom
         renderDefuseRow(
             guiGraphics, mouseX, mouseY, cy, SETTINGS_ROW_H,
             title = lang("setting_defuse_title"),
@@ -395,7 +414,7 @@ class RotomAppScreen(
         val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
         val trackY = screenY + SETTINGS_START_Y
         val trackH = SETTINGS_END_Y - SETTINGS_START_Y
-        val totalH = 9 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
+        val totalH = SETTINGS_TOTAL_ROWS * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
         val handleH = maxOf(14, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
         val handleY = trackY + (settingsScrollY.toFloat() / settingsMaxScroll * (trackH - handleH)).toInt()
 
@@ -641,6 +660,21 @@ class RotomAppScreen(
         guiGraphics.drawString(font, displayDesc, x1 + 6, y + 12, CONTENT_DIM, false)
     }
 
+    private fun computeDefuseDialogBounds(): IntArray {
+        val overlayX1 = screenX + CONTENT_X
+        val overlayY1 = screenY + 28
+        val overlayY2 = screenY + 195
+        val dialogW = LIST_WIDTH - 16
+        val maxTextW = dialogW - 12
+        val desc1Lines = font.split(Component.literal(lang("dialog_defuse_desc_1")), maxTextW)
+        val desc2Lines = font.split(Component.literal(lang("dialog_defuse_desc_2")), maxTextW)
+        val lineStep = font.lineHeight + 2
+        val dialogH = maxOf(84, 24 + (desc1Lines.size + desc2Lines.size) * lineStep + 30)
+        val dialogX = overlayX1 + 8
+        val dialogY = overlayY1 + (overlayY2 - overlayY1 - dialogH) / 2
+        return intArrayOf(dialogX, dialogY, dialogW, dialogH)
+    }
+
     private fun renderDefuseConfirmation(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val overlayX1 = screenX + CONTENT_X
         val overlayX2 = overlayX1 + LIST_WIDTH
@@ -650,27 +684,34 @@ class RotomAppScreen(
         // Dim background
         guiGraphics.fill(overlayX1, overlayY1, overlayX2, overlayY2, 0xD0000000.toInt())
 
-        val dialogW = LIST_WIDTH - 16
-        val dialogH = 84
-        val dialogX = overlayX1 + 8
-        val dialogY = overlayY1 + (overlayY2 - overlayY1 - dialogH) / 2
+        val (dialogX, dialogY, dialogW, dialogH) = computeDefuseDialogBounds()
+        val maxTextW = dialogW - 12
+        val title = lang("dialog_defuse_title")
+        val desc1Lines = font.split(Component.literal(lang("dialog_defuse_desc_1")), maxTextW)
+        val desc2Lines = font.split(Component.literal(lang("dialog_defuse_desc_2")), maxTextW)
+        val lineStep = font.lineHeight + 2
 
         // Card background & outline
         guiGraphics.fill(dialogX, dialogY, dialogX + dialogW, dialogY + dialogH, SECTION_CONTENT_BG)
         guiGraphics.renderOutline(dialogX, dialogY, dialogW, dialogH, 0xFFE57373.toInt())
 
         // Title
-        val title = lang("dialog_defuse_title")
-        val titleX = dialogX + (dialogW - font.width(title)) / 2
-        guiGraphics.drawString(font, title, titleX, dialogY + 8, 0xFFFF5252.toInt(), false)
+        val displayTitle = if (font.width(title) > maxTextW) font.plainSubstrByWidth(title, maxTextW) else title
+        val titleX = dialogX + (dialogW - font.width(displayTitle)) / 2
+        guiGraphics.drawString(font, displayTitle, titleX, dialogY + 8, 0xFFFF5252.toInt(), false)
 
-        // Description
-        val desc1 = lang("dialog_defuse_desc_1")
-        val desc2 = lang("dialog_defuse_desc_2")
-        val desc1X = dialogX + (dialogW - font.width(desc1)) / 2
-        val desc2X = dialogX + (dialogW - font.width(desc2)) / 2
-        guiGraphics.drawString(font, desc1, desc1X, dialogY + 24, CONTENT_TEXT, false)
-        guiGraphics.drawString(font, desc2, desc2X, dialogY + 36, CONTENT_DIM, false)
+        // Description (wrapped inside dialogW)
+        var textY = dialogY + 23
+        for (line in desc1Lines) {
+            val lineX = dialogX + (dialogW - font.width(line)) / 2
+            guiGraphics.drawString(font, line, lineX, textY, CONTENT_TEXT, false)
+            textY += lineStep
+        }
+        for (line in desc2Lines) {
+            val lineX = dialogX + (dialogW - font.width(line)) / 2
+            guiGraphics.drawString(font, line, lineX, textY, CONTENT_DIM, false)
+            textY += lineStep
+        }
 
         // Buttons: Cancel (left) and Confirm (right)
         val btnW = 56
@@ -1062,15 +1103,7 @@ class RotomAppScreen(
         val my = mouseY.toInt()
 
         if (showDefuseConfirmation) {
-            val overlayX1 = screenX + CONTENT_X
-            val overlayX2 = overlayX1 + LIST_WIDTH
-            val overlayY1 = screenY + 28
-            val overlayY2 = screenY + 195
-
-            val dialogW = LIST_WIDTH - 16
-            val dialogH = 84
-            val dialogX = overlayX1 + 8
-            val dialogY = overlayY1 + (overlayY2 - overlayY1 - dialogH) / 2
+            val (dialogX, dialogY, dialogW, dialogH) = computeDefuseDialogBounds()
 
             val btnW = 56
             val btnH = 16
@@ -1143,7 +1176,7 @@ class RotomAppScreen(
             val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
             val trackY = screenY + SETTINGS_START_Y
             val trackH = SETTINGS_END_Y - SETTINGS_START_Y
-            val totalH = 9 * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
+            val totalH = SETTINGS_TOTAL_ROWS * (SETTINGS_ROW_H + SETTINGS_ROW_GAP)
             val handleH = maxOf(14, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
             val handleY = trackY + (settingsScrollY.toFloat() / settingsMaxScroll * (trackH - handleH)).toInt()
             if (mx in trackX..(trackX + SCROLLBAR_WIDTH) && my in handleY..(handleY + handleH)) {
@@ -1251,7 +1284,25 @@ class RotomAppScreen(
         }
         cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
 
-        // 9. Desfundir Rotom
+        // 9. Inverter Direção da Câmera
+        if (isRowClicked(cy)) {
+            playClickSound()
+            config.invertCameraDirection = !config.invertCameraDirection
+            RotomRadarClientState.saveConfig()
+            return true
+        }
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 10. Auto Ajuste de Direção
+        if (isRowClicked(cy)) {
+            playClickSound()
+            config.autoAdjustDirection = !config.autoAdjustDirection
+            RotomRadarClientState.saveConfig()
+            return true
+        }
+        cy += SETTINGS_ROW_H + SETTINGS_ROW_GAP
+
+        // 11. Desfundir Rotom
         if (isRowClicked(cy)) {
             playClickSound()
             showDefuseConfirmation = true

@@ -50,7 +50,9 @@ data class RotomRadarConfig(
     var autoScanPokedex: Boolean = true,
     var language: String = "en",
     var scanDisplayMode: Int = DISPLAY_FULL,
-    var hudTracker: Boolean = true
+    var hudTracker: Boolean = true,
+    var invertCameraDirection: Boolean = false,
+    var autoAdjustDirection: Boolean = true
 ) {
     val showCuriosityText: Boolean
         get() = scanDisplayMode == DISPLAY_FULL
@@ -71,6 +73,8 @@ data class RotomRadarConfig(
         tag.putString("language", language)
         tag.putInt("scanDisplayMode", scanDisplayMode)
         tag.putBoolean("hudTracker", hudTracker)
+        tag.putBoolean("invertCameraDirection", invertCameraDirection)
+        tag.putBoolean("autoAdjustDirection", autoAdjustDirection)
 
         val list = ListTag()
         for (target in targets) {
@@ -101,7 +105,9 @@ data class RotomRadarConfig(
                 autoScanPokedex = if (tag.contains("autoScanPokedex")) tag.getBoolean("autoScanPokedex") else true,
                 language = if (tag.contains("language")) tag.getString("language") else "en",
                 scanDisplayMode = mode,
-                hudTracker = if (tag.contains("hudTracker")) tag.getBoolean("hudTracker") else true
+                hudTracker = if (tag.contains("hudTracker")) tag.getBoolean("hudTracker") else true,
+                invertCameraDirection = if (tag.contains("invertCameraDirection")) tag.getBoolean("invertCameraDirection") else false,
+                autoAdjustDirection = if (tag.contains("autoAdjustDirection")) tag.getBoolean("autoAdjustDirection") else true
             )
             if (tag.contains("targets", Tag.TAG_LIST.toInt())) {
                 val list = tag.getList("targets", Tag.TAG_COMPOUND.toInt())

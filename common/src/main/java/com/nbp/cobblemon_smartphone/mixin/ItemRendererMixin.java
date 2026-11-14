@@ -2,6 +2,8 @@ package com.nbp.cobblemon_smartphone.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem;
+import com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper;
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.ItemRenderer;
@@ -53,11 +55,25 @@ public abstract class ItemRendererMixin {
                 || transformType == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND
                 || transformType == ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
 
+        var modelManager = Minecraft.getInstance().getModelManager();
         if (isHandContext) {
             ResourceLocation handModelLocation = smartphone.getHandModel(stack);
-            return Minecraft.getInstance()
-                    .getModelManager()
-                    .getModel(new ModelResourceLocation(handModelLocation, "inventory"));
+            BakedModel customModel = modelManager.getModel(new ModelResourceLocation(handModelLocation, "inventory"));
+            if (customModel != modelManager.getMissingModel()) {
+                return customModel;
+            }
+            ResourceLocation fallbackLoc = SmartphoneHelper.INSTANCE.isRotomPhone(stack)
+                    ? smartphone.getColor().getRotomModelPath()
+                    : smartphone.getColor().getHandModelPath();
+            return modelManager.getModel(new ModelResourceLocation(fallbackLoc, "inventory"));
+        }
+
+        ResourceLocation invOverride = SmartphoneSkinHelper.resolveInventoryModel(stack, smartphone.getColor());
+        if (invOverride != null) {
+            BakedModel customInv = modelManager.getModel(new ModelResourceLocation(invOverride, "inventory"));
+            if (customInv != modelManager.getMissingModel()) {
+                return customInv;
+            }
         }
 
         return originalModel;

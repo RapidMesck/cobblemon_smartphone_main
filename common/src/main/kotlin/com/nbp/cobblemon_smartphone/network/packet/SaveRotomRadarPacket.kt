@@ -40,6 +40,8 @@ class SaveRotomRadarPacket(val config: RotomRadarConfig) : CobblemonSmartphoneNe
             val language = if (buffer.isReadable) buffer.readUtf(16) else "en"
             val scanDisplayMode = if (buffer.isReadable) buffer.readVarInt() else RotomRadarConfig.DISPLAY_FULL
             val hudTracker = if (buffer.isReadable) buffer.readBoolean() else true
+            val invertCameraDirection = if (buffer.isReadable) buffer.readBoolean() else false
+            val autoAdjustDirection = if (buffer.isReadable) buffer.readBoolean() else true
             return SaveRotomRadarPacket(
                 RotomRadarConfig(
                     enabled = enabled,
@@ -50,7 +52,9 @@ class SaveRotomRadarPacket(val config: RotomRadarConfig) : CobblemonSmartphoneNe
                     autoScanPokedex = autoScanPokedex,
                     language = language,
                     scanDisplayMode = scanDisplayMode,
-                    hudTracker = hudTracker
+                    hudTracker = hudTracker,
+                    invertCameraDirection = invertCameraDirection,
+                    autoAdjustDirection = autoAdjustDirection
                 )
             )
         }
@@ -77,5 +81,7 @@ class SaveRotomRadarPacket(val config: RotomRadarConfig) : CobblemonSmartphoneNe
         buffer.writeUtf(config.language, 16)
         buffer.writeVarInt(config.scanDisplayMode)
         buffer.writeBoolean(config.hudTracker)
+        buffer.writeBoolean(config.invertCameraDirection)
+        buffer.writeBoolean(config.autoAdjustDirection)
     }
 }

@@ -205,6 +205,10 @@ import com.nbp.cobblemon_smartphone.network.handler.SyncRotomScanHandler
 import com.nbp.cobblemon_smartphone.network.handler.RotomScanCompleteHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomConfigHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomDialogueCloseHandler
+import com.nbp.cobblemon_smartphone.network.packet.SaveSkinPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneSkinsPacket
+import com.nbp.cobblemon_smartphone.network.handler.SaveSkinHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncSmartphoneSkinsHandler
 
 object CobblemonSmartphoneNetwork {
     val s2cPayloads = generateS2CPacketInfoList()
@@ -324,6 +328,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(RotomScanCompletePacket.ID, RotomScanCompletePacket::decode, RotomScanCompleteHandler))
         list.add(PacketRegisterInfo(SyncRotomConfigPacket.ID, SyncRotomConfigPacket::decode, SyncRotomConfigHandler))
         list.add(PacketRegisterInfo(SyncRotomDialogueClosePacket.ID, SyncRotomDialogueClosePacket::decode, SyncRotomDialogueCloseHandler))
+        list.add(PacketRegisterInfo(SyncSmartphoneSkinsPacket.ID, SyncSmartphoneSkinsPacket::decode, SyncSmartphoneSkinsHandler))
 
         return list
     }
@@ -526,6 +531,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(CloseRotomDialoguePacket.ID, CloseRotomDialoguePacket::decode, CloseRotomDialogueHandler))
         list.add(PacketRegisterInfo(FuseRotomPacket.ID, FuseRotomPacket::decode, FuseRotomHandler))
         list.add(PacketRegisterInfo(DefuseRotomPacket.ID, DefuseRotomPacket::decode, DefuseRotomHandler))
+        list.add(PacketRegisterInfo(SaveSkinPacket.ID, SaveSkinPacket::decode, SaveSkinHandler))
 
         return list
     }

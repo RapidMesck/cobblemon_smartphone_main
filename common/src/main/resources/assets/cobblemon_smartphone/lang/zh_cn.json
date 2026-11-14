@@ -528,6 +528,10 @@
   "cobblemon_smartphone.rotom.alert_target": "发现了目标宝可梦！(%s, %d%% IV, %s, 距离 %dm)",
   "cobblemon_smartphone.rotom.setting_hud_tracker_title": "HUD 追踪全息投影",
   "cobblemon_smartphone.rotom.setting_hud_tracker_desc": "Rotom 3D 箭头全息投影",
+  "cobblemon_smartphone.rotom.setting_invert_direction_title": "反转朝向",
+  "cobblemon_smartphone.rotom.setting_invert_direction_desc": "背对摄像机方向注视",
+  "cobblemon_smartphone.rotom.setting_auto_direction_title": "自动调整朝向",
+  "cobblemon_smartphone.rotom.setting_auto_direction_desc": "随摄像机与玩家自动转向",
   "cobblemon_smartphone.rotom.tracker_shiny_title": "发现异色！",
   "cobblemon_smartphone.rotom.tracker_target_title": "发现目标！",
   "cobblemon_smartphone.rotom.tracker_in_range": "在范围内！",
@@ -547,5 +551,10 @@
   "cobblemon_smartphone.rotom.dialog_defuse_title": "解除洛托姆融合？",
   "cobblemon_smartphone.rotom.dialog_defuse_desc_1": "洛托姆将离开智能手机",
   "cobblemon_smartphone.rotom.dialog_defuse_desc_2": "并返回你的宝可梦队伍。",
-  "cobblemon_smartphone.rotom.btn_confirm": "确认"
+  "cobblemon_smartphone.rotom.btn_confirm": "确认",
+  "cobblemon_smartphone.settings.tab.skins": "外观",
+  "cobblemon_smartphone.skin.default": "默认",
+  "cobblemon_smartphone.skin.hint": "选择 3D 手机壳外观",
+  "cobblemon_smartphone.skin.locked": "未解锁（需通过合成/升级解锁）",
+  "cobblemon_smartphone.skin.locked_upgrade": "需要升级：%s"
 }

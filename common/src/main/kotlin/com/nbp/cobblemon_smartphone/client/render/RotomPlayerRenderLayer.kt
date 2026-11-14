@@ -3,11 +3,13 @@ package com.nbp.cobblemon_smartphone.client.render
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.math.Axis
 import com.nbp.cobblemon_smartphone.client.RotomDialogueClientState
+import com.nbp.cobblemon_smartphone.client.RotomRadarClientState
 import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.client.scanner.ScannerManager
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
+import com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRotomAccessory
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.isRotomPhone
@@ -61,6 +63,35 @@ class RotomPlayerRenderLayer(
         // Orientações base do Rotom
         const val YAW_FACING_FRONT = 15.0f  // Rosto do Rotom voltado para a frente
         const val YAW_FACING_BACK = 195.0f  // Rosto do Rotom voltado para as costas / trás
+
+        /**
+         * Calcula o yaw/pitch alvo do Rotom de acordo com a câmera e preferências do jogador.
+         * Quando autoAdjustDirection está desativado, mantém o eixo fixo configurado pelo jogador.
+         */
+        fun computeCameraGaze(
+            cameraType: CameraType,
+            netHeadYaw: Float,
+            headPitch: Float,
+            invertCameraDirection: Boolean,
+            autoAdjustDirection: Boolean
+        ): Pair<Float, Float> {
+            if (!autoAdjustDirection) {
+                val fixedYaw = if (invertCameraDirection) YAW_FACING_FRONT else YAW_FACING_BACK
+                return fixedYaw to 0.0f
+            }
+            val lookFront = when (cameraType) {
+                CameraType.THIRD_PERSON_BACK -> invertCameraDirection
+                CameraType.THIRD_PERSON_FRONT -> !invertCameraDirection
+                CameraType.FIRST_PERSON -> invertCameraDirection
+            }
+            val headFactor = if (cameraType == CameraType.FIRST_PERSON) 0.20f else 0.25f
+            val pitchFactor = if (cameraType == CameraType.FIRST_PERSON) 0.15f else 0.20f
+            return if (lookFront) {
+                (YAW_FACING_FRONT + netHeadYaw * headFactor) to (-headPitch * pitchFactor)
+            } else {
+                (YAW_FACING_BACK - netHeadYaw * headFactor) to (headPitch * pitchFactor)
+            }
+        }
 
         // Distância confortável do smartphone na frente dos olhos quando aberto
         const val FACE_VIEW_DISTANCE = 0.78f
@@ -246,13 +277,17 @@ class RotomPlayerRenderLayer(
                 // Para quem vê de fora (outro jogador em multiplayer ou terceira pessoa):
                 // Renderiza o Smartphone / Rotom Phone na mão estendida simulando a selfie real!
                 if (playerModel != null) {
-                    val bakedModel = if (isRotom) {
-                        val modelLocation = ROTOM_COLOR_MODELS[color] ?: ROTOM_MODEL_LOCATION
-                        mc.modelManager.getModel(modelLocation)
+                    val customLoc = ModelResourceLocation(
+                        SmartphoneSkinHelper.resolveHandModel(smartphoneStack, color, isRotom),
+                        "inventory"
+                    )
+                    val customBaked = mc.modelManager.getModel(customLoc)
+                    val bakedModel = if (customBaked != mc.modelManager.missingModel) {
+                        customBaked
+                    } else if (isRotom) {
+                        mc.modelManager.getModel(ROTOM_COLOR_MODELS[color] ?: ROTOM_MODEL_LOCATION)
                     } else {
-                        val modelLocation = SMARTPHONE_HAND_MODELS[color]
-                            ?: SMARTPHONE_HAND_MODELS[SmartphoneColor.RED]!!
-                        mc.modelManager.getModel(modelLocation)
+                        mc.modelManager.getModel(SMARTPHONE_HAND_MODELS[color] ?: SMARTPHONE_HAND_MODELS[SmartphoneColor.RED]!!)
                     }
 
                     if (bakedModel != mc.modelManager.missingModel) {
@@ -333,8 +368,16 @@ class RotomPlayerRenderLayer(
             // A partir daqui, são funcionalidades exclusivas do companheiro Rotom Phone (ombro, voo, dança, scan, diálogo)
             if (!isRotom) return
 
-            val modelLocation = ROTOM_COLOR_MODELS[color] ?: ROTOM_MODEL_LOCATION
-            val bakedModel = mc.modelManager.getModel(modelLocation)
+            val customRotomLoc = ModelResourceLocation(
+                SmartphoneSkinHelper.resolveHandModel(smartphoneStack, color, true),
+                "inventory"
+            )
+            val customRotomBaked = mc.modelManager.getModel(customRotomLoc)
+            val bakedModel = if (customRotomBaked != mc.modelManager.missingModel) {
+                customRotomBaked
+            } else {
+                mc.modelManager.getModel(ROTOM_COLOR_MODELS[color] ?: ROTOM_MODEL_LOCATION)
+            }
             if (bakedModel == mc.modelManager.missingModel) return
 
             // Em primeira pessoa tirando foto, não renderiza o celular na cara
@@ -409,7 +452,11 @@ class RotomPlayerRenderLayer(
             val targetGazeYaw: Float
             val targetGazePitch: Float
 
-            if (nearbyPlayer != null) {
+            val radarCfg = RotomRadarClientState.config
+            val autoAdjust = if (isLocalPlayer) radarCfg.autoAdjustDirection else true
+            val invertDir = if (isLocalPlayer) radarCfg.invertCameraDirection else false
+
+            if (nearbyPlayer != null && autoAdjust) {
                 val dx = nearbyPlayer.x - player.x
                 val dy = nearbyPlayer.eyeY - (player.y + 1.2)
                 val dz = nearbyPlayer.z - player.z
@@ -421,20 +468,15 @@ class RotomPlayerRenderLayer(
                 targetGazeYaw = YAW_FACING_FRONT + relYaw
                 targetGazePitch = -(kotlin.math.atan2(dy, distXZ) * (180.0 / Math.PI)).toFloat().coerceIn(-35.0f, 35.0f)
             } else if (isLocalPlayer) {
-                when (mc.options.cameraType) {
-                    CameraType.THIRD_PERSON_BACK -> {
-                        targetGazeYaw = YAW_FACING_BACK - netHeadYaw * 0.25f
-                        targetGazePitch = headPitch * 0.20f
-                    }
-                    CameraType.THIRD_PERSON_FRONT -> {
-                        targetGazeYaw = YAW_FACING_FRONT + netHeadYaw * 0.25f
-                        targetGazePitch = -headPitch * 0.20f
-                    }
-                    CameraType.FIRST_PERSON -> {
-                        targetGazeYaw = YAW_FACING_BACK - netHeadYaw * 0.20f
-                        targetGazePitch = headPitch * 0.15f
-                    }
-                }
+                val (gazeYaw, gazePitch) = computeCameraGaze(
+                    cameraType = mc.options.cameraType,
+                    netHeadYaw = netHeadYaw,
+                    headPitch = headPitch,
+                    invertCameraDirection = invertDir,
+                    autoAdjustDirection = autoAdjust
+                )
+                targetGazeYaw = gazeYaw
+                targetGazePitch = gazePitch
             } else {
                 targetGazeYaw = YAW_FACING_FRONT + netHeadYaw * 0.25f
                 targetGazePitch = -headPitch * 0.20f
@@ -958,12 +1000,13 @@ class RotomPlayerRenderLayer(
                         Mth.lerp(t, idleCamZ, openCamZ)
                     )
 
-                    val idleFpWorldYaw = if (nearbyPlayer != null && dialogueT <= 0.001f) {
+                    val idleFpWorldYaw = if ((nearbyPlayer != null && autoAdjust || !autoAdjust) && dialogueT <= 0.001f) {
                         bodyYaw + (finalYaw - YAW_FACING_FRONT)
                     } else if (dialogueT > 0.001f) {
                         camYaw - 165.0f + idleSwayYaw * 0.3f - exitYaw
                     } else {
-                        animState.fpCompanionYaw - 145.0f + idleSwayYaw
+                        val fpInvertOffset = if (invertDir) 180.0f else 0.0f
+                        animState.fpCompanionYaw - 145.0f + fpInvertOffset + idleSwayYaw
                     }
                     val openFpWorldYaw = lookYaw
                     shoulderWorldYaw = idleFpWorldYaw + Mth.wrapDegrees(openFpWorldYaw - idleFpWorldYaw) * t

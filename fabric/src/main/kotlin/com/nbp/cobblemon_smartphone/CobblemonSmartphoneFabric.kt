@@ -87,6 +87,9 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
                 )
             }
             SyncDatapackActionsPacket(data).sendToPlayer(handler.player)
+            com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneSkinsPacket(
+                com.nbp.cobblemon_smartphone.skin.DatapackSkinLoader.getSkins()
+            ).sendToPlayer(handler.player)
             SyncActionOrderPacket(ActionOrderStorage.read(handler.player)).sendToPlayer(handler.player)
             SyncHiddenActionsPacket(HiddenActionsStorage.read(handler.player)).sendToPlayer(handler.player)
             SyncQuickActionsPacket(QuickActionBindingsStorage.read(handler.player)).sendToPlayer(handler.player)
@@ -146,5 +149,6 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
 
     override fun registerReloadListeners() {
         ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(DatapackActionReloadListenerWrapper())
+        ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(DatapackSkinReloadListenerWrapper())
     }
 }

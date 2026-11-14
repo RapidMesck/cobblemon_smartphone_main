@@ -74,7 +74,7 @@ class SmartphoneScreen(
         // Smartphone frame background
         blitk(
             matrixStack = matrices,
-            texture = theme.getFrameTexture(color.getSmallScreenTexture()),
+            texture = com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper.resolveFrameTexture(smartphoneStack, theme, color),
             x = screenX,
             y = screenY,
             width = GUI_WIDTH,

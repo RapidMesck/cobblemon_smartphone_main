@@ -688,6 +688,10 @@
   "cobblemon_smartphone.rotom.alert_target": "A target Pokémon was detected! (%s, %d%% IV, %s, %dm away)",
   "cobblemon_smartphone.rotom.setting_hud_tracker_title": "HUD Tracker Hologram",
   "cobblemon_smartphone.rotom.setting_hud_tracker_desc": "Rotom 3D direction arrow",
+  "cobblemon_smartphone.rotom.setting_invert_direction_title": "Invert Direction",
+  "cobblemon_smartphone.rotom.setting_invert_direction_desc": "Look away from the camera",
+  "cobblemon_smartphone.rotom.setting_auto_direction_title": "Auto Adjust Direction",
+  "cobblemon_smartphone.rotom.setting_auto_direction_desc": "Adjust to camera and players",
   "cobblemon_smartphone.rotom.tracker_shiny_title": "SHINY DETECTED!",
   "cobblemon_smartphone.rotom.tracker_target_title": "TARGET LOCATED!",
   "cobblemon_smartphone.rotom.tracker_in_range": "IN RANGE!",
@@ -700,5 +704,10 @@
   "cobblemon_smartphone.rotom.dialog_defuse_title": "Defuse Rotom?",
   "cobblemon_smartphone.rotom.dialog_defuse_desc_1": "Rotom will leave the smartphone",
   "cobblemon_smartphone.rotom.dialog_defuse_desc_2": "and return to your Pokémon party.",
-  "cobblemon_smartphone.rotom.btn_confirm": "Confirm"
+  "cobblemon_smartphone.rotom.btn_confirm": "Confirm",
+  "cobblemon_smartphone.settings.tab.skins": "Skins",
+  "cobblemon_smartphone.skin.default": "Default",
+  "cobblemon_smartphone.skin.hint": "Select a 3D case skin",
+  "cobblemon_smartphone.skin.locked": "Locked (unlock via craft/upgrade)",
+  "cobblemon_smartphone.skin.locked_upgrade": "Requires upgrade: %s"
 }

@@ -92,6 +92,9 @@ class CobblemonSmartphoneNeoForge : Implementation {
                 )
             }
             SyncDatapackActionsPacket(data).sendToPlayer(player)
+            com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneSkinsPacket(
+                com.nbp.cobblemon_smartphone.skin.DatapackSkinLoader.getSkins()
+            ).sendToPlayer(player)
             SyncActionOrderPacket(ActionOrderStorage.read(player)).sendToPlayer(player)
             SyncHiddenActionsPacket(HiddenActionsStorage.read(player)).sendToPlayer(player)
             SyncQuickActionsPacket(QuickActionBindingsStorage.read(player)).sendToPlayer(player)
@@ -181,6 +184,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
 
     private fun onAddReloadListener(event: AddReloadListenerEvent) {
         event.addListener(DatapackActionLoader)
+        event.addListener(com.nbp.cobblemon_smartphone.skin.DatapackSkinLoader)
     }
 
     private fun onAddPackFinders(event: AddPackFindersEvent) {

@@ -52,6 +52,7 @@ object CobblemonSmartphoneNeoForgeClient {
         }
 
         com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper.clientPlayerProvider = { net.minecraft.client.Minecraft.getInstance().player }
+        com.nbp.cobblemon_smartphone.skin.SmartphoneSkinRegistry.clientResourceManagerProvider = { net.minecraft.client.Minecraft.getInstance()?.resourceManager }
         com.nbp.cobblemon_smartphone.client.RotomInteractionClientHandler.register()
     }
 }

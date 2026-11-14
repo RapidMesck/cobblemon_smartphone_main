@@ -5,6 +5,7 @@ Welcome to the Cobblemon Smartphone developer documentation. This mod provides a
 - **Datapack API** — Add actions via JSON files in datapacks or resource packs. No coding required.
 - **Mod API** — Add actions programmatically from your own mod. Full control with Kotlin/Java.
 - **Theme System** — Customize wallpapers, frames, app icons, UI elements, and color palettes via resource packs.
+- **3D Skin & Case System** — Customize 3D Smartphone and Rotom Phone models via resource packs & datapacks, with optional craftable unlocks.
 - **Theme Creator Studio** — Visual standalone HTML tool (`theme_creator.html`) to preview and generate themes and resource packs.
 
 ## Quick Start
@@ -17,6 +18,7 @@ Welcome to the Cobblemon Smartphone developer documentation. This mod provides a
 | Add an unsupported GUI or custom logic | [Mod API](mod-api.md) |
 | Require a smartphone upgrade to unlock an action | Both APIs support this |
 | Customize wallpapers, colors, frames, and icons | [Theme System](themes.md) |
+| Customize 3D Smartphone & Rotom models (skins/cases) | [3D Skin & Case System](skins.md) |
 | Configure cooldowns, feature toggles, or upgrade checks | [Mod Configuration](#mod-configuration) |
 
 ## Supported Versions

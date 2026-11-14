@@ -14,6 +14,7 @@ import com.nbp.cobblemon_smartphone.energy.SmartphoneEnergyHelper
 import com.nbp.cobblemon_smartphone.energy.getEnergy
 import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper
 import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
 import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
 import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
@@ -58,10 +59,7 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
     }
 
     fun getHandModel(stack: ItemStack): ResourceLocation {
-        if (stack.isRotomPhone()) {
-            return model.getRotomModelPath()
-        }
-        return model.getHandModelPath()
+        return SmartphoneSkinHelper.resolveHandModel(stack, model, stack.isRotomPhone())
     }
 
 

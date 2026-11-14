@@ -19,6 +19,9 @@ public class MixinSmithingTransformRecipe {
 
     private static final String UPGRADES_TAG = "cobblemon_smartphone:upgrades";
     private static final String EXTRA_CAPACITY_TAG = "cobblemon_smartphone:extra_energy_capacity";
+    private static final String SKIN_TAG = "cobblemon_smartphone:skin";
+    private static final String SHORT_SKIN_TAG = "smartphone_skin";
+    private static final String UNLOCKED_SKINS_TAG = "cobblemon_smartphone:unlocked_skins";
 
     @Shadow
     private ItemStack result;
@@ -40,7 +43,10 @@ public class MixinSmithingTransformRecipe {
 
         boolean hasUpgrades = recipeData.contains(UPGRADES_TAG, CompoundTag.TAG_COMPOUND);
         boolean hasCapacity = recipeData.contains(EXTRA_CAPACITY_TAG, CompoundTag.TAG_INT);
-        if (!hasUpgrades && !hasCapacity) {
+        boolean hasSkin = recipeData.contains(SKIN_TAG, CompoundTag.TAG_STRING)
+                || recipeData.contains(SHORT_SKIN_TAG, CompoundTag.TAG_STRING)
+                || recipeData.contains(UNLOCKED_SKINS_TAG, CompoundTag.TAG_COMPOUND);
+        if (!hasUpgrades && !hasCapacity && !hasSkin) {
             return;
         }
 
@@ -79,6 +85,32 @@ public class MixinSmithingTransformRecipe {
             int extra = recipeData.getInt(EXTRA_CAPACITY_TAG);
             int current = tag.getInt(EXTRA_CAPACITY_TAG);
             tag.putInt(EXTRA_CAPACITY_TAG, current + extra);
+        }
+
+        if (recipeData.contains(UNLOCKED_SKINS_TAG, CompoundTag.TAG_COMPOUND)) {
+            CompoundTag recipeSkins = recipeData.getCompound(UNLOCKED_SKINS_TAG);
+            CompoundTag targetSkins = tag.contains(UNLOCKED_SKINS_TAG, CompoundTag.TAG_COMPOUND)
+                    ? tag.getCompound(UNLOCKED_SKINS_TAG) : new CompoundTag();
+            for (String key : recipeSkins.getAllKeys()) {
+                if (recipeSkins.getBoolean(key)) {
+                    targetSkins.putBoolean(key, true);
+                }
+            }
+            tag.put(UNLOCKED_SKINS_TAG, targetSkins);
+        }
+
+        String recipeSkin = null;
+        if (recipeData.contains(SKIN_TAG, CompoundTag.TAG_STRING)) {
+            recipeSkin = recipeData.getString(SKIN_TAG);
+        } else if (recipeData.contains(SHORT_SKIN_TAG, CompoundTag.TAG_STRING)) {
+            recipeSkin = recipeData.getString(SHORT_SKIN_TAG);
+        }
+        if (recipeSkin != null && !recipeSkin.isEmpty()) {
+            tag.putString(SKIN_TAG, recipeSkin);
+            CompoundTag targetSkins = tag.contains(UNLOCKED_SKINS_TAG, CompoundTag.TAG_COMPOUND)
+                    ? tag.getCompound(UNLOCKED_SKINS_TAG) : new CompoundTag();
+            targetSkins.putBoolean(recipeSkin, true);
+            tag.put(UNLOCKED_SKINS_TAG, targetSkins);
         }
 
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));

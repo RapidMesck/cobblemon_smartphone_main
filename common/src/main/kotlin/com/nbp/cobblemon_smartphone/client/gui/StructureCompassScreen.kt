@@ -107,7 +107,7 @@ class StructureCompassScreen(
         SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
         blitk(
             matrixStack = matrices,
-            texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()),
+            texture = com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper.resolveLargeFrameTexture(null, theme, color),
             x = screenX,
             y = screenY,
             width = GUI_WIDTH,

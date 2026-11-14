@@ -12,18 +12,30 @@ import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveQuickActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SaveSkinPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveThemePacket
+import com.nbp.cobblemon_smartphone.skin.SmartphoneSkin
+import com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper
+import com.nbp.cobblemon_smartphone.skin.SmartphoneSkinRegistry
+import com.nbp.cobblemon_smartphone.skin.isSkinUnlocked
+import com.nbp.cobblemon_smartphone.skin.setSkinId
 import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRegistry
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.theme.setTheme
+import com.mojang.blaze3d.platform.Lighting
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.isRotomPhone
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.renderer.LightTexture
+import net.minecraft.client.renderer.texture.OverlayTexture
+import net.minecraft.client.resources.model.ModelResourceLocation
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 
 class SmartphoneSettingsScreen(
@@ -57,12 +69,15 @@ class SmartphoneSettingsScreen(
 
     enum class SettingsTab {
         APPS,
-        THEMES
+        THEMES,
+        SKINS
     }
 
     private var currentTab = initialTab
     private var currentThemePage = 0
     private var selectedThemeId: String = SmartphoneTheme.DEFAULT_ID
+    private var currentSkinPage = 0
+    private var selectedSkinId: String = SmartphoneSkin.DEFAULT_ID
 
     private val themes: List<SmartphoneTheme>
         get() = SmartphoneThemeRegistry.getThemes()
@@ -75,6 +90,17 @@ class SmartphoneSettingsScreen(
         return themes.drop(from).take(THEMES_PER_PAGE)
     }
 
+    private val skins: List<SmartphoneSkin>
+        get() = SmartphoneSkinRegistry.getSkins(color)
+
+    private val maxSkinPage: Int
+        get() = if (skins.isEmpty()) 0 else (skins.size - 1) / THEMES_PER_PAGE
+
+    private fun pagedSkins(): List<SmartphoneSkin> {
+        val from = currentSkinPage * THEMES_PER_PAGE
+        return skins.drop(from).take(THEMES_PER_PAGE)
+    }
+
     private val maxPage get() = if (orderedIds.isEmpty()) 0 else (orderedIds.size - 1) / ACTIONS_PER_PAGE
 
     override fun isPauseScreen(): Boolean = false
@@ -82,9 +108,13 @@ class SmartphoneSettingsScreen(
     override fun init() {
         screenX = (width - GUI_WIDTH) / 2
         screenY = (height - GUI_HEIGHT) / 2
-        minecraft?.resourceManager?.let { SmartphoneThemeRegistry.ensureLoaded(it) }
+        minecraft?.resourceManager?.let {
+            SmartphoneThemeRegistry.ensureLoaded(it)
+            SmartphoneSkinRegistry.ensureLoaded(it)
+        }
         SmartphoneHelper.contextSmartphone = smartphoneStack
         selectedThemeId = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack).id
+        selectedSkinId = SmartphoneSkinHelper.resolveSkin(smartphoneStack).id
     }
 
     override fun removed() {
@@ -95,6 +125,7 @@ class SmartphoneSettingsScreen(
         SmartphoneHiddenActions.setHidden(hiddenIds.toList())
         SaveHiddenActionsPacket(hiddenIds.toList()).sendToServer()
         SaveThemePacket(selectedThemeId).sendToServer()
+        SaveSkinPacket(selectedSkinId).sendToServer()
         SmartphoneHelper.contextSmartphone = null
         super.removed()
     }
@@ -109,7 +140,7 @@ class SmartphoneSettingsScreen(
         // Smartphone frame background
         blitk(
             matrixStack = matrices,
-            texture = currentTheme.getFrameTexture(color.getSmallScreenTexture()),
+            texture = SmartphoneSkinHelper.resolveFrameTexture(smartphoneStack, currentTheme, color),
             x = screenX,
             y = screenY,
             width = GUI_WIDTH,
@@ -120,21 +151,32 @@ class SmartphoneSettingsScreen(
         renderTabs(guiGraphics, mouseX, mouseY, currentTheme)
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = false, smartphoneStack)
 
-        if (currentTab == SettingsTab.APPS) {
-            renderHint(guiGraphics, currentTheme)
-            pagedIds().forEachIndexed { index, actionId ->
-                renderGridItem(guiGraphics, mouseX, mouseY, index, actionId, currentTheme)
+        when (currentTab) {
+            SettingsTab.APPS -> {
+                renderHint(guiGraphics, currentTheme)
+                pagedIds().forEachIndexed { index, actionId ->
+                    renderGridItem(guiGraphics, mouseX, mouseY, index, actionId, currentTheme)
+                }
+                renderPageDots(guiGraphics, currentTheme)
+                renderSelector(guiGraphics, mouseX, mouseY, currentTheme)
+                renderHoveredTooltip(guiGraphics, mouseX, mouseY)
             }
-            renderPageDots(guiGraphics, currentTheme)
-            renderSelector(guiGraphics, mouseX, mouseY, currentTheme)
-            renderHoveredTooltip(guiGraphics, mouseX, mouseY)
-        } else {
-            renderThemeHint(guiGraphics, currentTheme)
-            pagedThemes().forEachIndexed { index, theme ->
-                renderThemeCard(guiGraphics, mouseX, mouseY, index, theme, currentTheme)
+            SettingsTab.THEMES -> {
+                renderThemeHint(guiGraphics, currentTheme)
+                pagedThemes().forEachIndexed { index, theme ->
+                    renderThemeCard(guiGraphics, mouseX, mouseY, index, theme, currentTheme)
+                }
+                renderThemePageDots(guiGraphics, currentTheme)
+                renderThemeHoveredTooltip(guiGraphics, mouseX, mouseY)
             }
-            renderThemePageDots(guiGraphics, currentTheme)
-            renderThemeHoveredTooltip(guiGraphics, mouseX, mouseY)
+            SettingsTab.SKINS -> {
+                renderSkinHint(guiGraphics, currentTheme)
+                pagedSkins().forEachIndexed { index, skin ->
+                    renderSkinCard(guiGraphics, mouseX, mouseY, index, skin, currentTheme)
+                }
+                renderSkinPageDots(guiGraphics, currentTheme)
+                renderSkinHoveredTooltip(guiGraphics, mouseX, mouseY)
+            }
         }
 
         renderFooterButtons(guiGraphics, mouseX, mouseY, currentTheme)
@@ -166,10 +208,19 @@ class SmartphoneSettingsScreen(
             currentTab = SettingsTab.THEMES
             return true
         }
+        if (isInSkinsTab(mx, my) && currentTab != SettingsTab.SKINS) {
+            playClickSound()
+            currentTab = SettingsTab.SKINS
+            return true
+        }
 
         if (isInFooterButton(mx, my, FOOTER_PREV_X)) {
             playClickSound()
-            if (currentTab == SettingsTab.APPS) changePage(-1) else changeThemePage(-1)
+            when (currentTab) {
+                SettingsTab.APPS -> changePage(-1)
+                SettingsTab.THEMES -> changeThemePage(-1)
+                SettingsTab.SKINS -> changeSkinPage(-1)
+            }
             return true
         }
         if (isInFooterButton(mx, my, FOOTER_HOME_X)) {
@@ -179,7 +230,11 @@ class SmartphoneSettingsScreen(
         }
         if (isInFooterButton(mx, my, FOOTER_NEXT_X)) {
             playClickSound()
-            if (currentTab == SettingsTab.APPS) changePage(1) else changeThemePage(1)
+            when (currentTab) {
+                SettingsTab.APPS -> changePage(1)
+                SettingsTab.THEMES -> changeThemePage(1)
+                SettingsTab.SKINS -> changeSkinPage(1)
+            }
             return true
         }
 
@@ -194,6 +249,25 @@ class SmartphoneSettingsScreen(
                     }
                     SmartphoneThemeHelper.clientPreferredTheme = theme.id
                     SaveThemePacket(theme.id).sendToServer()
+                    return true
+                }
+            }
+            return super.mouseClicked(mouseX, mouseY, button)
+        }
+
+        if (currentTab == SettingsTab.SKINS) {
+            pagedSkins().forEachIndexed { index, skin ->
+                if (isInThemeCard(mx, my, index)) {
+                    if (!isSkinUnlocked(skin)) {
+                        return true
+                    }
+                    playClickSound()
+                    selectedSkinId = skin.id
+                    smartphoneStack?.setSkinId(skin.id)
+                    Minecraft.getInstance().player?.let { p ->
+                        SmartphoneHelper.getSmartphone(p)?.setSkinId(skin.id)
+                    }
+                    SaveSkinPacket(skin.id).sendToServer()
                     return true
                 }
             }
@@ -285,17 +359,21 @@ class SmartphoneSettingsScreen(
         if (draggingIndex != -1) return true
         val amount = if (verticalAmount < 0.0) 1 else -1
 
-        return if (currentTab == SettingsTab.APPS) {
-            if (maxPage == 0 || verticalAmount == 0.0) {
+        return when (currentTab) {
+            SettingsTab.APPS -> if (maxPage == 0 || verticalAmount == 0.0) {
                 super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
             } else {
                 changePage(amount)
             }
-        } else {
-            if (maxThemePage == 0 || verticalAmount == 0.0) {
+            SettingsTab.THEMES -> if (maxThemePage == 0 || verticalAmount == 0.0) {
                 super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
             } else {
                 changeThemePage(amount)
+            }
+            SettingsTab.SKINS -> if (maxSkinPage == 0 || verticalAmount == 0.0) {
+                super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
+            } else {
+                changeSkinPage(amount)
             }
         }
     }
@@ -323,6 +401,16 @@ class SmartphoneSettingsScreen(
         }
 
         currentThemePage = nextPage
+        return true
+    }
+
+    private fun changeSkinPage(offset: Int): Boolean {
+        val nextPage = (currentSkinPage + offset).coerceIn(0, maxSkinPage)
+        if (nextPage == currentSkinPage) {
+            return false
+        }
+
+        currentSkinPage = nextPage
         return true
     }
 
@@ -602,41 +690,49 @@ class SmartphoneSettingsScreen(
                 mouseY in (screenY + TAB_Y)..(screenY + TAB_Y + TAB_HEIGHT)
     }
 
+    private fun isInSkinsTab(mouseX: Int, mouseY: Int): Boolean {
+        return mouseX in (screenX + TAB_SKINS_X)..(screenX + TAB_SKINS_X + TAB_SKINS_WIDTH) &&
+                mouseY in (screenY + TAB_Y)..(screenY + TAB_Y + TAB_HEIGHT)
+    }
+
     private fun renderTabs(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, theme: SmartphoneTheme) {
         val isAppsActive = currentTab == SettingsTab.APPS
         val isThemesActive = currentTab == SettingsTab.THEMES
+        val isSkinsActive = currentTab == SettingsTab.SKINS
 
         val appsHover = isInAppsTab(mouseX, mouseY)
         val themesHover = isInThemesTab(mouseX, mouseY)
+        val skinsHover = isInSkinsTab(mouseX, mouseY)
 
         val activeBg = 0x44000000 or (theme.colors.primary and 0x00FFFFFF)
 
-        // Pill indicator background
-        if (isAppsActive) {
-            guiGraphics.fill(screenX + TAB_APPS_X, screenY + TAB_Y, screenX + TAB_APPS_X + TAB_APPS_WIDTH, screenY + TAB_Y + TAB_HEIGHT, activeBg)
-            guiGraphics.fill(screenX + TAB_APPS_X, screenY + TAB_Y + TAB_HEIGHT - 1, screenX + TAB_APPS_X + TAB_APPS_WIDTH, screenY + TAB_Y + TAB_HEIGHT, theme.colors.primary)
-        } else if (appsHover) {
-            guiGraphics.fill(screenX + TAB_APPS_X, screenY + TAB_Y, screenX + TAB_APPS_X + TAB_APPS_WIDTH, screenY + TAB_Y + TAB_HEIGHT, 0x22FFFFFF.toInt())
+        fun drawTabBg(x: Int, w: Int, active: Boolean, hover: Boolean) {
+            if (active) {
+                guiGraphics.fill(screenX + x, screenY + TAB_Y, screenX + x + w, screenY + TAB_Y + TAB_HEIGHT, activeBg)
+                guiGraphics.fill(screenX + x, screenY + TAB_Y + TAB_HEIGHT - 1, screenX + x + w, screenY + TAB_Y + TAB_HEIGHT, theme.colors.primary)
+            } else if (hover) {
+                guiGraphics.fill(screenX + x, screenY + TAB_Y, screenX + x + w, screenY + TAB_Y + TAB_HEIGHT, 0x22FFFFFF.toInt())
+            }
         }
 
-        if (isThemesActive) {
-            guiGraphics.fill(screenX + TAB_THEMES_X, screenY + TAB_Y, screenX + TAB_THEMES_X + TAB_THEMES_WIDTH, screenY + TAB_Y + TAB_HEIGHT, activeBg)
-            guiGraphics.fill(screenX + TAB_THEMES_X, screenY + TAB_Y + TAB_HEIGHT - 1, screenX + TAB_THEMES_X + TAB_THEMES_WIDTH, screenY + TAB_Y + TAB_HEIGHT, theme.colors.primary)
-        } else if (themesHover) {
-            guiGraphics.fill(screenX + TAB_THEMES_X, screenY + TAB_Y, screenX + TAB_THEMES_X + TAB_THEMES_WIDTH, screenY + TAB_Y + TAB_HEIGHT, 0x22FFFFFF.toInt())
-        }
+        drawTabBg(TAB_APPS_X, TAB_APPS_WIDTH, isAppsActive, appsHover)
+        drawTabBg(TAB_THEMES_X, TAB_THEMES_WIDTH, isThemesActive, themesHover)
+        drawTabBg(TAB_SKINS_X, TAB_SKINS_WIDTH, isSkinsActive, skinsHover)
 
-        val appsColor = if (isAppsActive) theme.colors.textPrimary else if (appsHover) 0xDDFFFFFF.toInt() else theme.colors.textMuted
-        val themesColor = if (isThemesActive) theme.colors.textPrimary else if (themesHover) 0xDDFFFFFF.toInt() else theme.colors.textMuted
+        fun tabTextColor(active: Boolean, hover: Boolean): Int =
+            if (active) theme.colors.textPrimary else if (hover) 0xDDFFFFFF.toInt() else theme.colors.textMuted
 
         val appsText = Component.translatable("cobblemon_smartphone.settings.tab.apps").string
         val themesText = Component.translatable("cobblemon_smartphone.settings.tab.themes").string
+        val skinsText = Component.translatable("cobblemon_smartphone.settings.tab.skins").string
 
         val appsW = (font.width(appsText) * 0.5f).toInt()
         val themesW = (font.width(themesText) * 0.5f).toInt()
+        val skinsW = (font.width(skinsText) * 0.5f).toInt()
 
-        drawScaled(guiGraphics, appsText, screenX + TAB_APPS_X + (TAB_APPS_WIDTH - appsW) / 2, screenY + TAB_Y + 2, appsColor, 0.5f)
-        drawScaled(guiGraphics, themesText, screenX + TAB_THEMES_X + (TAB_THEMES_WIDTH - themesW) / 2, screenY + TAB_Y + 2, themesColor, 0.5f)
+        drawScaled(guiGraphics, appsText, screenX + TAB_APPS_X + (TAB_APPS_WIDTH - appsW) / 2, screenY + TAB_Y + 2, tabTextColor(isAppsActive, appsHover), 0.5f)
+        drawScaled(guiGraphics, themesText, screenX + TAB_THEMES_X + (TAB_THEMES_WIDTH - themesW) / 2, screenY + TAB_Y + 2, tabTextColor(isThemesActive, themesHover), 0.5f)
+        drawScaled(guiGraphics, skinsText, screenX + TAB_SKINS_X + (TAB_SKINS_WIDTH - skinsW) / 2, screenY + TAB_Y + 2, tabTextColor(isSkinsActive, skinsHover), 0.5f)
     }
 
     private fun themeCardPosition(index: Int): Pair<Int, Int> {
@@ -730,6 +826,168 @@ class SmartphoneSettingsScreen(
         pagedThemes().forEachIndexed { index, theme ->
             if (isInThemeCard(mouseX, mouseY, index)) {
                 guiGraphics.renderTooltip(font, theme.name, mouseX, mouseY)
+            }
+        }
+    }
+
+    private fun isSkinUnlocked(skin: SmartphoneSkin): Boolean {
+        val stack = smartphoneStack ?: Minecraft.getInstance().player?.let { SmartphoneHelper.getSmartphone(it) }
+        return stack?.isSkinUnlocked(skin) ?: (!skin.locked && skin.requiredUpgrade == null)
+    }
+
+    private fun renderSkinCard(
+        guiGraphics: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        index: Int,
+        skin: SmartphoneSkin,
+        activeTheme: SmartphoneTheme
+    ) {
+        val (cx, cy) = themeCardPosition(index)
+        val px = screenX + cx
+        val py = screenY + cy
+        val unlocked = isSkinUnlocked(skin)
+        val isSelected = unlocked && skin.id == selectedSkinId
+        val isHovered = mouseX in px..(px + CARD_WIDTH) && mouseY in py..(py + CARD_HEIGHT)
+
+        val borderColor = when {
+            isSelected -> activeTheme.colors.gold
+            !unlocked -> 0x44000000.toInt()
+            isHovered -> activeTheme.colors.primary
+            else -> 0x66000000.toInt()
+        }
+        guiGraphics.fill(px - 1, py - 1, px + CARD_WIDTH + 1, py + CARD_HEIGHT + 1, borderColor)
+        guiGraphics.fill(px, py, px + CARD_WIDTH, py + CARD_HEIGHT, activeTheme.colors.headerNavy)
+
+        // Inner preview box
+        guiGraphics.fill(px + 2, py + 2, px + CARD_WIDTH - 2, py + 42, 0x33000000)
+
+        if (!unlocked) {
+            guiGraphics.fill(px + 2, py + 2, px + CARD_WIDTH - 2, py + 42, 0x55000000.toInt())
+            val lockScale = 1.4f
+            val lockText = "🔒"
+            val lockW = (font.width(lockText) * lockScale).toInt()
+            val lockH = (font.lineHeight * lockScale).toInt()
+            drawScaled(
+                guiGraphics,
+                lockText,
+                px + (CARD_WIDTH - lockW) / 2,
+                py + 2 + (40 - lockH) / 2,
+                activeTheme.colors.textMuted,
+                lockScale
+            )
+        } else {
+            val previewStack = (smartphoneStack?.copy() ?: ItemStack(com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems.RED_SMARTPHONE)).apply {
+                setSkinId(skin.id)
+            }
+            val mc = Minecraft.getInstance()
+            val isRotom = previewStack.isRotomPhone()
+            val modelLoc = SmartphoneSkinHelper.resolveHandModel(previewStack, color, isRotom)
+            var bakedModel = mc.modelManager.getModel(ModelResourceLocation(modelLoc, "inventory"))
+            if (bakedModel == mc.modelManager.missingModel) {
+                val fallbackLoc = if (isRotom) color.getRotomModelPath() else color.getHandModelPath()
+                bakedModel = mc.modelManager.getModel(ModelResourceLocation(fallbackLoc, "inventory"))
+            }
+
+            if (bakedModel != mc.modelManager.missingModel) {
+                val pose = guiGraphics.pose()
+                pose.pushPose()
+                pose.translate(px + CARD_WIDTH / 2.0, py + 22.0, 150.0)
+                pose.scale(16.0f, -16.0f, 16.0f)
+                Lighting.setupFor3DItems()
+                mc.itemRenderer.render(
+                    previewStack,
+                    ItemDisplayContext.GUI,
+                    false,
+                    pose,
+                    guiGraphics.bufferSource(),
+                    LightTexture.FULL_BRIGHT,
+                    OverlayTexture.NO_OVERLAY,
+                    bakedModel
+                )
+                guiGraphics.flush()
+                pose.popPose()
+            } else {
+                guiGraphics.renderItem(previewStack, px + (CARD_WIDTH - 16) / 2, py + 12)
+            }
+        }
+
+        // Type badge (3D / Rotom / Default)
+        val badgeText = when {
+            skin.handModel != null && skin.rotomModel != null -> "3D+R"
+            skin.rotomModel != null -> "Rotom"
+            skin.handModel != null -> "3D"
+            else -> "Base"
+        }
+        drawScaled(guiGraphics, badgeText, px + 4, py + 4, activeTheme.colors.textSecondary, 0.45f)
+
+        val nameText = skin.name.string
+        val maxW = CARD_WIDTH - 4
+        val trimmedName = if ((font.width(nameText) * 0.45f) > maxW) {
+            font.plainSubstrByWidth(nameText, (maxW / 0.45f).toInt())
+        } else {
+            nameText
+        }
+        val nameW = (font.width(trimmedName) * 0.45f).toInt()
+        val textX = px + (CARD_WIDTH - nameW) / 2
+        drawScaled(guiGraphics, trimmedName, textX, py + 44, if (isSelected) activeTheme.colors.gold else activeTheme.colors.textPrimary, 0.45f)
+    }
+
+    private fun renderSkinHint(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
+        val hint = Component.translatable("cobblemon_smartphone.skin.hint").string
+        val width = (font.width(hint) * HINT_SCALE).toInt()
+        drawScaled(guiGraphics, hint, screenX + (GUI_WIDTH - width) / 2, screenY + HINT_Y, theme.colors.textSecondary, HINT_SCALE)
+    }
+
+    private fun renderSkinPageDots(guiGraphics: GuiGraphics, theme: SmartphoneTheme) {
+        val totalDots = (maxSkinPage + 1).coerceAtMost(MAX_VISIBLE_DOTS)
+        if (totalDots <= 1) return
+
+        val totalWidth = totalDots * DOT_SIZE + (totalDots - 1) * DOT_SPACING
+        val startX = DOT_CENTER_X - totalWidth / 2
+
+        for (i in 0 until totalDots) {
+            val active = i == currentSkinPage
+            val yOffset = if (active) 0 else DOT_INACTIVE_Y_OFFSET
+            PageDotRenderer.draw(
+                guiGraphics = guiGraphics,
+                x = screenX + startX + i * (DOT_SIZE + DOT_SPACING),
+                y = screenY + DOT_Y + yOffset,
+                active = active,
+                activeColor = theme.colors.primary
+            )
+        }
+    }
+
+    private fun renderSkinHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = false, smartphoneStack)) {
+            return
+        }
+
+        if (isInBackButton(mouseX, mouseY)) {
+            guiGraphics.renderTooltip(
+                font,
+                Component.translatable("cobblemon_smartphone.tooltip.back_to_phone"),
+                mouseX,
+                mouseY
+            )
+            return
+        }
+
+        pagedSkins().forEachIndexed { index, skin ->
+            if (isInThemeCard(mouseX, mouseY, index)) {
+                if (isSkinUnlocked(skin)) {
+                    guiGraphics.renderTooltip(font, skin.name, mouseX, mouseY)
+                } else {
+                    val lockedMsg = if (skin.requiredUpgrade != null) {
+                        Component.translatable("cobblemon_smartphone.skin.locked_upgrade", skin.requiredUpgrade)
+                            .withStyle(net.minecraft.ChatFormatting.RED)
+                    } else {
+                        Component.translatable("cobblemon_smartphone.skin.locked")
+                            .withStyle(net.minecraft.ChatFormatting.RED)
+                    }
+                    guiGraphics.renderComponentTooltip(font, listOf(skin.name, lockedMsg), mouseX, mouseY)
+                }
             }
         }
     }
@@ -866,10 +1124,12 @@ class SmartphoneSettingsScreen(
 
         private const val TAB_Y = 26
         private const val TAB_HEIGHT = 10
-        private const val TAB_APPS_X = 22
-        private const val TAB_APPS_WIDTH = 40
-        private const val TAB_THEMES_X = 66
-        private const val TAB_THEMES_WIDTH = 42
+        private const val TAB_APPS_X = 21
+        private const val TAB_APPS_WIDTH = 28
+        private const val TAB_THEMES_X = 51
+        private const val TAB_THEMES_WIDTH = 29
+        private const val TAB_SKINS_X = 82
+        private const val TAB_SKINS_WIDTH = 28
 
         private const val GRID_COLUMNS = 2
         private const val GRID_ROWS = 3

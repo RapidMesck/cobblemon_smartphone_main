@@ -1,6 +1,8 @@
 package com.nbp.cobblemon_smartphone.mixin;
 
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor;
+import com.nbp.cobblemon_smartphone.skin.SmartphoneSkinRegistry;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.renderer.block.model.BlockModel;
 import net.minecraft.client.resources.model.*;
@@ -58,5 +60,27 @@ public abstract class ModelLoaderMixin {
         UnbakedModel unbakedRotomModel = this.getModel(rotomLocation);
         ModelResourceLocation rotomModelId = new ModelResourceLocation(rotomLocation, "inventory");
         this.registerModel(rotomModelId, unbakedRotomModel);
+
+        // Modelos customizados de skins/capinhas (Resource Packs + pasta smartphone_skins)
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.getResourceManager() != null) {
+            SmartphoneSkinRegistry.reload(mc.getResourceManager());
+        }
+        for (ResourceLocation skinModelLoc : SmartphoneSkinRegistry.INSTANCE.getAllModelLocations()) {
+            UnbakedModel unbakedSkin = this.getModel(skinModelLoc);
+            unbakedSkin.resolveParents(this::getModel);
+            this.registerModel(new ModelResourceLocation(skinModelLoc, "inventory"), unbakedSkin);
+        }
+        for (ResourceLocation jsonKey : jsonUnbakedModels.keySet()) {
+            String path = jsonKey.getPath();
+            if ((path.startsWith("models/smartphone_skins/") || path.startsWith("models/item/smartphone_skins/"))
+                    && path.endsWith(".json")) {
+                String trimmed = path.substring("models/".length(), path.length() - ".json".length());
+                ResourceLocation modelLoc = ResourceLocation.fromNamespaceAndPath(jsonKey.getNamespace(), trimmed);
+                UnbakedModel unbakedSkin = this.getModel(modelLoc);
+                unbakedSkin.resolveParents(this::getModel);
+                this.registerModel(new ModelResourceLocation(modelLoc, "inventory"), unbakedSkin);
+            }
+        }
     }
 }

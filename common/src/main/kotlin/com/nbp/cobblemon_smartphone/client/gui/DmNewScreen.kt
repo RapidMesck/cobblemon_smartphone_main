@@ -112,7 +112,7 @@ class DmNewScreen(
 
         val theme = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
         SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
-        blitk(matrixStack = matrices, texture = theme.getLargeFrameTexture(color.getLargeScreenTexture()), x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
+        blitk(matrixStack = matrices, texture = com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper.resolveLargeFrameTexture(null, theme, color), x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
 
         renderBackButton(guiGraphics, mouseX, mouseY)
         SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
