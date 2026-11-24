@@ -62,7 +62,7 @@ public abstract class ItemRendererMixin {
             if (customModel != modelManager.getMissingModel()) {
                 return customModel;
             }
-            ResourceLocation fallbackLoc = SmartphoneHelper.INSTANCE.isRotomPhone(stack)
+            ResourceLocation fallbackLoc = (SmartphoneHelper.INSTANCE.isRotomEnabled(true) && SmartphoneHelper.INSTANCE.isRotomPhone(stack))
                     ? smartphone.getColor().getRotomModelPath()
                     : smartphone.getColor().getHandModelPath();
             return modelManager.getModel(new ModelResourceLocation(fallbackLoc, "inventory"));

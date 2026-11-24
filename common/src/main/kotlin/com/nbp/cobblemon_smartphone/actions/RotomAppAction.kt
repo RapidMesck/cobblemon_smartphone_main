@@ -3,6 +3,7 @@ package com.nbp.cobblemon_smartphone.actions
 import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.api.SmartphoneAction
+import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.client.gui.RotomAppScreen
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.isRotomPhone
@@ -28,6 +29,7 @@ object RotomAppAction : SmartphoneAction {
     }
 
     override fun isEnabled(): Boolean {
+        if (!RotomScannerClientState.clientConfig.enableRotom) return false
         val phone = SmartphoneHelper.contextSmartphone
             ?: Minecraft.getInstance().player?.let { SmartphoneHelper.getSmartphone(it) }
             ?: return false

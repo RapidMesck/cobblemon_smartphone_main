@@ -19,6 +19,7 @@ object RotomInteractionClientHandler {
 
     fun register() {
         CobblemonEvents.POKEMON_INTERACTION_GUI_CREATION.subscribe { event ->
+            if (!RotomScannerClientState.clientConfig.enableRotom) return@subscribe
             val level = Minecraft.getInstance().level ?: return@subscribe
             val player = Minecraft.getInstance().player ?: return@subscribe
 

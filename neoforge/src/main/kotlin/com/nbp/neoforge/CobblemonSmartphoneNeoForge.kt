@@ -4,11 +4,13 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.Implementation
 import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
 import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
+import com.nbp.cobblemon_smartphone.command.SmartphoneCommands
 import com.nbp.cobblemon_smartphone.command.SocialCommands
 import com.nbp.cobblemon_smartphone.compat.tomsstorage.TomsStorageRemoteSession
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackScreensPacket
 import com.nbp.cobblemon_smartphone.energy.ElectricPokemonCharger
 import com.nbp.cobblemon_smartphone.network.packet.SyncEnergyConfigPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncHiddenActionsPacket
@@ -55,6 +57,7 @@ import net.neoforged.neoforge.common.NeoForge
 import com.nbp.neoforge.energy.SmartphoneNeoForgeEnergyStorage
 import net.neoforged.neoforge.event.AddPackFindersEvent
 import net.neoforged.neoforge.event.AddReloadListenerEvent
+import net.neoforged.neoforge.event.OnDatapackSyncEvent
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
@@ -88,10 +91,13 @@ class CobblemonSmartphoneNeoForge : Implementation {
                     def.requireUpgrade,
                     def.requireMod,
                     def.cooldownSeconds,
-                    def.patchouliBook
+                    def.patchouliBook,
+                    def.openScreen
                 )
             }
             SyncDatapackActionsPacket(data).sendToPlayer(player)
+            SyncDatapackScreensPacket(com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenLoader.getSyncPayloads())
+                .sendToPlayer(player)
             com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneSkinsPacket(
                 com.nbp.cobblemon_smartphone.skin.DatapackSkinLoader.getSkins()
             ).sendToPlayer(player)
@@ -102,7 +108,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
             player.server?.let { srv ->
                 SyncUnreadPacket(SocialData.get(srv).totalUnreadFor(player.uuid)).sendToPlayer(player)
             }
-            SyncSocialMutePacket(SocialMuteStorage.read(player)).sendToPlayer(player)
+            SyncSocialMutePacket(SocialMuteStorage.readPrefs(player)).sendToPlayer(player)
             SyncMutedPlayersPacket(MutedPlayersStorage.read(player).toList()).sendToPlayer(player)
             val savedTheme = ThemeStorage.read(player)
             if (savedTheme.isNotBlank()) {
@@ -129,6 +135,25 @@ class CobblemonSmartphoneNeoForge : Implementation {
         NeoForge.EVENT_BUS.addListener<PlayerContainerEvent.Close> { event ->
             val player = event.entity as? net.minecraft.server.level.ServerPlayer ?: return@addListener
             TomsStorageRemoteSession.end(player)
+        }
+        NeoForge.EVENT_BUS.addListener<OnDatapackSyncEvent> { event ->
+            val actionData = DatapackActionLoader.getDefinitions().map { def ->
+                SyncedActionData(
+                    def.id,
+                    def.texture,
+                    def.hoverTexture,
+                    def.requireUpgrade,
+                    def.requireMod,
+                    def.cooldownSeconds,
+                    def.patchouliBook,
+                    def.openScreen
+                )
+            }
+            val screensPayload = com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenLoader.getSyncPayloads()
+            event.relevantPlayers.forEach { player ->
+                SyncDatapackActionsPacket(actionData).sendToPlayer(player)
+                SyncDatapackScreensPacket(screensPayload).sendToPlayer(player)
+            }
         }
         NeoForge.EVENT_BUS.addListener<ServerTickEvent.Post> { event ->
             CallManager.tick(event.server)
@@ -175,6 +200,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
     override fun registerCommands() {
         NeoForge.EVENT_BUS.addListener<RegisterCommandsEvent> { event ->
             SocialCommands.register(event.dispatcher)
+            SmartphoneCommands.register(event.dispatcher)
         }
     }
 
@@ -185,6 +211,7 @@ class CobblemonSmartphoneNeoForge : Implementation {
     private fun onAddReloadListener(event: AddReloadListenerEvent) {
         event.addListener(DatapackActionLoader)
         event.addListener(com.nbp.cobblemon_smartphone.skin.DatapackSkinLoader)
+        event.addListener(com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenLoader)
     }
 
     private fun onAddPackFinders(event: AddPackFindersEvent) {

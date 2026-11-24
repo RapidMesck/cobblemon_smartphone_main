@@ -1,71 +1,54 @@
 package com.nbp.cobblemon_smartphone.client.gui
 
-import com.cobblemon.mod.common.api.gui.blitk
-import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.CobblemonSounds
-import com.cobblemon.mod.common.client.gui.drawProfilePokemon
 import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState
-import com.cobblemon.mod.common.entity.PoseType
-import com.cobblemon.mod.common.pokemon.RenderablePokemon
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.client.PokeInfoClientState
+import com.nbp.cobblemon_smartphone.client.ui.hd.ButtonNode
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdAlign
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdBackground
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdBuilder
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdColorSpec
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdIconAtlas
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdPadding
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdPhoneScreen
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdSizeSpec
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdTextLayout
+import com.nbp.cobblemon_smartphone.client.ui.hd.TabsNode
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesDetailPacket
 import com.nbp.cobblemon_smartphone.network.packet.SpeciesDetailResponsePacket
-import com.nbp.cobblemon_smartphone.client.PokeInfoClientState
+import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider
-import com.nbp.cobblemon_smartphone.util.PokeInfoLayout
-import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
-import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
-import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
-import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.resources.language.I18n
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.item.ItemStack
-import org.joml.Quaternionf
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+/**
+ * Detailed PokéInfo entry screen built on the HD [HdPhoneScreen] UI engine.
+ */
 class PokeInfoDetailScreen(
-    private val color: SmartphoneColor,
-    private val smartphoneStack: ItemStack?,
+    color: SmartphoneColor,
+    smartphoneStack: ItemStack?,
     private val speciesId: String,
-    private val dexNumber: Int = 0
-) : Screen(Component.translatable("cobblemon_smartphone.screen.pokeinfo_detail")) {
+    private val dexNumber: Int = 0,
+    scaleOverride: Float? = null
+) : HdPhoneScreen(
+    color,
+    smartphoneStack,
+    Component.translatable("cobblemon_smartphone.screen.pokeinfo_detail"),
+    scaleOverride
+) {
 
     constructor(color: SmartphoneColor, smartphoneStack: ItemStack?, dexNumber: Int) :
-            this(color, smartphoneStack, dexNumber.toString(), dexNumber)
-
-    private val frameTexture get() = color.getLargeScreenTexture()
-    private val theme get() = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
-    private val SECTION_TITLE_BG get() = theme.colors.primary
-    private val SECTION_CONTENT_BG get() = theme.colors.surface
-    private val CONTENT_TEXT get() = theme.colors.textDark
-    private val CONTENT_DIM get() = theme.colors.textDarkMuted
-    private val CONTENT_GOLD get() = theme.colors.contentGold
-    private val SECTION_TITLE_COLOR get() = theme.colors.textPrimary
-    private var screenX = 0
-    private var screenY = 0
-    private var scrollY = 0
-    private var maxScroll = 0
-    private var draggingScrollbar = false
-    private var dragStartMouseY = 0
-    private var dragStartScrollY = 0
-    private var modelPokemon: RenderablePokemon? = null
-    private var posableState = FloatingState()
-    private lateinit var detail: PokeInfoDataProvider.SpeciesDetail
-    private var formDetails: List<PokeInfoDataProvider.SpeciesDetail> = emptyList()
-    private var currentFormIndex = 0
-    private var detailLoading = true
-    private var detailRequestId = -1L
-    private var detailRequestStartedAt = 0L
-    private var detailErrorKey: String? = null
-    private val expandedBuckets = mutableSetOf<String>()
-    private var currentPage = DetailPage.INFO
+        this(color, smartphoneStack, dexNumber.toString(), dexNumber)
 
     private enum class DetailPage(val translationKey: String) {
         INFO("page.info"),
@@ -73,11 +56,723 @@ class PokeInfoDetailScreen(
         MOVES("page.moves")
     }
 
-    // Clickable header regions: bucketName -> (x1, y1, x2, y2) in screen coords
-    private val bucketHeaderRects = mutableMapOf<String, Rect>()
+    override val viewportMode: ViewportMode = ViewportMode.Large
+    override val showBezelHdBadge: Boolean = true
 
-    private data class Rect(val x1: Int, val y1: Int, val x2: Int, val y2: Int) {
-        fun contains(mx: Int, my: Int) = mx in x1..x2 && my in y1..y2
+    private val posableState = FloatingState()
+    private lateinit var detail: PokeInfoDataProvider.SpeciesDetail
+    private var formDetails: List<PokeInfoDataProvider.SpeciesDetail> = emptyList()
+    private var currentFormIndex = 0
+    private var resolvedSpeciesIdentifier = speciesId
+    private var resolvedAspects: Set<String> = emptySet()
+
+    private var detailLoading = true
+    private var detailRequestId = -1L
+    private var detailRequestStartedAt = 0L
+    private var detailErrorKey: String? = null
+    private val expandedBuckets = mutableSetOf<String>()
+    private var currentPage = DetailPage.INFO
+    private var learnableLimit = MOVES_BATCH
+
+    override fun init() {
+        super.init()
+        requestDetail()
+    }
+
+    override fun removed() {
+        PokeInfoClientState.cancelDetailRequest(detailRequestId)
+        super.removed()
+    }
+
+    override fun onBackPressed() {
+        Minecraft.getInstance().setScreen(PokeInfoScreen(color, smartphoneStack))
+    }
+
+    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        receiveDetailResponse()
+        super.render(guiGraphics, mouseX, mouseY, delta)
+    }
+
+    override fun buildContent(theme: SmartphoneTheme, builder: HdBuilder) {
+        buildHeader(builder)
+
+        if (!::detail.isInitialized) {
+            val message = Component.translatable(detailErrorKey ?: "cobblemon_smartphone.pokeinfo.loading_detail").string
+            builder.column(
+                crossAlign = HdAlign.CENTER,
+                mainAlign = HdAlign.CENTER,
+                padding = HdPadding.all(20f),
+                width = HdSizeSpec.Fill,
+                height = HdSizeSpec.Weight(1f)
+            ) { empty ->
+                empty.text(
+                    text = message,
+                    size = 10f,
+                    color = HdColorSpec.Token("text_secondary"),
+                    align = HdAlign.CENTER,
+                    wrap = true
+                ) {
+                    width = HdSizeSpec.Fill
+                }
+            }
+            return
+        }
+
+        val cfg = CobblemonSmartphone.config.pokeInfo
+        builder.scroll(
+            scrollId = "pokeinfo_detail_${currentPage.name}",
+            gap = 7f,
+            padding = HdPadding.symmetric(horizontal = 8f, vertical = 6f),
+            onNearBottom = {
+                if (currentPage == DetailPage.MOVES) {
+                    learnableLimit += MOVES_BATCH
+                }
+            }
+        ) { body ->
+            if (detail.availableForms.size > 1) {
+                buildFormSwitcher(body)
+            }
+            when (currentPage) {
+                DetailPage.INFO -> {
+                    buildTopSection(body)
+                    if (cfg.showBaseStats) buildBaseStatsSection(body)
+                    if (cfg.showAbilities && detail.abilities.isNotEmpty()) buildAbilitiesSection(body)
+                    if (cfg.showEvolution && (detail.preEvolution != null || detail.evolutions.isNotEmpty())) {
+                        buildEvolutionSection(body)
+                    }
+                    if (cfg.showTraining) buildTrainingSection(body)
+                    if (cfg.showBreeding) buildBreedingSection(body)
+                    if (cfg.showTypeDefenses) buildTypeDefensesSection(body)
+                }
+                DetailPage.SPAWNS -> {
+                    if (cfg.showSpawning) buildSpawningSection(body)
+                }
+                DetailPage.MOVES -> {
+                    if (cfg.showLevelMoves) buildLevelMovesSection(body)
+                    if (cfg.showLearnableMoves) buildLearnableMovesSection(body)
+                }
+            }
+        }
+    }
+
+    private fun buildHeader(builder: HdBuilder) {
+        val headerTitle = if (::detail.isInitialized) {
+            "#${String.format("%03d", detail.dexNumber)} ${pokemonName(detail.name, detail.speciesId)}"
+        } else {
+            Component.translatable("cobblemon_smartphone.screen.pokeinfo_detail").string
+        }
+
+        builder.appHeader(
+            title = headerTitle,
+            icon = HdIconAtlas.Icon.SPARKLES,
+            iconColor = HdColorSpec.Token("primary"),
+            bottomContent = if (::detail.isInitialized) {
+                { hdr ->
+                    hdr.segmentedControl(
+                        options = DetailPage.entries.map {
+                            com.nbp.cobblemon_smartphone.client.ui.hd.SegmentedControlNode.Option(
+                                it.name,
+                                lang(it.translationKey)
+                            )
+                        },
+                        selectedId = currentPage.name,
+                        onSelect = { id ->
+                            val next = DetailPage.valueOf(id)
+                            if (currentPage != next) {
+                                playClickSound()
+                                currentPage = next
+                                learnableLimit = MOVES_BATCH
+                                stateStore.scroll("pokeinfo_detail_${next.name}").offset = 0f
+                            }
+                        }
+                    )
+                }
+            } else null
+        )
+    }
+
+    private fun buildFormSwitcher(builder: HdBuilder) {
+        val forms = detail.availableForms
+        val form = forms[currentFormIndex]
+        val formName = translatedOrFallback(form.displayName, humanize(form.name))
+
+        builder.row(
+            gap = 4f,
+            crossAlign = HdAlign.CENTER,
+            padding = HdPadding.symmetric(horizontal = 6f, vertical = 3.5f),
+            width = HdSizeSpec.Fill,
+            background = HdBackground(
+                color = HdColorSpec.Token("primary"),
+                radius = 7f,
+                borderWidth = 0.6f,
+                borderColor = HdColorSpec.Token("primary_border")
+            )
+        ) { bar ->
+            bar.button(
+                label = "<",
+                variant = ButtonNode.Variant.GHOST,
+                fontSize = 11f,
+                enabled = currentFormIndex > 0,
+                onClick = {
+                    if (currentFormIndex > 0) {
+                        playClickSound()
+                        applyForm(currentFormIndex - 1)
+                    }
+                }
+            ) {
+                padding = HdPadding.symmetric(horizontal = 8f, vertical = 2f)
+            }
+            bar.text(
+                text = formName,
+                size = 9.4f,
+                weight = HdTextLayout.Weight.BOLD,
+                color = HdColorSpec.Token("text_primary"),
+                align = HdAlign.CENTER
+            ) {
+                width = HdSizeSpec.Weight(1f)
+            }
+            bar.button(
+                label = ">",
+                variant = ButtonNode.Variant.GHOST,
+                fontSize = 11f,
+                enabled = currentFormIndex < forms.size - 1,
+                onClick = {
+                    if (currentFormIndex < forms.size - 1) {
+                        playClickSound()
+                        applyForm(currentFormIndex + 1)
+                    }
+                }
+            ) {
+                padding = HdPadding.symmetric(horizontal = 8f, vertical = 2f)
+            }
+        }
+    }
+
+    private fun buildTopSection(builder: HdBuilder) {
+        val types = listOfNotNull(detail.primaryType, detail.secondaryType)
+        builder.card(gap = 6f, padding = HdPadding.all(8f), radius = 9f, shadowBlur = 4f) { card ->
+            card.row(gap = 10f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { row ->
+                row.row(
+                    padding = HdPadding.all(3f),
+                    background = HdBackground(
+                        color = HdColorSpec.Token("surface_alt"),
+                        radius = 8f,
+                        borderWidth = 0.6f,
+                        borderColor = HdColorSpec.Token("primary_border")
+                    )
+                ) { modelBox ->
+                    modelBox.pokemonView(
+                        speciesId = resolvedSpeciesIdentifier,
+                        aspects = resolvedAspects,
+                        size = 74f,
+                        floatingState = posableState,
+                        showShinyBadge = false
+                    )
+                }
+
+                row.column(gap = 5f, width = HdSizeSpec.Weight(1f)) { info ->
+                    info.text(
+                        text = "#${String.format("%03d", detail.dexNumber)} ${pokemonName(detail.name, detail.speciesId)}",
+                        size = 11.4f,
+                        weight = HdTextLayout.Weight.BOLD,
+                        color = HdColorSpec.Token("content_gold"),
+                        wrap = true
+                    ) {
+                        width = HdSizeSpec.Fill
+                    }
+
+                    info.row(gap = 5f, crossAlign = HdAlign.CENTER) { typeRow ->
+                        types.forEach { type ->
+                            typeRow.row(
+                                padding = HdPadding.symmetric(horizontal = 7f, vertical = 2.5f),
+                                background = HdBackground(color = HdColorSpec.Fixed(typeColor(type)), radius = 5f)
+                            ) { pill ->
+                                pill.text(
+                                    text = typeName(type),
+                                    size = 8.2f,
+                                    weight = HdTextLayout.Weight.BOLD,
+                                    color = HdColorSpec.Fixed(0xFFFFFFFF.toInt())
+                                )
+                            }
+                        }
+                    }
+
+                    info.text(
+                        text = lang("dimensions", detail.height / 10f, detail.weight / 10f),
+                        size = 8.8f,
+                        color = HdColorSpec.Token("text_dark_muted"),
+                        wrap = true
+                    ) {
+                        width = HdSizeSpec.Fill
+                    }
+                }
+            }
+        }
+    }
+
+    private fun buildSectionCard(
+        builder: HdBuilder,
+        title: String,
+        trailingText: String? = null,
+        buildBody: (HdBuilder) -> Unit
+    ) {
+        builder.column(
+            gap = 5f,
+            padding = HdPadding.all(5f),
+            width = HdSizeSpec.Fill,
+            background = HdBackground(
+                color = HdColorSpec.Token("surface"),
+                radius = 9f,
+                borderWidth = 0.7f,
+                borderColor = HdColorSpec.Token("primary_border"),
+                shadowBlur = 4f,
+                shadowOffsetY = 1.5f,
+                shadowColor = HdColorSpec.Fixed(0x28000000)
+            )
+        ) { sec ->
+            sec.row(
+                gap = 4f,
+                crossAlign = HdAlign.CENTER,
+                padding = HdPadding.symmetric(horizontal = 7f, vertical = 4f),
+                width = HdSizeSpec.Fill,
+                background = HdBackground(color = HdColorSpec.Token("primary"), radius = 6f)
+            ) { hdr ->
+                hdr.text(
+                    text = title,
+                    size = 9.6f,
+                    weight = HdTextLayout.Weight.BOLD,
+                    color = HdColorSpec.Token("text_primary")
+                ) {
+                    width = HdSizeSpec.Weight(1f)
+                }
+                if (trailingText != null) {
+                    hdr.text(
+                        text = trailingText,
+                        size = 8.4f,
+                        color = HdColorSpec.Token("text_secondary")
+                    )
+                }
+            }
+
+            sec.column(
+                gap = 3.5f,
+                padding = HdPadding.symmetric(horizontal = 4f, vertical = 2f),
+                width = HdSizeSpec.Fill
+            ) { content ->
+                buildBody(content)
+            }
+        }
+    }
+
+    private fun buildBaseStatsSection(builder: HdBuilder) {
+        val stats = listOf(
+            lang("stat.hp") to detail.baseStats.hp,
+            lang("stat.attack") to detail.baseStats.attack,
+            lang("stat.defence") to detail.baseStats.defence,
+            lang("stat.special_attack") to detail.baseStats.specialAttack,
+            lang("stat.special_defence") to detail.baseStats.specialDefence,
+            lang("stat.speed") to detail.baseStats.speed
+        )
+
+        buildSectionCard(builder, lang("base_stats"), lang("total", detail.baseStats.total)) { body ->
+            stats.forEach { (label, value) ->
+                body.row(gap = 6f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { row ->
+                    row.text(
+                        text = label,
+                        size = 8.6f,
+                        weight = HdTextLayout.Weight.BOLD,
+                        color = HdColorSpec.Token("content_gold")
+                    ) {
+                        width = HdSizeSpec.Fixed(28f)
+                    }
+                    row.progressBar(
+                        progress = (value / 255f).coerceIn(0f, 1f),
+                        height = 6.5f
+                    ) {
+                        radius = 3.2f
+                        fillColor = HdColorSpec.Fixed(statBarColor(value))
+                        width = HdSizeSpec.Weight(1f)
+                    }
+                    row.text(
+                        text = "$value",
+                        size = 8.6f,
+                        weight = HdTextLayout.Weight.BOLD,
+                        color = HdColorSpec.Token("text_dark"),
+                        align = HdAlign.END
+                    ) {
+                        width = HdSizeSpec.Fixed(24f)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun buildAbilitiesSection(builder: HdBuilder) {
+        buildSectionCard(builder, lang("abilities")) { body ->
+            detail.abilities.forEach { ability ->
+                val name = abilityName(ability.name)
+                body.column(gap = 1.5f, width = HdSizeSpec.Fill) { item ->
+                    if (ability.isHidden) {
+                        item.row(gap = 4f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { r ->
+                            r.text(
+                                text = lang("hidden_ability_prefix"),
+                                size = 8.6f,
+                                weight = HdTextLayout.Weight.BOLD,
+                                color = HdColorSpec.Fixed(CONTENT_COND)
+                            )
+                            r.text(
+                                text = name,
+                                size = 9.0f,
+                                weight = HdTextLayout.Weight.BOLD,
+                                color = HdColorSpec.Token("content_gold"),
+                                wrap = true
+                            ) {
+                                width = HdSizeSpec.Weight(1f)
+                            }
+                        }
+                    } else {
+                        item.text(
+                            text = name,
+                            size = 9.0f,
+                            weight = HdTextLayout.Weight.BOLD,
+                            color = HdColorSpec.Token("content_gold"),
+                            wrap = true
+                        ) {
+                            width = HdSizeSpec.Fill
+                        }
+                    }
+                    val description = Component.translatable(ability.descriptionKey).string
+                    if (description.isNotEmpty()) {
+                        item.text(
+                            text = description,
+                            size = 8.2f,
+                            color = HdColorSpec.Token("text_dark_muted"),
+                            wrap = true
+                        ) {
+                            padding = HdPadding.only(left = 8f)
+                            width = HdSizeSpec.Fill
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun buildEvolutionSection(builder: HdBuilder) {
+        buildSectionCard(builder, lang("evolution")) { body ->
+            detail.preEvolution?.let { pre ->
+                body.text(
+                    text = "↑ ${pokemonName(pre)}",
+                    size = 8.8f,
+                    color = HdColorSpec.Token("text_dark_muted"),
+                    wrap = true
+                ) {
+                    width = HdSizeSpec.Fill
+                }
+            }
+            detail.evolutions.forEach { evo ->
+                body.column(gap = 1.5f, width = HdSizeSpec.Fill) { evoCol ->
+                    evoCol.text(
+                        text = "↓ ${pokemonName(evo.targetName)}",
+                        size = 9.2f,
+                        weight = HdTextLayout.Weight.BOLD,
+                        color = HdColorSpec.Token("text_dark"),
+                        wrap = true
+                    ) {
+                        width = HdSizeSpec.Fill
+                    }
+                    val methods = evo.methods.joinToString("  •  ", transform = ::localized)
+                    if (methods.isNotEmpty()) {
+                        evoCol.text(
+                            text = "• $methods",
+                            size = 8.2f,
+                            color = HdColorSpec.Token("text_dark_muted"),
+                            wrap = true
+                        ) {
+                            padding = HdPadding.only(left = 8f)
+                            width = HdSizeSpec.Fill
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun buildTrainingSection(builder: HdBuilder) {
+        val evs = listOf(
+            lang("stat.hp") to detail.evYield.hp,
+            lang("stat.attack") to detail.evYield.attack,
+            lang("stat.defence") to detail.evYield.defence,
+            lang("stat.special_attack") to detail.evYield.specialAttack,
+            lang("stat.special_defence") to detail.evYield.specialDefence,
+            lang("stat.speed") to detail.evYield.speed
+        ).filter { it.second > 0 }
+        val evText = if (evs.isEmpty()) lang("none") else evs.joinToString(", ") { "${it.first} ${it.second}" }
+
+        buildSectionCard(builder, lang("training")) { body ->
+            buildKeyValueRow(body, lang("ev"), evText, HdColorSpec.Token("content_gold"))
+            buildKeyValueRow(body, lang("catch_rate"), "${detail.catchRate} (${catchPercent(detail.catchRate)}%)")
+            buildKeyValueRow(body, lang("friendship"), "${detail.baseFriendship}")
+            buildKeyValueRow(body, lang("base_exp"), "${detail.baseExp}")
+            buildKeyValueRow(body, lang("growth_rate"), humanize(detail.growthRate))
+        }
+    }
+
+    private fun buildBreedingSection(builder: HdBuilder) {
+        val groups = detail.eggGroups.joinToString(", ", transform = ::eggGroupName)
+        buildSectionCard(builder, lang("breeding")) { body ->
+            buildKeyValueRow(body, lang("egg_groups"), groups)
+            when {
+                detail.maleRatio < 0f ->
+                    buildKeyValueRow(body, lang("gender"), lang("genderless"), HdColorSpec.Token("text_dark_muted"))
+                detail.maleRatio == 0f ->
+                    buildKeyValueRow(body, lang("gender"), lang("gender_female", 100), HdColorSpec.Fixed(CONTENT_FEMALE))
+                detail.maleRatio == 1f ->
+                    buildKeyValueRow(body, lang("gender"), lang("gender_male", 100), HdColorSpec.Fixed(CONTENT_MALE))
+                else -> {
+                    val m = lang("gender_male", (detail.maleRatio * 100).toInt())
+                    val f = lang("gender_female", ((1 - detail.maleRatio) * 100).toInt())
+                    buildKeyValueRow(body, lang("gender"), "$m / $f")
+                }
+            }
+            buildKeyValueRow(body, lang("egg_cycles"), "${detail.eggCycles}")
+        }
+    }
+
+    private fun buildTypeDefensesSection(builder: HdBuilder) {
+        val types = listOfNotNull(detail.primaryType, detail.secondaryType)
+        val eff = getEffectiveness(types)
+        val byMultiplier = eff.entries
+            .filter { it.value != 1.0 }
+            .groupBy({ it.value }, { it.key })
+            .mapValues { (_, typeNames) -> typeNames.joinToString(", ", transform = ::typeName) }
+
+        buildSectionCard(builder, lang("type_defenses")) { body ->
+            if (byMultiplier.isEmpty()) {
+                body.text(lang("none"), size = 8.6f, color = HdColorSpec.Token("text_dark_muted"))
+            } else {
+                byMultiplier.entries.sortedByDescending { it.key }.forEach { (mult, text) ->
+                    val label = when {
+                        mult > 1.0 -> "${lang("weak")} (x${multiplierText(mult)})"
+                        mult == 0.0 -> "${lang("immune")} (x0)"
+                        else -> "${lang("resist")} (x${multiplierText(mult)})"
+                    }
+                    body.text(
+                        text = "$label: $text",
+                        size = 8.5f,
+                        weight = HdTextLayout.Weight.BOLD,
+                        color = HdColorSpec.Fixed(multiplierColor(mult)),
+                        wrap = true
+                    ) {
+                        width = HdSizeSpec.Fill
+                    }
+                }
+            }
+        }
+    }
+
+    private fun buildSpawningSection(builder: HdBuilder) {
+        if (detailLoading) {
+            buildSectionCard(builder, lang("spawning")) { body ->
+                body.text(lang("loading_spawn_data"), size = 8.8f, color = HdColorSpec.Token("text_dark_muted"))
+            }
+            return
+        }
+        val entries = detail.spawnEntries
+        if (entries.isEmpty()) {
+            buildSectionCard(builder, lang("spawning")) { body ->
+                body.text(lang("none"), size = 8.8f, color = HdColorSpec.Token("text_dark_muted"))
+            }
+            return
+        }
+
+        val groups = entries.groupBy { it.bucket }
+        for ((bucket, bucketEntries) in groups) {
+            val expanded = expandedBuckets.contains(bucket)
+            val weight = bucketEntries.firstOrNull()?.weight ?: -1f
+            val weightStr = if (weight >= 0f) " (${weight.toInt()})" else " (${lang("default_weight")})"
+            val arrow = if (expanded) "▼" else "▶"
+            val headerTitle = "$arrow ${spawnValue("bucket", bucket)}$weightStr"
+
+            buildSectionCard(builder, lang("spawning"), if (bucketEntries.size > 1) "${bucketEntries.size}" else null) { body ->
+                body.row(
+                    gap = 4f,
+                    padding = HdPadding.symmetric(horizontal = 6f, vertical = 4f),
+                    width = HdSizeSpec.Fill,
+                    background = HdBackground(color = HdColorSpec.Token("surface_alt"), radius = 6f)
+                ) { toggle ->
+                    hoverBackground = HdBackground(color = HdColorSpec.Token("surface_hover"), radius = 6f)
+                    onClick = {
+                        playClickSound()
+                        if (expanded) expandedBuckets.remove(bucket) else expandedBuckets.add(bucket)
+                    }
+                    toggle.text(
+                        text = headerTitle,
+                        size = 9.0f,
+                        weight = HdTextLayout.Weight.BOLD,
+                        color = HdColorSpec.Token("content_gold")
+                    ) {
+                        width = HdSizeSpec.Fill
+                    }
+                }
+
+                if (expanded) {
+                    bucketEntries.forEachIndexed { idx, entry ->
+                        if (idx > 0) body.divider()
+                        buildKeyValueRow(body, lang("biomes"), entry.biomes.joinToString(", ", transform = ::biomeName))
+                        buildKeyValueRow(body, lang("level_label"), "${entry.minLevel} – ${entry.maxLevel}", HdColorSpec.Token("content_gold"))
+                        buildKeyValueRow(body, lang("context_label"), spawnValue("context", entry.context))
+                        entry.time?.let { buildKeyValueRow(body, lang("time_label"), localized(it)) }
+                        if (entry.conditions.isNotEmpty()) {
+                            buildKeyValueRow(body, lang("cond"), entry.conditions.joinToString(", ", transform = ::localized), HdColorSpec.Fixed(CONTENT_COND))
+                        }
+                        if (entry.antiConditions.isNotEmpty()) {
+                            buildKeyValueRow(body, lang("anti"), entry.antiConditions.joinToString(", ", transform = ::localized), HdColorSpec.Fixed(CONTENT_WEAK))
+                        }
+                    }
+                } else {
+                    val allBiomes = bucketEntries.flatMap { it.biomes }.distinct()
+                    val shown = allBiomes.take(2).joinToString(", ", transform = ::biomeName)
+                    val more = if (allBiomes.size > 2) lang("more_count", allBiomes.size - 2) else ""
+                    buildKeyValueRow(body, lang("biomes"), shown + more)
+                    val minLv = bucketEntries.minOf { it.minLevel }
+                    val maxLv = bucketEntries.maxOf { it.maxLevel }
+                    buildKeyValueRow(body, lang("level_label"), "$minLv – $maxLv", HdColorSpec.Token("content_gold"))
+                    if (bucketEntries.size > 1) {
+                        body.text(lang("entry_count", bucketEntries.size), size = 8.0f, color = HdColorSpec.Token("text_dark_muted"))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun buildLevelMovesSection(builder: HdBuilder) {
+        val levelUp = detail.moves.filter { it.method == "level" }.sortedBy { it.level }
+        buildSectionCard(builder, lang("level_moves"), "${levelUp.size}") { body ->
+            buildMoveTableHeader(body, lang("lvl"))
+            levelUp.forEach { move ->
+                buildMoveTableRow(body, "${move.level}", move)
+            }
+        }
+    }
+
+    private fun buildLearnableMovesSection(builder: HdBuilder) {
+        val others = detail.moves.filter { it.method != "level" }
+        if (others.isEmpty()) return
+        val methodOrder = mapOf("tm" to 0, "egg" to 1, "tutor" to 2)
+        val sorted = others.sortedWith(compareBy({ methodOrder[it.method] ?: 99 }, { it.name }))
+
+        buildSectionCard(builder, lang("learnable_moves"), "${sorted.size}") { body ->
+            buildMoveTableHeader(body, lang("met"))
+            val count = learnableLimit.coerceAtMost(sorted.size)
+            for (i in 0 until count) {
+                val move = sorted[i]
+                val methodLabel = when (move.method) {
+                    "tm" -> lang("method.tm")
+                    "egg" -> lang("method.egg")
+                    "tutor" -> lang("method.tutor")
+                    else -> humanize(move.method)
+                }
+                buildMoveTableRow(body, methodLabel, move)
+            }
+        }
+    }
+
+    private fun buildMoveTableHeader(builder: HdBuilder, col1Label: String) {
+        builder.row(
+            gap = 4f,
+            crossAlign = HdAlign.CENTER,
+            padding = HdPadding.symmetric(horizontal = 4f, vertical = 2f),
+            width = HdSizeSpec.Fill,
+            background = HdBackground(color = HdColorSpec.Token("surface_alt"), radius = 4f)
+        ) { row ->
+            row.text(col1Label, size = 7.8f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark_muted")) {
+                width = HdSizeSpec.Fixed(28f)
+            }
+            row.text(lang("move"), size = 7.8f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark_muted")) {
+                width = HdSizeSpec.Weight(1f)
+            }
+            row.text(lang("type"), size = 7.8f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark_muted"), align = HdAlign.CENTER) {
+                width = HdSizeSpec.Fixed(34f)
+            }
+            row.text(lang("ct"), size = 7.8f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark_muted"), align = HdAlign.CENTER) {
+                width = HdSizeSpec.Fixed(28f)
+            }
+            row.text(lang("pw"), size = 7.8f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark_muted"), align = HdAlign.END) {
+                width = HdSizeSpec.Fixed(22f)
+            }
+            row.text(lang("ac"), size = 7.8f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark_muted"), align = HdAlign.END) {
+                width = HdSizeSpec.Fixed(22f)
+            }
+        }
+    }
+
+    private fun buildMoveTableRow(builder: HdBuilder, col1: String, move: PokeInfoDataProvider.MoveInfo) {
+        val pw = if (move.power == 0) "—" else move.power.toString()
+        val ac = if (move.accuracy == 0) "∞" else move.accuracy.toString()
+        val cat = when (move.category) {
+            "physical" -> lang("category.physical")
+            "special" -> lang("category.special")
+            else -> lang("category.status")
+        }
+        val catColor = when (move.category) {
+            "physical" -> 0xFFE07030.toInt()
+            "special" -> 0xFF5070B8.toInt()
+            else -> 0xFF777777.toInt()
+        }
+        val typeAbbr = lang("type_abbr.${move.type.lowercase()}")
+
+        builder.row(
+            gap = 4f,
+            crossAlign = HdAlign.CENTER,
+            padding = HdPadding.symmetric(horizontal = 4f, vertical = 1.5f),
+            width = HdSizeSpec.Fill
+        ) { row ->
+            row.text(col1, size = 8.0f, color = HdColorSpec.Token("text_dark_muted")) {
+                width = HdSizeSpec.Fixed(28f)
+            }
+            row.text(moveName(move.name), size = 8.2f, color = HdColorSpec.Token("text_dark"), wrap = true) {
+                width = HdSizeSpec.Weight(1f)
+            }
+            row.text(
+                text = typeAbbr,
+                size = 7.8f,
+                weight = HdTextLayout.Weight.BOLD,
+                color = HdColorSpec.Fixed(typeColor(move.type)),
+                align = HdAlign.CENTER
+            ) {
+                width = HdSizeSpec.Fixed(34f)
+            }
+            row.text(
+                text = cat,
+                size = 7.8f,
+                weight = HdTextLayout.Weight.BOLD,
+                color = HdColorSpec.Fixed(catColor),
+                align = HdAlign.CENTER
+            ) {
+                width = HdSizeSpec.Fixed(28f)
+            }
+            row.text(pw, size = 8.0f, color = HdColorSpec.Token("text_dark"), align = HdAlign.END) {
+                width = HdSizeSpec.Fixed(22f)
+            }
+            row.text(ac, size = 8.0f, color = HdColorSpec.Token("text_dark"), align = HdAlign.END) {
+                width = HdSizeSpec.Fixed(22f)
+            }
+        }
+    }
+
+    private fun buildKeyValueRow(
+        builder: HdBuilder,
+        label: String,
+        value: String,
+        valueColor: HdColorSpec = HdColorSpec.Token("text_dark")
+    ) {
+        builder.row(gap = 4f, crossAlign = HdAlign.START, width = HdSizeSpec.Fill) { row ->
+            row.text("$label:", size = 8.6f, color = HdColorSpec.Token("text_dark_muted"))
+            row.text(value, size = 8.6f, color = valueColor, wrap = true) {
+                width = HdSizeSpec.Weight(1f)
+            }
+        }
     }
 
     private fun applyDetail(received: PokeInfoDataProvider.SpeciesDetail) {
@@ -87,12 +782,10 @@ class PokeInfoDetailScreen(
         currentFormIndex = detail.availableForms.indexOfFirst { it.name == detail.selectedForm }.coerceAtLeast(0)
         val species = PokeInfoDataProvider.findSpecies(detail.speciesId)
             ?: PokeInfoDataProvider.findSpecies(detail.name)
-        if (species != null) {
-            val form = species.forms.firstOrNull { it.name == detail.selectedForm } ?: species.standardForm
-            modelPokemon = RenderablePokemon(species, (form?.aspects ?: emptyList()).toSet())
-        }
-        scrollY = 0
-        updateMaxScroll()
+        resolvedSpeciesIdentifier = species?.resourceIdentifier?.toString() ?: detail.speciesId
+        val form = species?.forms?.firstOrNull { it.name == detail.selectedForm } ?: species?.standardForm
+        resolvedAspects = (form?.aspects ?: emptyList()).toSet()
+        stateStore.scroll("pokeinfo_detail_${currentPage.name}").offset = 0f
     }
 
     private fun requestDetail() {
@@ -104,7 +797,53 @@ class PokeInfoDetailScreen(
         RequestSpeciesDetailPacket(detailRequestId, speciesId).sendToServer()
     }
 
-    override fun isPauseScreen(): Boolean = false
+    private fun receiveDetailResponse() {
+        if (!detailLoading) return
+        val response = PokeInfoClientState.consumeDetailResponse(detailRequestId)
+        if (response != null) {
+            when (response.status) {
+                SpeciesDetailResponsePacket.Status.SUCCESS -> {
+                    formDetails = response.details
+                    val received = formDetails.firstOrNull()
+                    if (received != null) applyDetail(received)
+                    else failDetail("cobblemon_smartphone.pokeinfo.error.server")
+                }
+                SpeciesDetailResponsePacket.Status.NOT_FOUND -> failDetail("cobblemon_smartphone.pokeinfo.error.not_found")
+                SpeciesDetailResponsePacket.Status.RATE_LIMITED -> failDetail("cobblemon_smartphone.pokeinfo.error.rate_limited")
+                SpeciesDetailResponsePacket.Status.ERROR -> failDetail("cobblemon_smartphone.pokeinfo.error.server")
+            }
+        } else if (System.currentTimeMillis() - detailRequestStartedAt >= REQUEST_TIMEOUT_MS) {
+            failDetail("cobblemon_smartphone.pokeinfo.error.timeout")
+        }
+    }
+
+    private fun failDetail(key: String) {
+        detailLoading = false
+        detailErrorKey = key
+    }
+
+    private fun applyForm(index: Int) {
+        val received = formDetails.getOrNull(index) ?: return
+        applyDetail(received)
+    }
+
+    private fun multiplierColor(mult: Double): Int = when (mult) {
+        4.0 -> 0xFFCC1111.toInt()
+        2.0 -> 0xFFCC3333.toInt()
+        0.5 -> 0xFF339933.toInt()
+        0.25 -> 0xFF116611.toInt()
+        0.0 -> 0xFF9966CC.toInt()
+        else -> 0xFF1A1A2E.toInt()
+    }
+
+    private fun statBarColor(value: Int): Int = when {
+        value >= 120 -> 0xFF00C2B8.toInt()
+        value >= 100 -> 0xFF23CD5E.toInt()
+        value >= 80 -> 0xFFA0E515.toInt()
+        value >= 60 -> 0xFFFFDD57.toInt()
+        value >= 40 -> 0xFFFF7F0F.toInt()
+        else -> 0xFFF34444.toInt()
+    }
 
     private fun lang(key: String, vararg args: Any): String =
         Component.translatable("cobblemon_smartphone.pokeinfo.$key", *args.map { it.toString() }.toTypedArray()).string
@@ -165,1329 +904,16 @@ class PokeInfoDetailScreen(
         humanize(value)
     )
 
-    override fun init() {
-        screenX = (width - GUI_WIDTH) / 2
-        screenY = (height - GUI_HEIGHT) / 2
-        SmartphoneHelper.contextSmartphone = smartphoneStack
-        SmartphoneHelper.contextColor = color
-
-        requestDetail()
-    }
-
-    override fun removed() {
-        modelPokemon = null
-        formDetails = emptyList()
-        PokeInfoClientState.cancelDetailRequest(detailRequestId)
-        SmartphoneHelper.contextSmartphone = null
-        SmartphoneHelper.contextColor = null
-        super.removed()
-    }
-
-    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
-        val matrices = guiGraphics.pose()
-
-        val theme = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
-        SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
-        blitk(
-            matrixStack = matrices,
-            texture = com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper.resolveLargeFrameTexture(null, theme, color),
-            x = screenX,
-            y = screenY,
-            width = GUI_WIDTH,
-            height = GUI_HEIGHT
-        )
-
-        renderHeader(guiGraphics, mouseX, mouseY)
-
-        guiGraphics.enableScissor(
-            screenX + CONTENT_X, screenY + CONTENT_START_Y,
-            screenX + CONTENT_X + CONTENT_WIDTH, screenY + CONTENT_END_Y
-        )
-
-        receiveDetailResponse()
-        if (detailLoading || detailErrorKey != null || !::detail.isInitialized) {
-            guiGraphics.disableScissor()
-            renderLoadingOverlay(guiGraphics)
-            renderHoveredTooltip(guiGraphics, mouseX, mouseY)
-            return
-        }
-
-        bucketHeaderRects.clear()
-        var cy = CONTENT_START_Y - scrollY
-        val cfg = CobblemonSmartphone.config.pokeInfo
-
-        cy = renderFormSection(guiGraphics, cy, mouseX, mouseY)
-        cy = drawSep(guiGraphics, cy)
-        when (currentPage) {
-            DetailPage.INFO -> {
-                cy = renderTopSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-                if (cfg.showBaseStats) {
-                    cy = renderBaseStatsSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-                }
-                if (cfg.showAbilities) {
-                    cy = renderAbilitiesSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-                }
-                if (cfg.showEvolution) {
-                    cy = renderEvolutionSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-                }
-                if (cfg.showTraining) {
-                    cy = renderTrainingSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-                }
-                if (cfg.showBreeding) {
-                    cy = renderBreedingSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-                }
-                if (cfg.showTypeDefenses) {
-                    cy = renderTypeDefensesSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-                }
-            }
-            DetailPage.SPAWNS -> if (cfg.showSpawning) {
-                cy = renderSpawningSection(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-            }
-            DetailPage.MOVES -> {
-                if (cfg.showLevelMoves) {
-                    cy = renderLevelMovesTable(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-                }
-                if (cfg.showLearnableMoves) {
-                    cy = renderLearnableMoves(guiGraphics, cy); cy = drawSep(guiGraphics, cy)
-                }
-            }
-        }
-
-        guiGraphics.disableScissor()
-        renderScrollbar(guiGraphics, mouseY)
-        renderPageTabs(guiGraphics, mouseX, mouseY)
-        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
-    }
-
-    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        val mx = mouseX.toInt()
-        val my = mouseY.toInt()
-
-        if (isInBackButton(mx, my)) {
-            playClickSound()
-            Minecraft.getInstance().setScreen(PokeInfoScreen(color, smartphoneStack))
-            return true
-        }
-
-        (if (::detail.isInitialized) pageAt(mx, my) else null)?.let { selectedPage ->
-            if (selectedPage != currentPage) {
-                playClickSound()
-                currentPage = selectedPage
-                scrollY = 0
-                draggingScrollbar = false
-                bucketHeaderRects.clear()
-                updateMaxScroll()
-            }
-            return true
-        }
-
-        // Bucket header toggle
-        if (::detail.isInitialized && currentPage == DetailPage.SPAWNS &&
-            my in (screenY + CONTENT_START_Y)..(screenY + CONTENT_END_Y)
-        ) {
-            for ((bucket, rect) in bucketHeaderRects) {
-                if (rect.contains(mx, my)) {
-                    playClickSound()
-                    if (expandedBuckets.contains(bucket)) expandedBuckets.remove(bucket)
-                    else expandedBuckets.add(bucket)
-                    updateMaxScroll()
-                    return true
-                }
-            }
-        }
-        if (!::detail.isInitialized) return super.mouseClicked(mouseX, mouseY, button)
-
-        // Form navigation (inside scissor, scroll-relative)
-        val forms = detail.availableForms
-        if (forms.size > 1) {
-            val navSy = CONTENT_START_Y - scrollY
-            val navY = screenY + navSy + SECTION_PAD_TOP
-            val navCenter = screenX + CONTENT_X + CONTENT_WIDTH / 2
-            val mx = mouseX.toInt()
-            val my = mouseY.toInt()
-            if (currentFormIndex > 0 && mx >= navCenter - 64 && mx <= navCenter - 50 && my >= navY - 2 && my <= navY + 10) {
-                playClickSound()
-                currentFormIndex--
-                applyForm(currentFormIndex)
-                return true
-            }
-            if (currentFormIndex < forms.size - 1 && mx >= navCenter + 50 && mx <= navCenter + 60 && my >= navY - 2 && my <= navY + 10) {
-                playClickSound()
-                currentFormIndex++
-                applyForm(currentFormIndex)
-                return true
-            }
-        }
-        // Scrollbar drag
-        if (maxScroll > 0) {
-            val trackH = CONTENT_END_Y - CONTENT_START_Y
-            val totalH = calculateContentHeight()
-            val handleH = maxOf(12, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
-            val handleY = screenY + CONTENT_START_Y + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
-            val trackX = screenX + CONTENT_X + CONTENT_WIDTH + 1
-            val mx = mouseX.toInt()
-            val my = mouseY.toInt()
-            if (mx >= trackX && mx <= trackX + 4 && my >= handleY && my <= handleY + handleH) {
-                draggingScrollbar = true
-                dragStartMouseY = my
-                dragStartScrollY = scrollY
-                return true
-            }
-        }
-        return super.mouseClicked(mouseX, mouseY, button)
-    }
-
-    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        draggingScrollbar = false
-        return super.mouseReleased(mouseX, mouseY, button)
-    }
-
-    override fun mouseScrolled(mx: Double, my: Double, h: Double, v: Double): Boolean {
-        if (v == 0.0) return super.mouseScrolled(mx, my, h, v)
-        scrollY = (scrollY - v.toInt() * SCROLL_SPEED).coerceIn(0, maxScroll)
-        return true
-    }
-
-    private fun renderHeader(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val hovered = isInBackButton(mouseX, mouseY)
-        val backY = screenY + HEADER_Y + 6
-        val color = if (hovered) theme.colors.gold else theme.colors.textPrimary
-        draw(guiGraphics, lang("back"), screenX + HEADER_BACK_X, backY, color)
-        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
-    }
-
-    private fun renderPageTabs(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        DetailPage.entries.forEachIndexed { index, page ->
-            val x1 = screenX + CONTENT_X + index * PAGE_TAB_WIDTH
-            val x2 = if (index == DetailPage.entries.lastIndex) {
-                screenX + CONTENT_X + CONTENT_WIDTH
-            } else {
-                x1 + PAGE_TAB_WIDTH - PAGE_TAB_GAP
-            }
-            val y1 = screenY + PAGE_TABS_Y
-            val selected = page == currentPage
-            val hovered = mouseX in x1 until x2 && mouseY in y1 until (y1 + PAGE_TABS_HEIGHT)
-            val background = when {
-                selected -> SECTION_TITLE_BG
-                hovered -> theme.colors.primaryHover
-                else -> (theme.colors.headerNavy and 0x00FFFFFF) or 0xCC000000.toInt()
-            }
-            guiGraphics.fill(x1, y1, x2, y1 + PAGE_TABS_HEIGHT, background)
-
-            val label = lang(page.translationKey)
-            val color = if (selected || hovered) theme.colors.textPrimary else theme.colors.textSecondary
-            draw(guiGraphics, label, x1 + (x2 - x1 - textWidth(label)) / 2, y1 + 2, color)
-        }
-    }
-
-    private fun pageAt(mouseX: Int, mouseY: Int): DetailPage? {
-        val y1 = screenY + PAGE_TABS_Y
-        if (mouseY !in y1 until (y1 + PAGE_TABS_HEIGHT)) return null
-        return DetailPage.entries.firstOrNull { page ->
-            val index = page.ordinal
-            val x1 = screenX + CONTENT_X + index * PAGE_TAB_WIDTH
-            val x2 = if (index == DetailPage.entries.lastIndex) {
-                screenX + CONTENT_X + CONTENT_WIDTH
-            } else {
-                x1 + PAGE_TAB_WIDTH - PAGE_TAB_GAP
-            }
-            mouseX in x1 until x2
-        }
-    }
-
-    private fun renderLoadingOverlay(guiGraphics: GuiGraphics) {
-        val cx = screenX + CONTENT_X + CONTENT_WIDTH / 2
-        val cy = screenY + CONTENT_START_Y + (CONTENT_END_Y - CONTENT_START_Y) / 2
-        val text = Component.translatable(
-            detailErrorKey ?: "cobblemon_smartphone.pokeinfo.loading_detail"
-        ).string
-        draw(guiGraphics, text, cx - textWidth(text) / 2, cy, 0xFFAAAAAA.toInt())
-    }
-
-    private fun receiveDetailResponse() {
-        if (!detailLoading) return
-        val response = PokeInfoClientState.consumeDetailResponse(detailRequestId)
-        if (response != null) {
-            when (response.status) {
-                SpeciesDetailResponsePacket.Status.SUCCESS -> {
-                    formDetails = response.details
-                    val received = formDetails.firstOrNull()
-                    if (received != null) applyDetail(received)
-                    else failDetail("cobblemon_smartphone.pokeinfo.error.server")
-                }
-                SpeciesDetailResponsePacket.Status.NOT_FOUND -> failDetail("cobblemon_smartphone.pokeinfo.error.not_found")
-                SpeciesDetailResponsePacket.Status.RATE_LIMITED -> failDetail("cobblemon_smartphone.pokeinfo.error.rate_limited")
-                SpeciesDetailResponsePacket.Status.ERROR -> failDetail("cobblemon_smartphone.pokeinfo.error.server")
-            }
-        } else if (System.currentTimeMillis() - detailRequestStartedAt >= REQUEST_TIMEOUT_MS) {
-            failDetail("cobblemon_smartphone.pokeinfo.error.timeout")
-        }
-    }
-
-    private fun failDetail(key: String) {
-        detailLoading = false
-        detailErrorKey = key
-    }
-
-    private fun applyForm(index: Int) {
-        val received = formDetails.getOrNull(index) ?: return
-        applyDetail(received)
-    }
-
-    private fun renderFormSection(guiGraphics: GuiGraphics, sy: Int, mouseX: Int, mouseY: Int): Int {
-        val forms = detail.availableForms
-        if (forms.size <= 1) return sy
-
-        val totalH = SECTION_PAD_TOP + TITLE_GAP
-        sectionBox(guiGraphics, sy, totalH)
-
-        val y = sy + SECTION_PAD_TOP
-        val navCenter = screenX + CONTENT_X + CONTENT_WIDTH / 2
-        val form = forms[currentFormIndex]
-        val formName = translatedOrFallback(form.displayName, humanize(form.name))
-
-        if (currentFormIndex > 0) {
-            val lx = navCenter - 60
-            val leftHover =
-                mouseX >= lx - 4 && mouseX <= lx + 10 && mouseY >= screenY + y - 2 && mouseY <= screenY + y + 10
-            draw(guiGraphics, "\u003C", lx, screenY + y, if (leftHover) theme.colors.gold else SECTION_TITLE_COLOR)
-        }
-        draw(guiGraphics, formName, navCenter - textWidth(formName) / 2, screenY + y, theme.colors.textPrimary)
-        if (currentFormIndex < forms.size - 1) {
-            val rx = navCenter + 50
-            val rightHover =
-                mouseX >= rx - 4 && mouseX <= rx + 10 && mouseY >= screenY + y - 2 && mouseY <= screenY + y + 10
-            draw(guiGraphics, "\u003E", rx, screenY + y, if (rightHover) theme.colors.gold else SECTION_TITLE_COLOR)
-        }
-
-        return sy + totalH
-    }
-
-    private fun renderTopSection(guiGraphics: GuiGraphics, sy: Int): Int {
-        val topPad = 20
-        val leftW = 66
-        val rightX = CONTENT_X + leftW + 4 + SECTION_PAD
-        val totalH = SECTION_PAD_TOP + topPad + 56 + SECTION_PAD_BOTTOM
-        sectionBgLight(guiGraphics, sy, totalH)
-
-        var y = sy + SECTION_PAD_TOP + topPad
-        renderModel(guiGraphics, screenX + CONTENT_X, screenY + y, leftW)
-
-        val dexAndName = "#${String.format("%03d", detail.dexNumber)} ${pokemonName(detail.name, detail.speciesId)}"
-        draw(guiGraphics, dexAndName, screenX + rightX, screenY + y, CONTENT_GOLD)
-
-        val types = listOfNotNull(detail.primaryType, detail.secondaryType)
-        var tx = screenX + rightX
-        types.forEachIndexed { i, type ->
-            val name = typeName(type)
-            draw(guiGraphics, name, tx, screenY + y + 10, typeColor(type))
-            tx += textWidth(name)
-            if (i < types.size - 1) {
-                draw(guiGraphics, " / ", tx, screenY + y + 10, CONTENT_DIM)
-                tx += textWidth(" / ")
-            }
-        }
-
-        draw(
-            guiGraphics,
-            lang("dimensions", detail.height / 10f, detail.weight / 10f),
-            screenX + rightX,
-            screenY + y + 20,
-            CONTENT_DIM
-        )
-
-        return sy + totalH
-    }
-
-    private fun renderModel(guiGraphics: GuiGraphics, mx: Int, my: Int, w: Int) {
-        val pokemon = modelPokemon
-        if (pokemon != null) {
-            val matrices = guiGraphics.pose()
-            matrices.pushPose()
-            matrices.translate(mx + w / 2f, my - 22f, 0f)
-            drawProfilePokemon(
-                pokemon, matrices, Quaternionf().rotateY(Math.toRadians(30.0).toFloat()),
-                PoseType.PROFILE, posableState, 0f, 35f
-            )
-            matrices.popPose()
-        }
-    }
-
-    private fun renderBaseStatsSection(guiGraphics: GuiGraphics, sy: Int): Int {
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 6 * 9 + 9 + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
-        var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, lang("base_stats"), screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
-        y += TITLE_GAP + CONTENT_GAP
-
-        val stats = listOf(
-            lang("stat.hp") to detail.baseStats.hp,
-            lang("stat.attack") to detail.baseStats.attack,
-            lang("stat.defence") to detail.baseStats.defence,
-            lang("stat.special_attack") to detail.baseStats.specialAttack,
-            lang("stat.special_defence") to detail.baseStats.specialDefence,
-            lang("stat.speed") to detail.baseStats.speed
-        )
-        val labelW = 22
-        val valW = 28
-        val barMaxW = CONTENT_WIDTH - SECTION_PAD * 2 - labelW - valW
-        val barX = screenX + CONTENT_X + SECTION_PAD + labelW
-        stats.forEach { (label, value) ->
-            draw(guiGraphics, label, screenX + CONTENT_X + SECTION_PAD, screenY + y, CONTENT_GOLD)
-            val bw = (value * barMaxW / 255).coerceIn(1, barMaxW)
-            guiGraphics.fill(
-                barX,
-                screenY + y + 1,
-                barX + bw,
-                screenY + y + 6,
-                statBarColor(value)
-            )
-            draw(guiGraphics, "$value", barX + bw + 2, screenY + y, CONTENT_TEXT)
-            y += 9
-        }
-        draw(
-            guiGraphics,
-            lang("total", detail.baseStats.total),
-            screenX + CONTENT_X + SECTION_PAD + labelW - 8,
-            screenY + y,
-            CONTENT_DIM
-        )
-
-        return sy + totalH
-    }
-
-    private fun renderAbilitiesSection(guiGraphics: GuiGraphics, sy: Int): Int {
-        if (detail.abilities.isEmpty()) return sy
-
-        val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
-        val descW = wrapW - 8 // indent for description
-
-        var lineCount = 1 // title line
-        detail.abilities.forEach { a ->
-            lineCount += 1 // ability name
-            val description = Component.translatable(a.descriptionKey).string
-            if (description.isNotEmpty()) {
-                lineCount += wrapText(description, descW).size
-            }
-        }
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lineCount * 9 + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
-
-        var y = sy + SECTION_PAD_TOP
-        val tx = screenX + CONTENT_X + SECTION_PAD
-        draw(guiGraphics, lang("abilities"), tx, screenY + y, SECTION_TITLE_COLOR)
-        y += TITLE_GAP + CONTENT_GAP
-
-        detail.abilities.forEach { a ->
-            val name = abilityName(a.name)
-            if (a.isHidden) {
-                val prefix = lang("hidden_ability_prefix")
-                draw(guiGraphics, prefix, tx, screenY + y, CONTENT_COND)
-                draw(
-                    guiGraphics,
-                    name,
-                    tx + textWidth(prefix),
-                    screenY + y,
-                    CONTENT_GOLD
-                )
-            } else {
-                draw(guiGraphics, name, tx, screenY + y, CONTENT_GOLD)
-            }
-            y += 9
-            val description = Component.translatable(a.descriptionKey).string
-            if (description.isNotEmpty()) {
-                wrapText(description, descW).forEach { line ->
-                    draw(guiGraphics, line, tx + 8, screenY + y, CONTENT_DIM)
-                    y += 9
-                }
-            }
-        }
-        return sy + totalH
-    }
-
-    private fun renderEvolutionSection(guiGraphics: GuiGraphics, sy: Int): Int {
-        val hasPre = detail.preEvolution != null
-        val hasEvos = detail.evolutions.isNotEmpty()
-        if (!hasPre && !hasEvos) return sy
-
-        val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
-        val tx = screenX + CONTENT_X + SECTION_PAD
-
-        // Pre-calculate wrapped lines
-        var lineCount = 0
-        if (hasPre) {
-            val preName = pokemonName(detail.preEvolution!!)
-            lineCount += wrapText("\u2191 $preName", wrapW).size
-        }
-        detail.evolutions.forEach { evo ->
-            val name = pokemonName(evo.targetName)
-            val methods = evo.methods.joinToString("  •  ", transform = ::localized)
-            lineCount += wrapText("\u2193 $name", wrapW).size
-            if (methods.isNotEmpty()) lineCount += wrapText("\u2022 $methods", wrapW - 8).size
-        }
-
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lineCount * 9 + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
-        var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, lang("evolution"), tx, screenY + y, SECTION_TITLE_COLOR)
-        y += TITLE_GAP + CONTENT_GAP
-
-        if (hasPre) {
-            val preName = pokemonName(detail.preEvolution!!)
-            wrapText("\u2191 $preName", wrapW).forEach {
-                draw(guiGraphics, it, tx, screenY + y, CONTENT_DIM)
-                y += 9
-            }
-        }
-        detail.evolutions.forEach { evo ->
-            val name = pokemonName(evo.targetName)
-            val methods = evo.methods.joinToString("  •  ", transform = ::localized)
-            wrapText("\u2193 $name", wrapW).forEach {
-                draw(guiGraphics, it, tx, screenY + y, CONTENT_TEXT)
-                y += 9
-            }
-            if (methods.isNotEmpty()) {
-                wrapText("\u2022 $methods", wrapW - 8).forEach {
-                    draw(guiGraphics, it, tx + 8, screenY + y, CONTENT_DIM)
-                    y += 9
-                }
-            }
-        }
-        return sy + totalH
-    }
-
-    private fun renderTrainingSection(guiGraphics: GuiGraphics, sy: Int): Int {
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 5 * 9 + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
-
-        var y = sy + SECTION_PAD_TOP
-        val tx = screenX + CONTENT_X + SECTION_PAD
-        draw(guiGraphics, lang("training"), tx, screenY + y, SECTION_TITLE_COLOR)
-        y += TITLE_GAP + CONTENT_GAP
-
-        // EV Yield - only show non-zero
-        val evs = listOf(
-            lang("stat.hp") to detail.evYield.hp,
-            lang("stat.attack") to detail.evYield.attack,
-            lang("stat.defence") to detail.evYield.defence,
-            lang("stat.special_attack") to detail.evYield.specialAttack,
-            lang("stat.special_defence") to detail.evYield.specialDefence,
-            lang("stat.speed") to detail.evYield.speed
-        ).filter { it.second > 0 }
-        val evText = if (evs.isEmpty()) lang("none")
-        else evs.joinToString(", ") { "${it.first} ${it.second}" }
-        draw(guiGraphics, lang("ev") + ": ", tx, screenY + y, CONTENT_DIM)
-        draw(guiGraphics, evText, tx + textWidth(lang("ev") + ": "), screenY + y, CONTENT_GOLD)
-        y += 9
-
-        // Catch rate
-        draw(guiGraphics, lang("catch_rate") + ": ", tx, screenY + y, CONTENT_DIM)
-        draw(
-            guiGraphics,
-            "${detail.catchRate} (${catchPercent(detail.catchRate)}%)",
-            tx + textWidth(lang("catch_rate") + ": "),
-            screenY + y,
-            CONTENT_TEXT
-        )
-        y += 9
-
-        // Base Friendship
-        draw(guiGraphics, lang("friendship") + ": ", tx, screenY + y, CONTENT_DIM)
-        draw(
-            guiGraphics,
-            "${detail.baseFriendship}",
-            tx + textWidth(lang("friendship") + ": "),
-            screenY + y,
-            CONTENT_TEXT
-        )
-        y += 9
-
-        // Base Exp
-        draw(guiGraphics, lang("base_exp") + ": ", tx, screenY + y, CONTENT_DIM)
-        draw(guiGraphics, "${detail.baseExp}", tx + textWidth(lang("base_exp") + ": "), screenY + y, CONTENT_TEXT)
-        y += 9
-
-        draw(guiGraphics, lang("growth_rate") + ": ", tx, screenY + y, CONTENT_DIM)
-        draw(
-            guiGraphics,
-            humanize(detail.growthRate),
-            tx + textWidth(lang("growth_rate") + ": "),
-            screenY + y,
-            CONTENT_TEXT
-        )
-        y += 9
-
-        return sy + totalH
-    }
-
-    private fun renderSpawningSection(guiGraphics: GuiGraphics, sy: Int): Int {
-        if (detailLoading) {
-            val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 9 + SECTION_PAD_BOTTOM
-            sectionBox(guiGraphics, sy, totalH)
-            val tx = screenX + CONTENT_X + SECTION_PAD
-            var y = sy + SECTION_PAD_TOP
-            draw(guiGraphics, lang("spawning"), tx, screenY + y, SECTION_TITLE_COLOR)
-            y += TITLE_GAP + CONTENT_GAP
-            draw(guiGraphics, lang("loading_spawn_data"), tx, screenY + y, 0xFFAAAAAA.toInt())
-            return sy + totalH
-        }
-
-        val entries = detail.spawnEntries
-        if (entries.isEmpty()) return sy
-
-        // Group by bucket
-        val groups = entries.groupBy { it.bucket }
-        val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
-        val tx = screenX + CONTENT_X + SECTION_PAD
-
-        bucketHeaderRects.clear()
-        val allLines = mutableListOf<LineSegments>()
-
-        for ((bucket, bucketEntries) in groups) {
-            val expanded = expandedBuckets.contains(bucket)
-            val hasMultiple = bucketEntries.size > 1
-
-            // ── Header line ──
-            val arrow = if (expanded) "\u25BC" else "\u25B6"
-            val weight = bucketEntries.firstOrNull()?.weight ?: -1f
-            val weightStr = if (weight >= 0f) " (${weight.toInt()})" else " (${lang("default_weight")})"
-            val headerText = "$arrow ${spawnValue("bucket", bucket)}$weightStr"
-            allLines.add(LineSegments(listOf(Segment(headerText, CONTENT_GOLD)), bucket))
-
-            if (expanded) {
-                // ── Expanded: show each entry ──
-                for (entry in bucketEntries) {
-                    // Biomes
-                    val biomeLabel = lang("biomes") + ": "
-                    val biomeValue = entry.biomes.joinToString(", ", transform = ::biomeName)
-                    val biomePrefixW = textWidth(biomeLabel)
-                    val biomeWrapped = wrapText(biomeValue, wrapW - biomePrefixW)
-                    for ((bi, line) in biomeWrapped.withIndex()) {
-                        val items = mutableListOf<Segment>()
-                        if (bi == 0) items.add(Segment(biomeLabel, CONTENT_DIM))
-                        else items.add(Segment(" ".repeat(8), CONTENT_DIM))
-                        items.add(Segment(line, CONTENT_TEXT))
-                        allLines.add(LineSegments(items))
-                    }
-                    // Level
-                    allLines.add(
-                        LineSegments(
-                            listOf(
-                                Segment(lang("level_label") + ": ", CONTENT_DIM),
-                                Segment("${entry.minLevel} \u2013 ${entry.maxLevel}", CONTENT_GOLD)
-                            )
-                        )
-                    )
-                    // Context
-                    val ctxValue = spawnValue("context", entry.context)
-                    allLines.add(
-                        LineSegments(
-                            listOf(
-                                Segment(lang("context_label") + ": ", CONTENT_DIM),
-                                Segment(ctxValue, CONTENT_TEXT)
-                            )
-                        )
-                    )
-                    // Time
-                    if (entry.time != null) {
-                        allLines.add(
-                            LineSegments(
-                                listOf(
-                                    Segment(lang("time_label") + ": ", CONTENT_DIM),
-                                    Segment(localized(entry.time), CONTENT_TEXT)
-                                )
-                            )
-                        )
-                    }
-                    // Conditions
-                    if (entry.conditions.isNotEmpty()) {
-                        val condLabel = lang("cond") + ": "
-                        val condValue = entry.conditions.joinToString(", ", transform = ::localized)
-                        val condPrefixW = textWidth(condLabel)
-                        val condWrapped = wrapText(condValue, wrapW - condPrefixW)
-                        for ((ci, line) in condWrapped.withIndex()) {
-                            val items = mutableListOf<Segment>()
-                            if (ci == 0) items.add(Segment(condLabel, CONTENT_DIM))
-                            else items.add(Segment(" ".repeat(8), CONTENT_DIM))
-                            items.add(Segment(line, CONTENT_COND))
-                            allLines.add(LineSegments(items))
-                        }
-                    }
-                    // Anti-conditions
-                    if (entry.antiConditions.isNotEmpty()) {
-                        val antiLabel = lang("anti") + ": "
-                        val antiValue = entry.antiConditions.joinToString(", ", transform = ::localized)
-                        val antiPrefixW = textWidth(antiLabel)
-                        val antiWrapped = wrapText(antiValue, wrapW - antiPrefixW)
-                        for ((ai, line) in antiWrapped.withIndex()) {
-                            val items = mutableListOf<Segment>()
-                            if (ai == 0) items.add(Segment(antiLabel, CONTENT_DIM))
-                            else items.add(Segment(" ".repeat(8), CONTENT_DIM))
-                            items.add(Segment(line, CONTENT_WEAK))
-                            allLines.add(LineSegments(items))
-                        }
-                    }
-                    allLines.add(LineSegments(emptyList())) // gap between entries
-                }
-            } else {
-                // ── Collapsed summary ──
-                val allBiomes = bucketEntries.flatMap { it.biomes }.distinct()
-                val shown = allBiomes.take(2).joinToString(", ", transform = ::biomeName)
-                val more = if (allBiomes.size > 2) lang("more_count", allBiomes.size - 2) else ""
-                val biomeLabel = lang("biomes") + ": "
-                val biomeText = shown + more
-                val biomePrefixW = textWidth(biomeLabel)
-                val biomeWrapped = wrapText(biomeText, wrapW - biomePrefixW)
-                for ((bi, line) in biomeWrapped.withIndex()) {
-                    val items = mutableListOf<Segment>()
-                    if (bi == 0) items.add(Segment(biomeLabel, CONTENT_DIM))
-                    else items.add(Segment(" ".repeat(8), CONTENT_DIM))
-                    items.add(Segment(line, CONTENT_TEXT))
-                    allLines.add(LineSegments(items))
-                }
-                // Level: min-max across entries
-                val minLv = bucketEntries.minOf { it.minLevel }
-                val maxLv = bucketEntries.maxOf { it.maxLevel }
-                allLines.add(
-                    LineSegments(
-                        listOf(
-                            Segment(lang("level_label") + ": ", CONTENT_DIM),
-                            Segment("$minLv \u2013 $maxLv", CONTENT_GOLD)
-                        )
-                    )
-                )
-                if (hasMultiple) {
-                    allLines.add(
-                        LineSegments(
-                            listOf(
-                                Segment(lang("entry_count", bucketEntries.size), CONTENT_DIM)
-                            )
-                        )
-                    )
-                }
-            }
-            allLines.add(LineSegments(emptyList())) // gap between buckets
-        }
-
-        // Track bucket click regions (full bucket area, not just header)
-        bucketHeaderRects.clear()
-        var currentBucketStart: String? = null
-        var currentBucketStartY = 0
-        var cy = sy + SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP
-        for (line in allLines) {
-            if (line.bucket != null) {
-                // Close previous bucket region
-                if (currentBucketStart != null) {
-                    bucketHeaderRects[currentBucketStart!!] = Rect(
-                        tx, screenY + currentBucketStartY,
-                        tx + CONTENT_WIDTH - SECTION_PAD * 2, screenY + cy - 1
-                    )
-                }
-                // Start new bucket
-                currentBucketStart = line.bucket
-                currentBucketStartY = cy
-            }
-            cy += 9
-        }
-        // Close last bucket region
-        if (currentBucketStart != null) {
-            bucketHeaderRects[currentBucketStart!!] = Rect(
-                tx, screenY + currentBucketStartY,
-                tx + CONTENT_WIDTH - SECTION_PAD * 2, screenY + cy - 1
-            )
-        }
-
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + allLines.size * 9 + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
-
-        var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, lang("spawning"), tx, screenY + y, SECTION_TITLE_COLOR)
-        y += TITLE_GAP + CONTENT_GAP
-
-        for (line in allLines) {
-            var cx = tx
-            for (seg in line.segments) {
-                draw(guiGraphics, seg.text, cx, screenY + y, seg.color)
-                cx += textWidth(seg.text)
-            }
-            y += 9
-        }
-        return sy + totalH
-    }
-
-    private data class Segment(val text: String, val color: Int)
-    private data class LineSegments(val segments: List<Segment>, val bucket: String? = null)
-
-    private fun renderBreedingSection(guiGraphics: GuiGraphics, sy: Int): Int {
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 3 * 9 + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
-
-        var y = sy + SECTION_PAD_TOP
-        val tx = screenX + CONTENT_X + SECTION_PAD
-        draw(guiGraphics, lang("breeding"), tx, screenY + y, SECTION_TITLE_COLOR)
-        y += TITLE_GAP + CONTENT_GAP
-
-        // Egg Groups
-        val groups = detail.eggGroups.joinToString(", ", transform = ::eggGroupName)
-        draw(guiGraphics, lang("egg_groups") + ": ", tx, screenY + y, CONTENT_DIM)
-        draw(guiGraphics, groups, tx + textWidth(lang("egg_groups") + ": "), screenY + y, CONTENT_TEXT)
-        y += 9
-
-        // Gender
-        draw(guiGraphics, lang("gender") + ": ", tx, screenY + y, CONTENT_DIM)
-        when {
-            detail.maleRatio < 0 -> {
-                draw(guiGraphics, lang("genderless"), tx + textWidth(lang("gender") + ": "), screenY + y, CONTENT_DIM)
-                y += 9
-            }
-
-            detail.maleRatio == 0f -> {
-                draw(guiGraphics, lang("gender_female", 100), tx + textWidth(lang("gender") + ": "), screenY + y, CONTENT_FEMALE)
-                y += 9
-            }
-
-            detail.maleRatio == 1f -> {
-                draw(guiGraphics, lang("gender_male", 100), tx + textWidth(lang("gender") + ": "), screenY + y, CONTENT_MALE)
-                y += 9
-            }
-
-            else -> {
-                val m = lang("gender_male", (detail.maleRatio * 100).toInt())
-                val f = lang("gender_female", ((1 - detail.maleRatio) * 100).toInt())
-                draw(guiGraphics, "$m / $f", tx + textWidth(lang("gender") + ": "), screenY + y, CONTENT_TEXT)
-                y += 9
-            }
-        }
-
-        // Egg Cycles
-        draw(guiGraphics, lang("egg_cycles") + ": ", tx, screenY + y, CONTENT_DIM)
-        draw(guiGraphics, "${detail.eggCycles}", tx + textWidth(lang("egg_cycles") + ": "), screenY + y, CONTENT_TEXT)
-        y += 9
-
-        return sy + totalH
-    }
-
-    private fun renderTypeDefensesSection(guiGraphics: GuiGraphics, sy: Int): Int {
-        val types = listOfNotNull(detail.primaryType, detail.secondaryType)
-        val eff = getEffectiveness(types)
-
-        // Filter neutral, preserve multiplier for color mapping
-        val byMultiplier = eff.entries
-            .filter { it.value != 1.0 }
-            .groupBy({ it.value }, { it.key })
-            .mapValues { (_, typeNames) ->
-                typeNames.joinToString(", ", transform = ::typeName)
-            }
-
-        val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
-        var totalLines = 0
-        if (byMultiplier.isEmpty()) {
-            totalLines = 1
-        } else {
-            byMultiplier.forEach { (mult, text) ->
-                val label = when {
-                    mult > 1.0 -> lang("weak") + " (x${multiplierText(mult)})"
-                    mult == 0.0 -> lang("immune") + " (x0)"
-                    else -> lang("resist") + " (x${multiplierText(mult)})"
-                }
-                totalLines += wrapText("$label: $text", wrapW).size
-            }
-        }
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + totalLines * 9 + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
-
-        var y = sy + SECTION_PAD_TOP
-        val tx = screenX + CONTENT_X + SECTION_PAD
-        draw(guiGraphics, lang("type_defenses"), tx, screenY + y, SECTION_TITLE_COLOR)
-        y += TITLE_GAP + CONTENT_GAP
-
-        if (byMultiplier.isEmpty()) {
-            draw(guiGraphics, lang("none"), tx, screenY + y, CONTENT_DIM)
-        } else {
-            // Sort: worst weaknesses first, then immunities, then best resistances
-            val sorted = byMultiplier.entries.sortedByDescending { (mult, _) -> mult }
-            for ((mult, text) in sorted) {
-                val label = when {
-                    mult > 1.0 -> lang("weak") + " (x${multiplierText(mult)})"
-                    mult == 0.0 -> lang("immune") + " (x0)"
-                    else -> lang("resist") + " (x${multiplierText(mult)})"
-                }
-                val color = multiplierColor(mult)
-                wrapText("$label: $text", wrapW).forEach {
-                    draw(guiGraphics, it, tx, screenY + y, color); y += 9
-                }
-            }
-        }
-        return sy + totalH
-    }
-
-    private fun multiplierColor(mult: Double): Int = when (mult) {
-        4.0 -> 0xFFCC1111.toInt()
-        2.0 -> 0xFFCC3333.toInt()
-        0.5 -> 0xFF339933.toInt()
-        0.25 -> 0xFF116611.toInt()
-        0.0 -> 0xFF9966CC.toInt()
-        else -> CONTENT_TEXT
-    }
-
-    private fun renderLevelMovesTable(guiGraphics: GuiGraphics, sy: Int): Int {
-        val levelUp = detail.moves.filter { it.method == "level" }.sortedBy { it.level }
-        val moveCount = levelUp.size
-        val scale = 0.8f
-        val totalRowsHeight = Math.ceil((moveCount + 1) * 9.0 * scale).toInt()
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + totalRowsHeight + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
-
-        var y = sy + SECTION_PAD_TOP
-        draw(guiGraphics, lang("level_moves"), screenX + CONTENT_X + SECTION_PAD, screenY + y, SECTION_TITLE_COLOR)
-        y += TITLE_GAP + CONTENT_GAP
-
-        val tableW = LV_W + MOVE_W + TYPE_W + CAT_W + PW_W + AC_W
-        val availW = CONTENT_WIDTH - SECTION_PAD * 2
-        val offsetX = (availW - tableW * scale) / 2f
-        val baseX = (screenX + CONTENT_X + SECTION_PAD + offsetX) / scale
-        val baseY = (screenY + y) / scale
-
-        val matrices = guiGraphics.pose()
-        matrices.pushPose()
-        matrices.translate(baseX * scale, baseY * scale, 0f)
-        matrices.scale(scale, scale, 1f)
-
-        draw(guiGraphics, lang("lvl"), 0, 0, CONTENT_DIM)
-        draw(guiGraphics, lang("move"), LV_W, 0, CONTENT_DIM)
-        draw(guiGraphics, lang("type"), LV_W + MOVE_W, 0, CONTENT_DIM)
-        draw(guiGraphics, lang("ct"), LV_W + MOVE_W + TYPE_W, 0, CONTENT_DIM)
-        draw(guiGraphics, lang("pw"), LV_W + MOVE_W + TYPE_W + CAT_W, 0, CONTENT_DIM)
-        draw(guiGraphics, lang("ac"), LV_W + MOVE_W + TYPE_W + CAT_W + PW_W, 0, CONTENT_DIM)
-        var ry = 9
-
-        levelUp.forEach { move ->
-            val pw = if (move.power == 0) "\u2014" else move.power.toString()
-            val ac = if (move.accuracy == 0) "\u221E" else move.accuracy.toString()
-            val cat = when (move.category) {
-                "physical" -> lang("category.physical")
-                "special" -> lang("category.special")
-                else -> lang("category.status")
-            }
-            val catColor = when (move.category) {
-                "physical" -> 0xFFE07030.toInt()
-                "special" -> 0xFF5070B8.toInt()
-                else -> 0xFF888888.toInt()
-            }
-            val typeAbbr = lang("type_abbr.${move.type.lowercase()}")
-            val moveName = truncate(moveName(move.name), MOVE_W - 2)
-
-            draw(guiGraphics, "${move.level}", 0, ry, CONTENT_TEXT)
-            draw(guiGraphics, moveName, LV_W, ry, CONTENT_TEXT)
-            draw(guiGraphics, typeAbbr, LV_W + MOVE_W, ry, typeColor(move.type))
-            draw(guiGraphics, cat, LV_W + MOVE_W + TYPE_W, ry, catColor)
-            draw(guiGraphics, pw, LV_W + MOVE_W + TYPE_W + CAT_W, ry, CONTENT_TEXT)
-            draw(guiGraphics, ac, LV_W + MOVE_W + TYPE_W + CAT_W + PW_W, ry, CONTENT_TEXT)
-            ry += 9
-        }
-
-        matrices.popPose()
-        return sy + totalH
-    }
-
-    private fun renderLearnableMoves(guiGraphics: GuiGraphics, sy: Int): Int {
-        val others = detail.moves.filter { it.method != "level" }
-        if (others.isEmpty()) return sy
-
-        val methodOrder = mapOf("tm" to 0, "egg" to 1, "tutor" to 2)
-        val sorted = others.sortedWith(compareBy({ methodOrder[it.method] ?: 99 }, { it.name }))
-        val rowLimit = sorted.size
-
-        val scale = 0.8f
-        val totalRowsHeight = kotlin.math.ceil((rowLimit + 1) * 9.0 * scale.toDouble()).toInt()
-        val totalH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + totalRowsHeight + SECTION_PAD_BOTTOM
-        sectionBox(guiGraphics, sy, totalH)
-
-        var y = sy + SECTION_PAD_TOP
-        val tx = screenX + CONTENT_X + SECTION_PAD
-        draw(guiGraphics, lang("learnable_moves"), tx, screenY + y, SECTION_TITLE_COLOR)
-        y += TITLE_GAP + CONTENT_GAP
-
-        val tableW = MET_W + MOVE_W + TYPE_W + CAT_W + PW_W + AC_W
-        val availW = CONTENT_WIDTH - SECTION_PAD * 2
-        val offsetX = (availW - tableW * scale) / 2f
-        val baseX = (screenX + CONTENT_X + SECTION_PAD + offsetX) / scale
-        val baseY = (screenY + y) / scale
-
-        val matrices = guiGraphics.pose()
-        matrices.pushPose()
-        matrices.translate(baseX * scale, baseY * scale, 0f)
-        matrices.scale(scale, scale, 1f)
-
-        // Header
-        draw(guiGraphics, lang("met"), 0, 0, CONTENT_DIM)
-        draw(guiGraphics, lang("move"), MET_W, 0, CONTENT_DIM)
-        draw(guiGraphics, lang("type"), MET_W + MOVE_W, 0, CONTENT_DIM)
-        draw(guiGraphics, lang("ct"), MET_W + MOVE_W + TYPE_W, 0, CONTENT_DIM)
-        draw(guiGraphics, lang("pw"), MET_W + MOVE_W + TYPE_W + CAT_W, 0, CONTENT_DIM)
-        draw(guiGraphics, lang("ac"), MET_W + MOVE_W + TYPE_W + CAT_W + PW_W, 0, CONTENT_DIM)
-        var ry = 9
-
-        for (move in sorted) {
-            val methodLabel = when (move.method) {
-                "tm" -> lang("method.tm")
-                "egg" -> lang("method.egg")
-                "tutor" -> lang("method.tutor")
-                else -> humanize(move.method)
-            }
-            val pw = if (move.power == 0) "\u2014" else move.power.toString()
-            val ac = if (move.accuracy == 0) "\u221E" else move.accuracy.toString()
-            val cat = when (move.category) {
-                "physical" -> lang("category.physical")
-                "special" -> lang("category.special")
-                else -> lang("category.status")
-            }
-            val catColor = when (move.category) {
-                "physical" -> 0xFFE07030.toInt()
-                "special" -> 0xFF5070B8.toInt()
-                else -> 0xFF888888.toInt()
-            }
-            val typeAbbr = lang("type_abbr.${move.type.lowercase()}")
-            val moveName = truncate(moveName(move.name), MOVE_W - 2)
-
-            draw(guiGraphics, methodLabel, 0, ry, CONTENT_DIM)
-            draw(guiGraphics, moveName, MET_W, ry, CONTENT_TEXT)
-            draw(guiGraphics, typeAbbr, MET_W + MOVE_W, ry, typeColor(move.type))
-            draw(guiGraphics, cat, MET_W + MOVE_W + TYPE_W, ry, catColor)
-            draw(guiGraphics, pw, MET_W + MOVE_W + TYPE_W + CAT_W, ry, CONTENT_TEXT)
-            draw(guiGraphics, ac, MET_W + MOVE_W + TYPE_W + CAT_W + PW_W, ry, CONTENT_TEXT)
-            ry += 9
-        }
-
-        matrices.popPose()
-        return sy + totalH
-    }
-
-    private fun sectionBox(guiGraphics: GuiGraphics, y: Int, h: Int) {
-        val x1 = screenX + CONTENT_X
-        val y1 = screenY + y
-        val x2 = screenX + CONTENT_X + CONTENT_WIDTH
-        val titleH = SECTION_PAD_TOP + TITLE_GAP
-        guiGraphics.fill(x1, y1, x2, y1 + titleH, SECTION_TITLE_BG)
-        guiGraphics.fill(x1, y1 + titleH, x2, y1 + h, SECTION_CONTENT_BG)
-    }
-
-    private fun renderScrollbar(guiGraphics: GuiGraphics, mouseY: Int) {
-        if (maxScroll <= 0) return
-        val trackX = screenX + CONTENT_X + CONTENT_WIDTH + 1
-        val trackY = screenY + CONTENT_START_Y
-        val trackH = CONTENT_END_Y - CONTENT_START_Y
-        val totalH = calculateContentHeight()
-        val handleH = maxOf(12, (trackH.toFloat() * trackH / totalH.toFloat()).toInt())
-        val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
-
-        if (draggingScrollbar) {
-            val dy = mouseY - dragStartMouseY
-            val scrollRange = trackH - handleH
-            if (scrollRange > 0) {
-                scrollY = (dragStartScrollY + (dy.toFloat() / scrollRange * maxScroll).toInt()).coerceIn(0, maxScroll)
-            }
-        }
-
-        guiGraphics.fill(trackX, trackY, trackX + 4, trackY + trackH, 0x25FFFFFF.toInt())
-        val color = if (draggingScrollbar) 0x80FFFFFF.toInt() else 0x50FFFFFF.toInt()
-        guiGraphics.fill(trackX, handleY, trackX + 4, handleY + handleH, color)
-    }
-
-    private fun sectionBgLight(guiGraphics: GuiGraphics, y: Int, h: Int) {
-        guiGraphics.fill(
-            screenX + CONTENT_X, screenY + y,
-            screenX + CONTENT_X + CONTENT_WIDTH, screenY + y + h,
-            SECTION_CONTENT_BG
-        )
-    }
-
-    private fun drawSep(guiGraphics: GuiGraphics, sy: Int): Int {
-        guiGraphics.fill(
-            screenX + CONTENT_X + SECTION_PAD,
-            screenY + sy,
-            screenX + CONTENT_X + CONTENT_WIDTH - SECTION_PAD,
-            screenY + sy + 1,
-            0x30FFFFFF.toInt()
-        )
-        return sy + 4
-    }
-
-    private fun truncate(text: String, maxWidth: Int): String {
-        if (textWidth(text) <= maxWidth) return text
-        var result = text
-        while (textWidth(result + "..") > maxWidth && result.length > 1) result = result.dropLast(1)
-        return result + ".."
-    }
-
-    private fun draw(guiGraphics: GuiGraphics, text: String, x: Int, y: Int, color: Int) {
-        guiGraphics.drawString(font, text, x, y, color, false)
-    }
-
-    private fun textWidth(text: String): Int = font.width(text)
-
-    private fun wrapText(text: String, maxWidth: Int): List<String> {
-        if (textWidth(text) <= maxWidth) return listOf(text)
-        val lines = mutableListOf<String>()
-        var currentLine = StringBuilder()
-        text.forEach { char ->
-            val candidate = currentLine.toString() + char
-            if (currentLine.isEmpty() || textWidth(candidate) <= maxWidth) {
-                currentLine.append(char)
-            } else {
-                lines.add(currentLine.toString().trimEnd())
-                currentLine = StringBuilder().append(char)
-            }
-        }
-        if (currentLine.isNotEmpty()) lines.add(currentLine.toString().trimEnd())
-        return lines.ifEmpty { listOf(text) }
-    }
-
-    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
-
-        val key = when {
-            isInBackButton(mouseX, mouseY) -> "back_to_pokemon_list"
-            !::detail.isInitialized -> null
-            isInPreviousFormButton(mouseX, mouseY) -> "previous_form"
-            isInNextFormButton(mouseX, mouseY) -> "next_form"
-            else -> bucketHeaderRects.entries.firstOrNull { it.value.contains(mouseX, mouseY) }?.let { (bucket, _) ->
-                if (expandedBuckets.contains(bucket)) "collapse_spawn_details" else "expand_spawn_details"
-            }
-        } ?: return
-        guiGraphics.renderTooltip(
-            font,
-            Component.translatable("cobblemon_smartphone.tooltip.$key"),
-            mouseX,
-            mouseY
-        )
-    }
-
-    private fun isInPreviousFormButton(mouseX: Int, mouseY: Int): Boolean {
-        if (detail.availableForms.size <= 1 || currentFormIndex <= 0) return false
-        val navY = screenY + CONTENT_START_Y - scrollY + SECTION_PAD_TOP
-        val navCenter = screenX + CONTENT_X + CONTENT_WIDTH / 2
-        return mouseX in (navCenter - 64)..(navCenter - 50) && mouseY in (navY - 2)..(navY + 10)
-    }
-
-    private fun isInNextFormButton(mouseX: Int, mouseY: Int): Boolean {
-        if (detail.availableForms.size <= 1 || currentFormIndex >= detail.availableForms.size - 1) return false
-        val navY = screenY + CONTENT_START_Y - scrollY + SECTION_PAD_TOP
-        val navCenter = screenX + CONTENT_X + CONTENT_WIDTH / 2
-        return mouseX in (navCenter + 50)..(navCenter + 60) && mouseY in (navY - 2)..(navY + 10)
-    }
-
-    private fun statBarColor(value: Int): Int = when {
-        value >= 120 -> 0xFF00C2B8.toInt()
-        value >= 100 -> 0xFF23CD5E.toInt()
-        value >= 80 -> 0xFFA0E515.toInt()
-        value >= 60 -> 0xFFFFDD57.toInt()
-        value >= 40 -> 0xFFFF7F0F.toInt()
-        else -> 0xFFF34444.toInt()
-    }
-
-    private fun calculateContentHeight(): Int {
-        val cfg = CobblemonSmartphone.config.pokeInfo
-        val topH = SECTION_PAD_TOP + 20 + 56 + SECTION_PAD_BOTTOM
-        val formNavH = if (detail.availableForms.size > 1) SECTION_PAD_TOP + TITLE_GAP else 0
-        val statsH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 6 * 9 + 9 + SECTION_PAD_BOTTOM
-        val abiH =
-            if (detail.abilities.isNotEmpty()) {
-                val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
-                val descW = wrapW - 8
-                var lines = 1
-                detail.abilities.forEach { a ->
-                    lines += 1
-                    val description = Component.translatable(a.descriptionKey).string
-                    if (description.isNotEmpty()) lines += wrapText(description, descW).size
-                }
-                SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
-            } else 0
-        val evoH = run {
-            val hasPre = detail.preEvolution != null
-            val hasEvos = detail.evolutions.isNotEmpty()
-            if (!hasPre && !hasEvos) 0
-            else {
-                val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
-                var lines = 0
-                if (hasPre) {
-                    val preName = pokemonName(detail.preEvolution!!)
-                    lines += wrapText("\u2191 $preName", wrapW).size
-                }
-                detail.evolutions.forEach { evo ->
-                    val name = pokemonName(evo.targetName)
-                    val methods = evo.methods.joinToString("  •  ", transform = ::localized)
-                    lines += wrapText("\u2193 $name", wrapW).size
-                    if (methods.isNotEmpty()) lines += wrapText("\u2022 $methods", wrapW - 8).size
-                }
-                SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
-            }
-        }
-        val trainH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 5 * 9 + SECTION_PAD_BOTTOM
-        val spawnH = when {
-            detailLoading -> SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 9 + SECTION_PAD_BOTTOM
-            detail.spawnEntries.isNotEmpty() -> {
-                val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
-                val groups = detail.spawnEntries.groupBy { it.bucket }
-                var lines = 0
-                for ((bucket, bucketEntries) in groups) {
-                    val expanded = expandedBuckets.contains(bucket)
-                    lines++ // header
-                    if (expanded) {
-                        for (entry in bucketEntries) {
-                            val biomeText = entry.biomes.joinToString(", ", transform = ::biomeName)
-                            lines += wrapText(biomeText, wrapW - textWidth(lang("biomes") + ": ")).size
-                            lines++ // level
-                            lines++ // context
-                            if (entry.time != null) lines++
-                            if (entry.conditions.isNotEmpty()) {
-                                val condText = entry.conditions.joinToString(", ", transform = ::localized)
-                                lines += wrapText(condText, wrapW - textWidth(lang("cond") + ": ")).size
-                            }
-                            if (entry.antiConditions.isNotEmpty()) {
-                                val antiText = entry.antiConditions.joinToString(", ", transform = ::localized)
-                                lines += wrapText(antiText, wrapW - textWidth(lang("anti") + ": ")).size
-                            }
-                            lines++ // gap between entries in bucket
-                        }
-                    } else {
-                        val allBiomes = bucketEntries.flatMap { it.biomes }.distinct()
-                        val shown = allBiomes.take(2).joinToString(", ", transform = ::biomeName)
-                        val more = if (allBiomes.size > 2) lang("more_count", allBiomes.size - 2) else ""
-                        val biomeText = shown + more
-                        lines += wrapText(biomeText, wrapW - textWidth(lang("biomes") + ": ")).size
-                        lines++ // level
-                        if (bucketEntries.size > 1) lines++ // entries count
-                    }
-                    lines++ // gap between buckets
-                }
-                SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
-            }
-
-            else -> 0
-        }
-        val breedH = SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + 3 * 9 + SECTION_PAD_BOTTOM
-        val defH = run {
-            val types = listOfNotNull(detail.primaryType, detail.secondaryType)
-            val eff = getEffectiveness(types)
-            val groups = eff.entries.filter { it.value != 1.0 }
-                .groupBy({ it.value }, { it.key })
-            val wrapW = CONTENT_WIDTH - SECTION_PAD * 2
-            var lines = 0
-            if (groups.isEmpty()) {
-                lines = 1
-            } else {
-                groups.forEach { (mult, typeNames) ->
-                    val label = when {
-                        mult > 1.0 -> lang("weak") + " (x${multiplierText(mult)})"
-                        mult == 0.0 -> lang("immune") + " (x0)"
-                        else -> lang("resist") + " (x${multiplierText(mult)})"
-                    }
-                    val text = typeNames.joinToString(", ", transform = ::typeName)
-                    lines += wrapText("$label: $text", wrapW).size
-                }
-            }
-            SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + lines * 9 + SECTION_PAD_BOTTOM
-        }
-        val movesH = run {
-            val levelCount = detail.moves.count { it.method == "level" }
-            val totalRowsHeight = kotlin.math.ceil((levelCount + 1) * 9.0 * 0.8).toInt()
-            SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + totalRowsHeight + SECTION_PAD_BOTTOM
-        }
-        val learnH = run {
-            val others = detail.moves.filter { it.method != "level" }
-            if (others.isEmpty()) 0
-            else {
-                val totalRowsHeight = kotlin.math.ceil((others.size + 1) * 9.0 * 0.8).toInt()
-                SECTION_PAD_TOP + TITLE_GAP + CONTENT_GAP + totalRowsHeight + SECTION_PAD_BOTTOM
-            }
-        }
-        val sections = mutableListOf(formNavH)
-        when (currentPage) {
-            DetailPage.INFO -> {
-                sections += topH
-                listOf(
-                    cfg.showBaseStats to statsH,
-                    cfg.showAbilities to abiH,
-                    cfg.showEvolution to evoH,
-                    cfg.showTraining to trainH,
-                    cfg.showBreeding to breedH,
-                    cfg.showTypeDefenses to defH
-                ).filter { it.first }.forEach { sections += it.second }
-            }
-            DetailPage.SPAWNS -> if (cfg.showSpawning) sections += spawnH
-            DetailPage.MOVES -> listOf(
-                cfg.showLevelMoves to movesH,
-                cfg.showLearnableMoves to learnH
-            ).filter { it.first }.forEach { sections += it.second }
-        }
-        return PokeInfoLayout.totalHeight(sections)
-    }
-
-    private fun updateMaxScroll() {
-        maxScroll = maxOf(0, calculateContentHeight() - (CONTENT_END_Y - CONTENT_START_Y))
-        scrollY = scrollY.coerceIn(0, maxScroll)
-    }
-
-    private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
-        val backY = screenY + HEADER_Y + 6
-        return mouseX >= screenX + HEADER_BACK_X && mouseX <= screenX + HEADER_BACK_X + 30 &&
-                mouseY >= backY - 2 && mouseY <= backY + 10
-    }
-
-    private fun playClickSound() {
-        Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
-    }
-
     companion object {
         private const val REQUEST_TIMEOUT_MS = 10_000L
-        private const val GUI_WIDTH = 211
-        private const val GUI_HEIGHT = 207
-
-        private const val HEADER_BACK_X = 20
-        private const val HEADER_Y = 8
-
-        private const val CONTENT_X = 20
-        private const val CONTENT_WIDTH = 166
-        private const val CONTENT_START_Y = 28
-        private const val CONTENT_END_Y = 180
-        private const val PAGE_TABS_Y = 183
-        private const val PAGE_TABS_HEIGHT = 11
-        private const val PAGE_TAB_WIDTH = 56
-        private const val PAGE_TAB_GAP = 1
-
-        private const val SECTION_PAD = 4
-        private const val SECTION_PAD_TOP = 4
-        private const val SECTION_PAD_BOTTOM = 4
-        private const val TITLE_GAP = 13
-        private const val CONTENT_GAP = 3
+        private const val MOVES_BATCH = 45
         private const val CONTENT_WEAK = 0xFFCC3333.toInt()
         private const val CONTENT_COND = 0xFFCC6633.toInt()
-        private const val CONTENT_RESIST = 0xFF339933.toInt()
-        private const val CONTENT_IMMUNE = 0xFF9966CC.toInt()
         private const val CONTENT_MALE = 0xFF5599DD.toInt()
         private const val CONTENT_FEMALE = 0xFFDD5599.toInt()
 
-        private const val SCROLL_SPEED = 10
-
-        private const val LV_W = 22
-        private const val MET_W = 22
-        private const val MOVE_W = 62
-        private const val TYPE_W = 34
-        private const val CAT_W = 20
-        private const val PW_W = 22
-        private const val AC_W = 22
-
-        private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone", "textures/gui/large_screen.png"
-        )
-
-        // --- Type chart & helpers ---
-
         private val typeChart: Map<String, Map<String, Double>> = mapOf(
-            "normal" to mapOf(
-                "fighting" to 2.0, "ghost" to 0.0
-            ),
+            "normal" to mapOf("fighting" to 2.0, "ghost" to 0.0),
             "fire" to mapOf(
                 "fire" to 0.5, "water" to 2.0, "grass" to 0.5, "ice" to 0.5,
                 "ground" to 2.0, "bug" to 0.5, "rock" to 2.0, "steel" to 0.5, "fairy" to 0.5
@@ -1496,16 +922,12 @@ class PokeInfoDetailScreen(
                 "fire" to 0.5, "water" to 0.5, "grass" to 2.0, "electric" to 2.0,
                 "ice" to 0.5, "steel" to 0.5
             ),
-            "electric" to mapOf(
-                "electric" to 0.5, "ground" to 2.0, "flying" to 0.5, "steel" to 0.5
-            ),
+            "electric" to mapOf("electric" to 0.5, "ground" to 2.0, "flying" to 0.5, "steel" to 0.5),
             "grass" to mapOf(
                 "fire" to 2.0, "water" to 0.5, "electric" to 0.5, "grass" to 0.5, "ice" to 2.0,
                 "poison" to 2.0, "ground" to 0.5, "flying" to 2.0, "bug" to 2.0
             ),
-            "ice" to mapOf(
-                "fire" to 2.0, "ice" to 0.5, "fighting" to 2.0, "rock" to 2.0, "steel" to 2.0
-            ),
+            "ice" to mapOf("fire" to 2.0, "ice" to 0.5, "fighting" to 2.0, "rock" to 2.0, "steel" to 2.0),
             "fighting" to mapOf(
                 "flying" to 2.0, "psychic" to 2.0, "bug" to 0.5, "rock" to 0.5,
                 "dark" to 0.5, "fairy" to 2.0
@@ -1522,17 +944,11 @@ class PokeInfoDetailScreen(
                 "electric" to 2.0, "grass" to 0.5, "ice" to 2.0, "fighting" to 0.5,
                 "ground" to 0.0, "bug" to 0.5, "rock" to 2.0
             ),
-            "psychic" to mapOf(
-                "fighting" to 0.5, "psychic" to 0.5, "bug" to 2.0, "ghost" to 2.0, "dark" to 2.0
-            ),
-            "bug" to mapOf(
-                "fire" to 2.0, "grass" to 0.5, "fighting" to 0.5, "ground" to 0.5,
-                "flying" to 2.0, "rock" to 2.0
-            ),
+            "psychic" to mapOf("fighting" to 0.5, "psychic" to 0.5, "bug" to 2.0, "ghost" to 2.0, "dark" to 2.0),
+            "bug" to mapOf("fire" to 2.0, "grass" to 0.5, "fighting" to 0.5, "ground" to 0.5, "flying" to 2.0, "rock" to 2.0),
             "rock" to mapOf(
                 "normal" to 0.5, "fire" to 0.5, "water" to 2.0, "grass" to 2.0,
-                "fighting" to 2.0, "poison" to 0.5, "ground" to 2.0, "flying" to 0.5,
-                "steel" to 2.0
+                "fighting" to 2.0, "poison" to 0.5, "ground" to 2.0, "flying" to 0.5, "steel" to 2.0
             ),
             "ghost" to mapOf(
                 "normal" to 0.0, "fighting" to 0.0, "poison" to 0.5, "bug" to 0.5,
@@ -1542,20 +958,14 @@ class PokeInfoDetailScreen(
                 "fire" to 0.5, "water" to 0.5, "grass" to 0.5, "electric" to 0.5,
                 "ice" to 2.0, "dragon" to 2.0, "fairy" to 2.0
             ),
-            "dark" to mapOf(
-                "fighting" to 2.0, "psychic" to 0.0, "bug" to 2.0, "ghost" to 0.5,
-                "dark" to 0.5, "fairy" to 2.0
-            ),
+            "dark" to mapOf("fighting" to 2.0, "psychic" to 0.0, "bug" to 2.0, "ghost" to 0.5, "dark" to 0.5, "fairy" to 2.0),
             "steel" to mapOf(
                 "normal" to 0.5, "fire" to 2.0, "grass" to 0.5, "ice" to 0.5,
                 "fighting" to 2.0, "poison" to 0.0, "ground" to 2.0, "flying" to 0.5,
                 "psychic" to 0.5, "bug" to 0.5, "rock" to 0.5, "dragon" to 0.5,
                 "steel" to 0.5, "fairy" to 0.5
             ),
-            "fairy" to mapOf(
-                "fighting" to 0.5, "poison" to 2.0, "bug" to 0.5, "dragon" to 0.0,
-                "dark" to 0.5, "steel" to 2.0
-            )
+            "fairy" to mapOf("fighting" to 0.5, "poison" to 2.0, "bug" to 0.5, "dragon" to 0.0, "dark" to 0.5, "steel" to 2.0)
         )
 
         private val allTypes = listOf(
@@ -1577,8 +987,8 @@ class PokeInfoDetailScreen(
 
         fun multiplierText(value: Double): String = when (value) {
             0.0 -> "0"
-            0.25 -> "\u00BC"
-            0.5 -> "\u00BD"
+            0.25 -> "¼"
+            0.5 -> "½"
             1.0 -> "-"
             2.0 -> "2"
             4.0 -> "4"

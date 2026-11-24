@@ -85,6 +85,7 @@ class SmartphoneConfig {
         val enableQuickActions: Boolean = true
         val enableSocial: Boolean = true
         val enableCalls: Boolean = true
+        val enableRotom: Boolean = true
     }
 
     class PokeInfo {

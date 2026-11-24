@@ -263,3 +263,55 @@ An action that:
 | Function not running | Verify the function identifier against the table above and check whether its native feature, mod, cooldown, battle, or upgrade requirements allow it. |
 | Texture not showing | Verify the texture path matches `<namespace>:textures/gui/buttons/<file>.png`. Check the file exists in your assets. |
 | Cooldown not working | `cooldown_seconds` must be a positive integer. Zero = no cooldown. |
+
+---
+
+## Custom HD / Pixel UI Screens (`smartphone_screens/`)
+
+Datapacks can also define full interactive smartphone screens under:
+
+```
+data/<namespace>/smartphone_screens/<name>.json
+```
+
+Screens automatically adapt to both **HD** and **Pixel** UI styles, theme colors, and user scale.
+
+### Available UI Components (`type`)
+
+| Category | `type` | Key Fields |
+|---|---|---|
+| **Layout** | `column`, `row`, `stack`, `grid`, `card`, `scroll`, `spacer`, `divider` | `gap`, `padding`, `width`, `height`, `columns`, `scroll_id`, `for_each` |
+| **Layout (Modern)** | `app_header` (`header`) | `title`, `subtitle`, `icon`, `color`, `children` (trailing actions) |
+| **Layout (Modern)** | `flow_row` (`wrap`) | `h_gap`, `v_gap`, `line_align`, `cross_align`, `children` |
+| **Layout (Modern)** | `accordion` (`collapsible`) | `title`, `subtitle`, `icon`, `state_key`, `expanded`, `on_change`, `children` |
+| **Layout (Modern)** | `list_tile` | `title`, `subtitle`, `icon`, `color`, `trailing_text`, `show_chevron`, `on_click`, `children` |
+| **Navigation** | `tabs` | `tabs`, `state_key`, `active_id`, `style` (`"pills"`, `"bottom_nav"`, `"floating_dock"`), `on_change` |
+| **Controls** | `button`, `pill`, `checkbox`, `text_input` | `label`, `icon`, `variant`, `enabled`, `checked`, `input_id`, `placeholder`, `multiline` |
+| **Controls (Modern)** | `switch` | `label`, `checked`, `state_key`, `enabled`, `on_change` |
+| **Controls (Modern)** | `slider` | `label`, `value`, `min`, `max`, `step`, `show_value`, `state_key`, `enabled`, `on_change` |
+| **Controls (Modern)** | `number_stepper` (`stepper`) | `label`, `value`, `min`, `max`, `step`, `state_key`, `enabled`, `on_change` |
+| **Controls (Modern)** | `segmented_control` (`segmented`) | `options` (`id`, `label`, `icon`), `selected_id`, `state_key`, `enabled`, `on_change` |
+| **Feedback & Data** | `text`, `icon`, `image`, `avatar`, `item_icon`, `pokemon_view`, `progress_bar` | `text`, `size`, `weight`, `color`, `species`, `aspects`, `item`, `progress` |
+| **Feedback (Modern)** | `badge` (`chip`) | `label`, `icon`, `variant` (`primary`, `success`, `warning`, `danger`, `neutral`, `gold`) |
+| **Feedback (Modern)** | `stat_bar` | `label`, `value`, `max_value`, `value_text`, `fill_color`, `track_color` |
+| **Feedback (Modern)** | `empty_state` | `title`, `description`, `icon`, `action_label`, `action_icon`, `on_click` |
+
+### Client Effects & Toast Notifications
+
+Inside an action's `effects` list, you can display temporary on-screen notifications using `"toast"`:
+
+```json
+{
+  "type": "toast",
+  "text": "Saved settings for {player.name}!",
+  "kind": "success",
+  "icon": "CHECK",
+  "duration_ms": 2600
+}
+```
+
+Supported `kind` values: `info`, `success`, `warning`, `error`. Inline shortcut `"toast:Saved!"` is also supported in `on_click`.
+
+### Built-in Vector / Pixel Icons (`icon`)
+
+`FEED`, `MESSAGE`, `PLUS`, `MINUS`, `BELL`, `SEND`, `PHONE`, `TRASH`, `HEART`, `HEART_FILLED`, `BACK`, `CLOSE`, `SEARCH`, `USER`, `USERS`, `FLAG`, `GLOBE`, `CHECK`, `IMAGE`, `SPARKLES`, `CAMERA`, `POLL`, `SWORDS`, `TRADE`, `CHEVRON_DOWN`, `CHEVRON_UP`, `CHEVRON_RIGHT`, `SETTINGS`, `FILTER`, `REFRESH`, `STAR`, `STAR_FILLED`, `INFO`, `WARNING`, `LOCK`, `EDIT`, `COMPASS`.

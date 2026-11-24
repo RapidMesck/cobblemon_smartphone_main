@@ -20,7 +20,7 @@ object RotomAutoScannerRenderer {
         camera: Camera,
         partialTick: Float
     ) {
-        if (!RotomScannerClientState.clientConfig.enableScanner) return
+        if (!RotomScannerClientState.clientConfig.enableRotom || !RotomScannerClientState.clientConfig.enableScanner) return
         val activeScans = RotomScannerClientState.getActiveScans()
         if (activeScans.isEmpty()) return
 

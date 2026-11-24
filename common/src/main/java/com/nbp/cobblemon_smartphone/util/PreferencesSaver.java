@@ -10,6 +10,7 @@ public interface PreferencesSaver {
     String HIDDEN_ACTIONS_KEY = "hidden_actions";
     String QUICK_ACTIONS_KEY = "quick_actions";
     String SOCIAL_MUTED_KEY = "social_muted";
+    String SOCIAL_NOTIF_PREFS_KEY = "social_notif_prefs";
     String MUTED_PLAYERS_KEY = "muted_players";
     String THEME_KEY = "theme";
     String WALLPAPER_KEY = "wallpaper";

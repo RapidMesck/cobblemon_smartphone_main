@@ -7,6 +7,6 @@ import net.minecraft.client.Minecraft
 
 object SyncSocialMuteHandler : ClientNetworkPacketHandler<SyncSocialMutePacket> {
     override fun handle(packet: SyncSocialMutePacket, client: Minecraft) {
-        SocialMute.set(packet.muted)
+        SocialMute.setPrefs(packet.prefs)
     }
 }

@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerPlayer
 object SetRotomScanPriorityHandler : ServerNetworkPacketHandler<SetRotomScanPriorityPacket> {
     override fun handle(packet: SetRotomScanPriorityPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
+            if (!CobblemonSmartphone.config.features.enableRotom) return@execute
             if (!CobblemonSmartphone.config.features.enableScanner) return@execute
             if (!CobblemonSmartphone.config.rotom.enableManualScanPriority) return@execute
             val entity = player.serverLevel().getEntity(packet.entityId) as? PokemonEntity ?: return@execute

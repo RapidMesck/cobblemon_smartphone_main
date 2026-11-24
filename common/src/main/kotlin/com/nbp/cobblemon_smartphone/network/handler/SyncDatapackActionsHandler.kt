@@ -19,7 +19,8 @@ object SyncDatapackActionsHandler : ClientNetworkPacketHandler<SyncDatapackActio
                 requireUpgrade = actionData.requireUpgrade,
                 requireMod = actionData.requireMod,
                 cooldownSeconds = actionData.cooldownSeconds,
-                patchouliBook = actionData.patchouliBook
+                patchouliBook = actionData.patchouliBook,
+                openScreen = actionData.openScreen
             )
             SmartphoneActionRegistry.registerDatapackAction(DatapackAction(definition))
         }

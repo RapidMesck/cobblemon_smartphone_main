@@ -111,6 +111,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             GpsClientState.reset()
             StructureCompassClientState.reset()
             RotomTrackerClientState.reset()
+            RotomScannerClientState.reset()
         }
 
         CobblemonSmartphoneFabricNetworkManager.registerClientHandlers()

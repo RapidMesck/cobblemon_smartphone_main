@@ -61,9 +61,9 @@ object CallManager {
             caller.err("message.nbp.social.call_no_phone_target")
             return
         }
-        // Do Not Disturb (global) or the callee having muted this caller specifically: block the
-        // call at the source so the callee never rings and the caller gets immediate feedback.
-        if (SocialMuteStorage.read(callee) || MutedPlayersStorage.isMuted(callee, caller.uuid)) {
+        // Do Not Disturb / Calls disabled or the callee having muted this caller specifically:
+        // block the call at the source so the callee never rings and the caller gets immediate feedback.
+        if (!SocialMuteStorage.readPrefs(callee).allowsCalls() || MutedPlayersStorage.isMuted(callee, caller.uuid)) {
             caller.err("message.nbp.social.call_muted")
             return
         }

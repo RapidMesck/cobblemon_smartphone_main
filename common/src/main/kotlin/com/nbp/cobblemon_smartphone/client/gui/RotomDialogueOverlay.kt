@@ -7,6 +7,7 @@ import com.cobblemon.mod.common.entity.PoseType
 import com.cobblemon.mod.common.pokemon.RenderablePokemon
 import com.cobblemon.mod.common.pokemon.Species
 import com.nbp.cobblemon_smartphone.client.RotomDialogueClientState
+import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -65,6 +66,7 @@ object RotomDialogueOverlay {
     }
 
     fun render(guiGraphics: GuiGraphics) {
+        if (!RotomScannerClientState.clientConfig.enableRotom) return
         val mc = Minecraft.getInstance()
         val player = mc.player ?: return
         val dialogue = RotomDialogueClientState.getActiveDialogue(player.uuid) ?: return

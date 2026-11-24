@@ -1,18 +1,24 @@
 package com.nbp.cobblemon_smartphone.network.packet
 
+import com.nbp.cobblemon_smartphone.social.SocialNotificationPrefs
 import com.nbp.cobblemon_smartphone.util.smartphoneResource
 import net.minecraft.network.RegistryFriendlyByteBuf
 
-/** Server -> client: the player's persisted Social Do Not Disturb flag, sent on join. */
-class SyncSocialMutePacket(val muted: Boolean) : CobblemonSmartphoneNetworkPacket<SyncSocialMutePacket> {
+/** Server -> client: the player's persisted granular Social notification preferences, sent on join. */
+class SyncSocialMutePacket(val prefs: SocialNotificationPrefs) : CobblemonSmartphoneNetworkPacket<SyncSocialMutePacket> {
+    constructor(muted: Boolean) : this(SocialNotificationPrefs(doNotDisturb = muted))
+
+    val muted: Boolean get() = prefs.doNotDisturb
+
     companion object {
         val ID = smartphoneResource("sync_social_mute")
-        fun decode(buffer: RegistryFriendlyByteBuf) = SyncSocialMutePacket(buffer.readBoolean())
+        fun decode(buffer: RegistryFriendlyByteBuf) =
+            SyncSocialMutePacket(SocialNotificationPrefs.fromBitmask(buffer.readVarInt()))
     }
 
     override val id = ID
 
     override fun encode(buffer: RegistryFriendlyByteBuf) {
-        buffer.writeBoolean(muted)
+        buffer.writeVarInt(prefs.toBitmask())
     }
 }

@@ -52,9 +52,11 @@ object NewDmHandler : ClientNetworkPacketHandler<NewDmPacket> {
         // message is never lost, just not alerted. Global Do Not Disturb or having muted this
         // specific sender both silence the alert.
         SocialDmCache.setUnreadTotal(SocialDmCache.unreadTotal + 1)
-        if (SocialMute.muted || MutedPlayers.contains(packet.message.senderUuid)) return
+        if (!SocialMute.prefs.allowsDmAlert() || MutedPlayers.contains(packet.message.senderUuid)) return
 
-        player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.4f, 1.4f)
+        if (SocialMute.prefs.allowsSound()) {
+            player.playSound(CobblemonSounds.POKEDEX_OPEN, 0.4f, 1.4f)
+        }
         player.displayClientMessage(
             Component.translatable("message.nbp.social.new_dm", packet.otherName),
             true

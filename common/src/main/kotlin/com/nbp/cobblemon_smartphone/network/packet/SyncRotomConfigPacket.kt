@@ -20,7 +20,8 @@ class SyncRotomConfigPacket(
     val infiniteEnergy: Boolean,
     val enableSocialDataShare: Boolean = true,
     val socialDataShareChance: Double = 0.35,
-    val curiosityLanguage: String = "en"
+    val curiosityLanguage: String = "en",
+    val enableRotom: Boolean = true
 ) : CobblemonSmartphoneNetworkPacket<SyncRotomConfigPacket> {
     companion object {
         val ID = smartphoneResource("sync_rotom_config")
@@ -42,6 +43,7 @@ class SyncRotomConfigPacket(
             val enableSocialDataShare = if (buffer.isReadable) buffer.readBoolean() else true
             val socialDataShareChance = if (buffer.readableBytes() >= 8) buffer.readDouble() else 0.35
             val curiosityLanguage = if (buffer.isReadable) buffer.readUtf(16) else "en"
+            val enableRotom = if (buffer.isReadable) buffer.readBoolean() else true
             return SyncRotomConfigPacket(
                 enableScanner = enableScanner,
                 enableAutoScanner = enableAutoScanner,
@@ -58,7 +60,8 @@ class SyncRotomConfigPacket(
                 infiniteEnergy = infiniteEnergy,
                 enableSocialDataShare = enableSocialDataShare,
                 socialDataShareChance = socialDataShareChance,
-                curiosityLanguage = curiosityLanguage
+                curiosityLanguage = curiosityLanguage,
+                enableRotom = enableRotom
             )
         }
 
@@ -81,7 +84,8 @@ class SyncRotomConfigPacket(
                 infiniteEnergy = rotom.infiniteEnergy,
                 enableSocialDataShare = rotom.enableSocialDataShare,
                 socialDataShareChance = rotom.socialDataShareChance,
-                curiosityLanguage = rotom.curiosityLanguage
+                curiosityLanguage = rotom.curiosityLanguage,
+                enableRotom = cfg.features.enableRotom
             )
         }
     }
@@ -105,5 +109,6 @@ class SyncRotomConfigPacket(
         buffer.writeBoolean(enableSocialDataShare)
         buffer.writeDouble(socialDataShareChance)
         buffer.writeUtf(curiosityLanguage, 16)
+        buffer.writeBoolean(enableRotom)
     }
 }

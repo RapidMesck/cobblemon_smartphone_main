@@ -254,12 +254,14 @@ object RotomServerManager {
     private fun updateEquippedRotomsAndSocialSessions(server: MinecraftServer, now: Long) {
         val players = server.playerList.players
 
+        val rotomEnabled = CobblemonSmartphone.config.features.enableRotom
+
         // 1. Sincronizar estado de Smartphone / Rotom Phone equipado/inventário de cada jogador
         val playersWithRotom = mutableListOf<ServerPlayer>()
         for (player in players) {
-            val rotomStack = SmartphoneHelper.getEquippedRotomPhone(player)
+            val rotomStack = if (rotomEnabled) SmartphoneHelper.getEquippedRotomPhone(player) else null
             val stack = rotomStack ?: SmartphoneHelper.getSmartphone(player)
-            val isRotom = stack?.isRotomPhone() == true
+            val isRotom = rotomEnabled && stack?.isRotomPhone() == true
             val snapshot = if (stack != null && player.isAlive && !player.isInvisible) {
                 if (isRotom) {
                     playersWithRotom.add(player)
@@ -292,7 +294,7 @@ object RotomServerManager {
         val playersByUuid = playersWithRotom.associateBy { it.uuid }
 
         // 2. Validar sessões sociais ativas em grupo (se desativado no config, encerra e ignora)
-        if (!CobblemonSmartphone.config.rotom.enableSocialInteractions) {
+        if (!rotomEnabled || !CobblemonSmartphone.config.rotom.enableSocialInteractions) {
             if (activeSocialSessions.isNotEmpty()) {
                 activeSocialSessions.clear()
                 playerToSession.clear()
@@ -510,8 +512,12 @@ object RotomServerManager {
     fun tick(server: MinecraftServer) {
         tickCounter++
 
+        val rotomEnabled = CobblemonSmartphone.config.features.enableRotom
+
         // Auto Pokédex Scanner ticks every single tick
-        RotomAutoScannerManager.tick(server)
+        if (rotomEnabled) {
+            RotomAutoScannerManager.tick(server)
+        }
 
         if (tickCounter % 20 != 0) return
 
@@ -523,6 +529,8 @@ object RotomServerManager {
             playerCooldowns.entries.removeIf { it.value < now }
             clusterCheckCooldowns.entries.removeIf { it.value < now }
         }
+
+        if (!rotomEnabled) return
 
         for (player in server.playerList.players) {
             // Verifica se o jogador possui um Rotom Phone equipado/em mãos/inventário
@@ -705,7 +713,21 @@ object RotomServerManager {
         }
     }
 
+    private fun giveOrDropItem(player: ServerPlayer, stack: ItemStack) {
+        if (stack.isEmpty) return
+        if (!player.inventory.add(stack)) {
+            player.drop(stack, false)
+        }
+    }
+
     fun fuseRotom(player: ServerPlayer, entityUuid: UUID): Boolean {
+        if (!CobblemonSmartphone.config.features.enableRotom) {
+            player.displayClientMessage(
+                Component.translatable("message.nbp.rotom.disabled").withColor(0xfd0100),
+                true
+            )
+            return false
+        }
         val level = player.serverLevel()
         val entity = level.getEntity(entityUuid) as? PokemonEntity ?: return false
         if (!entity.isAlive || entity.isBattling || player.isInBattle()) return false
@@ -742,19 +764,18 @@ object RotomServerManager {
             return false
         }
 
-        // Return any held or cosmetic items
-        val heldItem = rotomInParty.heldItem()
-        if (!heldItem.isEmpty) {
-            if (!player.inventory.add(heldItem.copy())) {
-                player.drop(heldItem.copy(), false)
-            }
+        // Remove and return any held or cosmetic items before saving the Pokémon into the smartphone
+        val heldItem = rotomInParty.removeHeldItem()
+        val cosmeticItem = rotomInParty.removeCosmeticItem()
+
+        if (!party.remove(rotomInParty)) {
+            giveOrDropItem(player, heldItem)
+            giveOrDropItem(player, cosmeticItem)
+            return false
         }
-        val cosmeticItem = rotomInParty.cosmeticItem()
-        if (!cosmeticItem.isEmpty) {
-            if (!player.inventory.add(cosmeticItem.copy())) {
-                player.drop(cosmeticItem.copy(), false)
-            }
-        }
+
+        giveOrDropItem(player, heldItem)
+        giveOrDropItem(player, cosmeticItem)
 
         // Save full Rotom Pokemon data into the smartphone
         phoneStack.saveFusedPokemon(rotomInParty, level.registryAccess())
@@ -765,8 +786,6 @@ object RotomServerManager {
         val eyePos = entity.eyePosition
         val blockPos = entity.blockPosition()
 
-        // Remove from party and discard entity
-        party.remove(rotomInParty)
         entity.discard()
 
         level.playSound(

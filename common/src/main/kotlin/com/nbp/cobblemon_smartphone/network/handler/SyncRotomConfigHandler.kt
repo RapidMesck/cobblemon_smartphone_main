@@ -3,12 +3,14 @@ package com.nbp.cobblemon_smartphone.network.handler
 import com.cobblemon.mod.common.api.net.ClientNetworkPacketHandler
 import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomConfigPacket
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 
 object SyncRotomConfigHandler : ClientNetworkPacketHandler<SyncRotomConfigPacket> {
     override fun handle(packet: SyncRotomConfigPacket, client: Minecraft) {
         client.execute {
             RotomScannerClientState.updateConfig(packet)
+            SmartphoneHelper.syncedRotomEnabled = packet.enableRotom
             val rotom = com.nbp.cobblemon_smartphone.CobblemonSmartphone.config.rotom
             rotom.enableAutoScanner = packet.enableAutoScanner
             rotom.enableManualScanPriority = packet.enableManualScanPriority

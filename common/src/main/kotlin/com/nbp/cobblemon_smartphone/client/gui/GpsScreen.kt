@@ -1,87 +1,49 @@
 package com.nbp.cobblemon_smartphone.client.gui
 
-import com.cobblemon.mod.common.api.gui.blitk
-import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.client.GpsClientState
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdBuilder
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdIconAtlas
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdPadding
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdPhoneScreen
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
-import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
-import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.network.packet.BiomeListResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestBiomeListPacket
+import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
 import com.nbp.cobblemon_smartphone.util.GpsDataProvider.BiomeInfo
-import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.EditBox
-import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.resources.language.I18n
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 
+/**
+ * Biome GPS tracker screen built on the HD [HdPhoneScreen] UI engine.
+ */
 class GpsScreen(
-    private val color: SmartphoneColor,
-    private val smartphoneStack: ItemStack? = null
-) : Screen(Component.translatable("cobblemon_smartphone.screen.gps")) {
+    color: SmartphoneColor,
+    smartphoneStack: ItemStack? = null,
+    scaleOverride: Float? = null
+) : HdPhoneScreen(color, smartphoneStack, Component.translatable("cobblemon_smartphone.screen.gps"), scaleOverride) {
 
-    private val frameTexture get() = color.getLargeScreenTexture()
-    private val theme get() = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
-    private val SECTION_TITLE_BG get() = theme.colors.primary
-    private val SECTION_CONTENT_BG get() = theme.colors.surface
-    private val CARD_HEADER_HOVER_BG get() = theme.colors.primaryHover
-    private val CONTENT_TEXT get() = theme.colors.textDark
-    private val CONTENT_DIM get() = theme.colors.textDarkMuted
-    private val CONTENT_GOLD get() = theme.colors.contentGold
-    private val CARD_HEADER_DISABLED_BG get() = theme.colors.cardDisabledHeaderBg
-    private val CARD_CONTENT_DISABLED_BG get() = theme.colors.cardDisabledContentBg
-    private val CARD_TEXT_DISABLED get() = theme.colors.cardDisabledText
-    private var screenX = 0
-    private var screenY = 0
-    private var scrollY = 0
-    private var maxScroll = 0
-    private var draggingScrollbar = false
-    private var dragStartMouseY = 0
-    private var dragStartScrollY = 0
-    private lateinit var searchBox: EditBox
+    override val viewportMode: ViewportMode = ViewportMode.Large
+    override val showBezelHdBadge: Boolean = true
+
     private var results: List<BiomeInfo> = emptyList()
     private var allBiomes: List<BiomeInfo> = emptyList()
     private var listRequestId = -1L
     private var listRequestStartedAt = 0L
     private var listLoading = true
     private var listErrorKey: String? = null
-
-    override fun isPauseScreen(): Boolean = false
-
-    private fun lang(key: String): String =
-        Component.translatable("cobblemon_smartphone.gps.$key").string
+    private var displayLimit = PAGE_BATCH
 
     override fun init() {
-        screenX = (width - GUI_WIDTH) / 2
-        screenY = (height - GUI_HEIGHT) / 2
-        SmartphoneHelper.contextSmartphone = smartphoneStack
-        SmartphoneHelper.contextColor = color
-
-        searchBox = EditBox(
-            font,
-            screenX + SEARCH_X + 2,
-            screenY + SEARCH_Y + 3,
-            SEARCH_WIDTH - 4,
-            SEARCH_HEIGHT,
-            Component.translatable("cobblemon_smartphone.gps.search")
-        )
-        searchBox.setMaxLength(30)
-        searchBox.setBordered(false)
-        searchBox.setHint(Component.translatable("cobblemon_smartphone.gps.search"))
-        searchBox.setTextColor(theme.colors.textDarkMuted)
-        searchBox.setResponder { query -> onSearchChanged(query) }
-        addRenderableWidget(searchBox)
-
+        super.init()
         val cached = GpsClientState.cachedBiomes
         if (cached != null) {
             allBiomes = cached
             listLoading = false
             listErrorKey = null
-            onSearchChanged("")
+            onSearchChanged(stateStore.getInputText(SEARCH_INPUT_ID))
         } else {
             listRequestId = GpsClientState.nextRequestId()
             GpsClientState.beginListRequest(listRequestId)
@@ -90,151 +52,81 @@ class GpsScreen(
             listErrorKey = null
             RequestBiomeListPacket(listRequestId).sendToServer()
         }
-        scrollY = 0
     }
 
     override fun removed() {
         GpsClientState.cancelListRequest(listRequestId)
-        SmartphoneHelper.contextSmartphone = null
-        SmartphoneHelper.contextColor = null
         super.removed()
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         receiveBiomeList()
-        val matrices = guiGraphics.pose()
+        super.render(guiGraphics, mouseX, mouseY, delta)
+    }
 
-        val theme = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
-        SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
-        blitk(
-            matrixStack = matrices,
-            texture = com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper.resolveLargeFrameTexture(null, theme, color),
-            x = screenX,
-            y = screenY,
-            width = GUI_WIDTH,
-            height = GUI_HEIGHT
+    override fun buildContent(theme: SmartphoneTheme, builder: HdBuilder) {
+        TrackerComponents.buildHeader(
+            builder = builder,
+            icon = HdIconAtlas.Icon.GLOBE,
+            title = TrackerComponents.tr("cobblemon_smartphone.screen.gps"),
+            countText = if (!listLoading && listErrorKey == null) "${results.size}" else null,
+            tracking = GpsClientState.tracking,
+            stopLabel = lang("stop_tracking"),
+            stopTooltip = TrackerComponents.tr("cobblemon_smartphone.tooltip.stop_gps_tracking"),
+            onStopTracking = { GpsClientState.stopTracking() }
         )
 
-        // Back button
-        val backHover = isInBackButton(mouseX, mouseY)
-        val backColor = if (backHover) theme.colors.gold else theme.colors.textPrimary
-        guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, backColor, false)
-
-        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
-
-        // Stop tracking button, only shown while a search is active
-        if (GpsClientState.tracking) {
-            val stopText = lang("stop_tracking")
-            val stopHover = isInStopButton(mouseX, mouseY)
-            val stopColor = if (stopHover) theme.colors.danger else theme.colors.textPrimary
-            guiGraphics.drawString(font, stopText, stopButtonX(stopText), screenY + BACK_Y, stopColor, false)
-        }
-
-        // Search box background
-        val sx = screenX + SEARCH_X
-        val sy = screenY + SEARCH_Y
-        guiGraphics.fill(sx, sy, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, SECTION_CONTENT_BG)
-        guiGraphics.fill(sx, sy, sx + SEARCH_WIDTH, sy + 1, SECTION_TITLE_BG)
-        guiGraphics.fill(sx, sy + SEARCH_HEIGHT - 1, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
-        guiGraphics.fill(sx, sy, sx + 1, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
-        guiGraphics.fill(sx + SEARCH_WIDTH - 1, sy, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
-
-        searchBox.renderWidget(guiGraphics, mouseX, mouseY, delta)
-
-        guiGraphics.enableScissor(
-            screenX + CONTENT_X, screenY + LIST_START_Y,
-            screenX + CONTENT_X + LIST_WIDTH, screenY + LIST_END_Y
+        TrackerComponents.buildSearchBar(
+            builder = builder,
+            inputId = SEARCH_INPUT_ID,
+            placeholder = lang("search"),
+            onChange = { query -> onSearchChanged(query) }
         )
 
-        val startIndex = (scrollY / (CARD_HEIGHT + CARD_GAP)).coerceAtLeast(0)
-        val endIndex = ((scrollY + LIST_END_Y - LIST_START_Y) / (CARD_HEIGHT + CARD_GAP) + 1).coerceAtMost(results.size)
-        for (i in startIndex until endIndex) {
-            val cy = LIST_START_Y + i * (CARD_HEIGHT + CARD_GAP) - scrollY
-            renderCard(guiGraphics, mouseX, mouseY, i, cy, results[i])
-        }
-
-        guiGraphics.disableScissor()
-        if (results.isEmpty() && (listLoading || listErrorKey != null)) {
-            val message = Component.translatable(
-                listErrorKey ?: "cobblemon_smartphone.gps.loading_biomes"
-            ).string
-            val centerX = screenX + CONTENT_X + LIST_WIDTH / 2
-            val centerY = screenY + (LIST_START_Y + LIST_END_Y) / 2
-            guiGraphics.drawString(font, message, centerX - font.width(message) / 2, centerY, 0xFFAAAAAA.toInt(), false)
-        }
-        renderScrollbar(guiGraphics, mouseY)
-        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
-    }
-
-    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        val mx = mouseX.toInt()
-        val my = mouseY.toInt()
-
-        if (isInBackButton(mx, my)) {
-            playClickSound()
-            Minecraft.getInstance().setScreen(SmartphoneScreen(color, smartphoneStack))
-            return true
-        }
-
-        if (isInStopButton(mx, my)) {
-            playClickSound()
-            GpsClientState.stopTracking()
-            return true
-        }
-
-        val startIndex = (scrollY / (CARD_HEIGHT + CARD_GAP)).coerceAtLeast(0)
-        val endIndex = ((scrollY + LIST_END_Y - LIST_START_Y) / (CARD_HEIGHT + CARD_GAP) + 1).coerceAtMost(results.size)
-        for (i in startIndex until endIndex) {
-            val biome = results[i]
-            if (!isTrackable(biome)) continue
-            val cy = screenY + LIST_START_Y + i * (CARD_HEIGHT + CARD_GAP) - scrollY
-            if (mx >= screenX + CONTENT_X && mx <= screenX + CONTENT_X + LIST_WIDTH &&
-                my >= cy && my <= cy + CARD_HEIGHT
-            ) {
-                playClickSound()
-                GpsClientState.startTracking(biome)
-                Minecraft.getInstance().setScreen(null)
-                return true
+        builder.scroll(
+            scrollId = SCROLL_ID,
+            gap = 6f,
+            padding = HdPadding.symmetric(horizontal = 8f, vertical = 4f),
+            onNearBottom = {
+                if (displayLimit < results.size) {
+                    displayLimit = (displayLimit + PAGE_BATCH).coerceAtMost(results.size)
+                }
+            }
+        ) { list ->
+            if (results.isEmpty()) {
+                val message = if (listLoading || listErrorKey != null) {
+                    TrackerComponents.tr(listErrorKey ?: "cobblemon_smartphone.gps.loading_biomes")
+                } else {
+                    "0 / ${allBiomes.size}"
+                }
+                TrackerComponents.buildEmptyState(list, message)
+            } else {
+                val count = displayLimit.coerceAtMost(results.size)
+                for (i in 0 until count) {
+                    val biome = results[i]
+                    val trackable = TrackerComponents.isInCurrentDimension(biome.dimensions)
+                    TrackerComponents.buildTrackerCard(
+                        builder = list,
+                        theme = theme,
+                        title = localizedBiomeName(biome),
+                        idLabel = lang("id_label"),
+                        idValue = biome.id,
+                        dimsLabel = lang("dimensions_label"),
+                        dimsValue = TrackerComponents.formatDimensions(biome.dimensions, lang("any_dimension")),
+                        modLabel = lang("mod_label"),
+                        modValue = biome.sourceMod,
+                        trackable = trackable,
+                        tooltipText = TrackerComponents.tr(
+                            if (trackable) "cobblemon_smartphone.gps.select" else "cobblemon_smartphone.gps.other_dimension"
+                        ),
+                        onSelect = {
+                            GpsClientState.startTracking(biome)
+                            Minecraft.getInstance().setScreen(null)
+                        }
+                    )
+                }
             }
         }
-
-        // Scrollbar drag
-        if (maxScroll > 0) {
-            val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
-            val trackY = screenY + LIST_START_Y
-            val trackH = LIST_END_Y - LIST_START_Y
-            val handleH =
-                maxOf(12, (trackH.toFloat() * trackH / (results.size * (CARD_HEIGHT + CARD_GAP)).toFloat()).toInt())
-            val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
-            if (mx >= trackX && mx <= trackX + SCROLLBAR_WIDTH && my >= handleY && my <= handleY + handleH) {
-                draggingScrollbar = true
-                dragStartMouseY = my
-                dragStartScrollY = scrollY
-                return true
-            }
-        }
-
-        return super.mouseClicked(mouseX, mouseY, button)
-    }
-
-    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        draggingScrollbar = false
-        return super.mouseReleased(mouseX, mouseY, button)
-    }
-
-    override fun charTyped(codePoint: Char, modifiers: Int): Boolean {
-        return searchBox.charTyped(codePoint, modifiers) || super.charTyped(codePoint, modifiers)
-    }
-
-    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        if (searchBox.isFocused && searchBox.keyPressed(keyCode, scanCode, modifiers)) return true
-        return super.keyPressed(keyCode, scanCode, modifiers)
-    }
-
-    override fun mouseScrolled(mx: Double, my: Double, h: Double, v: Double): Boolean {
-        if (v == 0.0 || maxScroll == 0) return super.mouseScrolled(mx, my, h, v)
-        scrollY = (scrollY - v.toInt() * SCROLL_SPEED).coerceIn(0, maxScroll)
-        return true
     }
 
     private fun onSearchChanged(query: String) {
@@ -244,8 +136,8 @@ class GpsScreen(
         } else {
             allBiomes.filter { matchesQuery(it, normalized) }
         }
-        updateMaxScroll()
-        scrollY = 0
+        displayLimit = PAGE_BATCH
+        stateStore.scroll(SCROLL_ID).offset = 0f
     }
 
     private fun matchesQuery(biome: BiomeInfo, q: String): Boolean {
@@ -260,13 +152,21 @@ class GpsScreen(
 
     private fun receiveBiomeList() {
         if (!listLoading) return
+        val cached = GpsClientState.cachedBiomes
+        if (cached != null) {
+            listLoading = false
+            listErrorKey = null
+            allBiomes = cached
+            onSearchChanged(stateStore.getInputText(SEARCH_INPUT_ID))
+            return
+        }
         val response = GpsClientState.consumeListResponse(listRequestId)
         if (response != null) {
             listLoading = false
             when (response.status) {
                 BiomeListResponsePacket.Status.SUCCESS -> {
                     allBiomes = response.biomes
-                    onSearchChanged(if (::searchBox.isInitialized) searchBox.value else "")
+                    onSearchChanged(stateStore.getInputText(SEARCH_INPUT_ID))
                 }
                 BiomeListResponsePacket.Status.RATE_LIMITED -> listErrorKey = "cobblemon_smartphone.gps.error.rate_limited"
                 BiomeListResponsePacket.Status.ERROR -> listErrorKey = "cobblemon_smartphone.gps.error.server"
@@ -277,38 +177,6 @@ class GpsScreen(
         }
     }
 
-    private fun renderScrollbar(guiGraphics: GuiGraphics, mouseY: Int) {
-        if (maxScroll <= 0) return
-        val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
-        val trackY = screenY + LIST_START_Y
-        val trackH = LIST_END_Y - LIST_START_Y
-        val handleH =
-            maxOf(12, (trackH.toFloat() * trackH / (results.size * (CARD_HEIGHT + CARD_GAP)).toFloat()).toInt())
-        val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
-
-        if (draggingScrollbar) {
-            val dy = mouseY - dragStartMouseY
-            val scrollRange = trackH - handleH
-            if (scrollRange > 0) {
-                scrollY = (dragStartScrollY + (dy.toFloat() / scrollRange * maxScroll).toInt()).coerceIn(0, maxScroll)
-            }
-        }
-
-        guiGraphics.fill(trackX, trackY, trackX + SCROLLBAR_WIDTH, trackY + trackH, 0x20FFFFFF.toInt())
-        val color = if (draggingScrollbar) 0x90FFFFFF.toInt() else 0x60FFFFFF.toInt()
-        guiGraphics.fill(trackX, handleY, trackX + SCROLLBAR_WIDTH, handleY + handleH, color)
-    }
-
-    private fun updateMaxScroll() {
-        maxScroll = maxOf(0, results.size * (CARD_HEIGHT + CARD_GAP) - (LIST_END_Y - LIST_START_Y))
-    }
-
-    private fun isTrackable(biome: BiomeInfo): Boolean {
-        val level = Minecraft.getInstance().level ?: return false
-        val dimension = level.dimension().location().toString()
-        return biome.dimensions.isEmpty() || biome.dimensions.contains(dimension)
-    }
-
     private fun localizedBiomeName(biome: BiomeInfo): String {
         val split = biome.id.split(':', limit = 2)
         if (split.size != 2) return biome.id
@@ -316,149 +184,12 @@ class GpsScreen(
         return if (I18n.exists(key)) I18n.get(key) else biome.id
     }
 
-    private fun renderCard(
-        guiGraphics: GuiGraphics,
-        mouseX: Int,
-        mouseY: Int,
-        index: Int,
-        cy: Int,
-        biome: BiomeInfo
-    ) {
-        val x1 = screenX + CONTENT_X
-        val y1 = screenY + cy
-        val x2 = screenX + CONTENT_X + LIST_WIDTH
-        val y2 = y1 + CARD_HEIGHT
-        val hovered = mouseX >= x1 && mouseX <= x2 && mouseY >= y1 && mouseY <= y2
-        val trackable = isTrackable(biome)
-
-        // Header strip (name + id) and content strip (organized fields below), same teal
-        // header / pale content look as the PokeInfo sections instead of a flat translucent tint.
-        val headerY = y1 + CARD_HEADER_HEIGHT
-        val headerBg = when {
-            !trackable -> CARD_HEADER_DISABLED_BG
-            hovered -> CARD_HEADER_HOVER_BG
-            else -> SECTION_TITLE_BG
-        }
-        val contentBg = if (trackable) SECTION_CONTENT_BG else CARD_CONTENT_DISABLED_BG
-        guiGraphics.fill(x1, y1, x2, headerY, headerBg)
-        guiGraphics.fill(x1, headerY, x2, y2, contentBg)
-
-        val nameColor = if (trackable) theme.colors.textPrimary else theme.colors.textMuted
-        val labelColor = if (trackable) CONTENT_DIM else CARD_TEXT_DISABLED
-        val valueColor = if (trackable) CONTENT_TEXT else CARD_TEXT_DISABLED
-        val goldColor = if (trackable) CONTENT_GOLD else CARD_TEXT_DISABLED
-
-        // Header: just the localized name, nothing else
-        val name = localizedBiomeName(biome)
-        guiGraphics.drawString(font, name, x1 + 6, y1 + 2, nameColor, false)
-
-        // Content: id, dimensions and source mod as their own labelled fields
-        var ty = headerY + CARD_CONTENT_PAD_TOP
-        val idLabel = lang("id_label") + ": "
-        val id = truncateToWidth(biome.id, LIST_WIDTH - 12 - font.width(idLabel))
-        guiGraphics.drawString(font, idLabel, x1 + 6, ty, labelColor, false)
-        guiGraphics.drawString(font, id, x1 + 6 + font.width(idLabel), ty, valueColor, false)
-        ty += CARD_FIELD_LINE_HEIGHT
-
-        val dimsLabel = lang("dimensions_label") + ": "
-        val dims = if (biome.dimensions.isEmpty()) lang("any_dimension") else biome.dimensions.joinToString(", ")
-        guiGraphics.drawString(font, dimsLabel, x1 + 6, ty, labelColor, false)
-        guiGraphics.drawString(font, dims, x1 + 6 + font.width(dimsLabel), ty, valueColor, false)
-        ty += CARD_FIELD_LINE_HEIGHT
-
-        val modLabel = lang("mod_label") + ": "
-        guiGraphics.drawString(font, modLabel, x1 + 6, ty, labelColor, false)
-        guiGraphics.drawString(font, biome.sourceMod, x1 + 6 + font.width(modLabel), ty, goldColor, false)
-    }
-
-    private fun truncateToWidth(text: String, maxWidth: Int): String {
-        if (maxWidth <= 0 || font.width(text) <= maxWidth) return text
-        var result = text
-        while (result.isNotEmpty() && font.width("$result…") > maxWidth) result = result.dropLast(1)
-        return "$result…"
-    }
-
-    private fun playClickSound() {
-        Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
-    }
-
-    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
-
-        val tooltip: List<Component> = when {
-            isInBackButton(mouseX, mouseY) -> listOf(Component.translatable("cobblemon_smartphone.tooltip.back_to_phone"))
-            isInStopButton(mouseX, mouseY) -> listOf(Component.translatable("cobblemon_smartphone.tooltip.stop_gps_tracking"))
-            else -> {
-                val startIndex = (scrollY / (CARD_HEIGHT + CARD_GAP)).coerceAtLeast(0)
-                val endIndex = ((scrollY + LIST_END_Y - LIST_START_Y) / (CARD_HEIGHT + CARD_GAP) + 1)
-                    .coerceAtMost(results.size)
-                (startIndex until endIndex).firstOrNull { index ->
-                    val cy = screenY + LIST_START_Y + index * (CARD_HEIGHT + CARD_GAP) - scrollY
-                    mouseX >= screenX + CONTENT_X && mouseX <= screenX + CONTENT_X + LIST_WIDTH &&
-                        mouseY >= cy && mouseY <= cy + CARD_HEIGHT
-                }?.let { index ->
-                    val biome = results[index]
-                    if (!isTrackable(biome)) {
-                        listOf(Component.translatable("cobblemon_smartphone.gps.other_dimension"))
-                    } else if (biome.tags.isNotEmpty()) {
-                        listOf(
-                            Component.translatable("cobblemon_smartphone.gps.select")
-                        )
-                    } else {
-                        listOf(Component.translatable("cobblemon_smartphone.gps.select"))
-                    }
-                }
-            }
-        } ?: emptyList()
-        if (tooltip.isEmpty()) return
-        guiGraphics.renderTooltip(font, tooltip, java.util.Optional.empty(), mouseX, mouseY)
-    }
-
-    private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
-        return mouseX >= screenX + BACK_X && mouseX <= screenX + BACK_X + 30 &&
-            mouseY >= screenY + BACK_Y - 2 && mouseY <= screenY + BACK_Y + 10
-    }
-
-    private fun stopButtonX(text: String): Int = screenX + GUI_WIDTH - STOP_RIGHT_MARGIN - font.width(text)
-
-    private fun isInStopButton(mouseX: Int, mouseY: Int): Boolean {
-        if (!GpsClientState.tracking) return false
-        val text = lang("stop_tracking")
-        val x = stopButtonX(text)
-        return mouseX >= x - 2 && mouseX <= x + font.width(text) + 2 &&
-            mouseY >= screenY + BACK_Y - 2 && mouseY <= screenY + BACK_Y + 10
-    }
+    private fun lang(key: String): String = TrackerComponents.tr("cobblemon_smartphone.gps.$key")
 
     companion object {
         private const val REQUEST_TIMEOUT_MS = 10_000L
-        private const val GUI_WIDTH = 211
-        private const val GUI_HEIGHT = 207
-
-        private const val BACK_X = 20
-        private const val BACK_Y = 14
-        private const val STOP_RIGHT_MARGIN = 43
-
-        private const val SEARCH_X = 22
-        private const val SEARCH_Y = 28
-        private const val SEARCH_WIDTH = 167
-        private const val SEARCH_HEIGHT = 14
-
-        private const val CONTENT_X = 20
-        private const val CONTENT_WIDTH = 171
-        private const val SCROLLBAR_WIDTH = 5
-        private const val LIST_WIDTH = CONTENT_WIDTH - SCROLLBAR_WIDTH
-        private const val LIST_START_Y = 48
-        private const val LIST_END_Y = 195
-
-        private const val CARD_HEADER_HEIGHT = 11
-        private const val CARD_CONTENT_PAD_TOP = 3
-        private const val CARD_FIELD_LINE_HEIGHT = 9
-        private const val CARD_HEIGHT = CARD_HEADER_HEIGHT + CARD_CONTENT_PAD_TOP + 3 * CARD_FIELD_LINE_HEIGHT
-        private const val CARD_GAP = 3
-        private const val SCROLL_SPEED = 15
-
-        private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone", "textures/gui/large_screen.png"
-        )
+        private const val PAGE_BATCH = 60
+        private const val SEARCH_INPUT_ID = "gps_search"
+        private const val SCROLL_ID = "gps_list"
     }
 }

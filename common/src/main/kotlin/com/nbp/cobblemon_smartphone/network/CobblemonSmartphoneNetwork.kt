@@ -7,6 +7,7 @@ import com.nbp.cobblemon_smartphone.network.handler.CallStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.CreatePostHandler
 import com.nbp.cobblemon_smartphone.network.handler.DeletePostHandler
 import com.nbp.cobblemon_smartphone.network.handler.ExecuteDatapackActionHandler
+import com.nbp.cobblemon_smartphone.network.handler.ExecuteDatapackScreenActionHandler
 import com.nbp.cobblemon_smartphone.network.handler.FeedPageHandler
 import com.nbp.cobblemon_smartphone.network.handler.HealPokemonHandler
 import com.nbp.cobblemon_smartphone.network.handler.LikePostHandler
@@ -57,7 +58,11 @@ import com.nbp.cobblemon_smartphone.network.handler.SyncSocialMuteHandler
 import com.nbp.cobblemon_smartphone.network.handler.SpeciesDetailResponseHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncActionOrderHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncDatapackActionsHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncDatapackScreenDataHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncDatapackScreensHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncEnergyConfigHandler
+import com.nbp.cobblemon_smartphone.network.handler.OpenDatapackScreenHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestDatapackScreenDataHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncHiddenActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncQuickActionsHandler
 import com.nbp.cobblemon_smartphone.network.handler.SocialCapabilitiesHandler
@@ -90,6 +95,11 @@ import com.nbp.cobblemon_smartphone.network.packet.CallStatePacket
 import com.nbp.cobblemon_smartphone.network.packet.CreatePostPacket
 import com.nbp.cobblemon_smartphone.network.packet.DeletePostPacket
 import com.nbp.cobblemon_smartphone.network.packet.ExecuteDatapackActionPacket
+import com.nbp.cobblemon_smartphone.network.packet.ExecuteDatapackScreenActionPacket
+import com.nbp.cobblemon_smartphone.network.packet.OpenDatapackScreenPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestDatapackScreenDataPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackScreenDataPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackScreensPacket
 import com.nbp.cobblemon_smartphone.network.packet.FeedPagePacket
 import com.nbp.cobblemon_smartphone.network.packet.HealPokemonPacket
 import com.nbp.cobblemon_smartphone.network.packet.LikePostPacket
@@ -329,6 +339,9 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(SyncRotomConfigPacket.ID, SyncRotomConfigPacket::decode, SyncRotomConfigHandler))
         list.add(PacketRegisterInfo(SyncRotomDialogueClosePacket.ID, SyncRotomDialogueClosePacket::decode, SyncRotomDialogueCloseHandler))
         list.add(PacketRegisterInfo(SyncSmartphoneSkinsPacket.ID, SyncSmartphoneSkinsPacket::decode, SyncSmartphoneSkinsHandler))
+        list.add(PacketRegisterInfo(SyncDatapackScreensPacket.ID, SyncDatapackScreensPacket::decode, SyncDatapackScreensHandler))
+        list.add(PacketRegisterInfo(SyncDatapackScreenDataPacket.ID, SyncDatapackScreenDataPacket::decode, SyncDatapackScreenDataHandler))
+        list.add(PacketRegisterInfo(OpenDatapackScreenPacket.ID, OpenDatapackScreenPacket::decode, OpenDatapackScreenHandler))
 
         return list
     }
@@ -532,6 +545,8 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(FuseRotomPacket.ID, FuseRotomPacket::decode, FuseRotomHandler))
         list.add(PacketRegisterInfo(DefuseRotomPacket.ID, DefuseRotomPacket::decode, DefuseRotomHandler))
         list.add(PacketRegisterInfo(SaveSkinPacket.ID, SaveSkinPacket::decode, SaveSkinHandler))
+        list.add(PacketRegisterInfo(RequestDatapackScreenDataPacket.ID, RequestDatapackScreenDataPacket::decode, RequestDatapackScreenDataHandler))
+        list.add(PacketRegisterInfo(ExecuteDatapackScreenActionPacket.ID, ExecuteDatapackScreenActionPacket::decode, ExecuteDatapackScreenActionHandler))
 
         return list
     }

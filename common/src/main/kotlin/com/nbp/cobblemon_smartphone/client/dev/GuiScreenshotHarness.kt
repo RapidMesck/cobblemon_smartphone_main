@@ -182,8 +182,10 @@ object GuiScreenshotHarness {
         println("[ScreenshotHarness] Saved full: ${fullFile.name} (${image.width}x${image.height})")
 
         // Also save cropped version focusing on the smartphone interface
-        val croppedFile = File(outputDir, "${task.id}_cropped.png")
-        saveCropped(image, croppedFile, client, task.guiWidth, task.guiHeight)
+        if (task.guiWidth > 0 && task.guiHeight > 0) {
+            val croppedFile = File(outputDir, "${task.id}_cropped.png")
+            saveCropped(image, croppedFile, client, task.guiWidth, task.guiHeight)
+        }
 
         image.close()
     }
@@ -276,15 +278,18 @@ object GuiScreenshotHarness {
             }),
 
             // --- SETTINGS ---
-            ScreenshotTask("smartphone_settings", "settings", 131, 207, { SmartphoneSettingsScreen(SmartphoneColor.RED) }),
-            ScreenshotTask("smartphone_settings_themes", "settings", 131, 207, { SmartphoneSettingsScreen(SmartphoneColor.RED, null, SmartphoneSettingsScreen.SettingsTab.THEMES) }),
+            ScreenshotTask("smartphone_settings", "settings", 0, 0, { SmartphoneSettingsScreen(SmartphoneColor.RED) }),
+            ScreenshotTask("smartphone_settings_hd", "settings", 0, 0, { SmartphoneSettingsScreen(SmartphoneColor.RED, null, SmartphoneSettingsScreen.SettingsTab.APPS, 1.0f, com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.HD) }),
+            ScreenshotTask("smartphone_settings_themes", "settings", 0, 0, { SmartphoneSettingsScreen(SmartphoneColor.RED, null, SmartphoneSettingsScreen.SettingsTab.THEMES) }),
+            ScreenshotTask("smartphone_settings_skins", "settings", 0, 0, { SmartphoneSettingsScreen(SmartphoneColor.RED, null, SmartphoneSettingsScreen.SettingsTab.SKINS) }),
+            ScreenshotTask("smartphone_settings_display", "settings", 0, 0, { SmartphoneSettingsScreen(SmartphoneColor.RED, null, SmartphoneSettingsScreen.SettingsTab.DISPLAY, 1.0f, com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.HD) }),
 
             // --- POKEINFO ---
             ScreenshotTask(
                 id = "pokeinfo",
                 category = "pokeinfo",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = { PokeInfoScreen(SmartphoneColor.RED) },
                 postInit = {
                     val list = PokeInfoDataProvider.all().ifEmpty { sampleSpecies }
@@ -294,8 +299,8 @@ object GuiScreenshotHarness {
             ScreenshotTask(
                 id = "pokeinfo_detail",
                 category = "pokeinfo",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = { PokeInfoDetailScreen(SmartphoneColor.RED, null, "pikachu", 25) },
                 postInit = {
                     val details = PokeInfoDataProvider.getAllDetails("pikachu").ifEmpty {
@@ -334,25 +339,156 @@ object GuiScreenshotHarness {
 
             // --- SOCIAL ---
             ScreenshotTask(
-                id = "social_feed",
-                category = "social",
-                guiWidth = 211,
-                guiHeight = 207,
-                createScreen = { SocialScreen(SmartphoneColor.RED, null, startOnDms = false, initialTab = SocialScreen.Tab.FEED) },
+                id = "social_feed_hd",
+                category = "social_preview",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    SocialScreen(
+                        SmartphoneColor.RED,
+                        null,
+                        startOnDms = false,
+                        initialTab = SocialScreen.Tab.FEED,
+                        scaleOverride = 1.0f,
+                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.HD
+                    )
+                },
                 postInit = {
                     val posts = listOf(
-                        samplePost,
+                        samplePost.copy(
+                            attachment = PokemonAttachment(
+                                species = "cobblemon:pikachu",
+                                aspects = setOf("shiny"),
+                                level = 25,
+                                nickname = "Sparky",
+                                gender = "MALE",
+                                ivs = listOf(31, 28, 25, 31, 30, 31),
+                                types = listOf("electric")
+                            )
+                        ),
                         SocialPostView(
                             id = 102L,
                             authorUuid = garyUuid,
                             authorName = "Blue",
-                            text = "Looking for gym challengers at Cerulean Gym today!",
-                            timestamp = System.currentTimeMillis() - 1000 * 60 * 120,
+                            text = "Hey @Red, who takes the Cerulean Gym challenge today? #GymBattle",
+                            timestamp = System.currentTimeMillis() - 1000 * 60 * 45,
                             attachment = null,
                             photo = null,
+                            poll = SocialPollView(
+                                question = "Best starter for Kanto?",
+                                options = listOf("Bulbasaur", "Charmander", "Squirtle"),
+                                voteCounts = listOf(12, 27, 19),
+                                totalVotes = 58,
+                                userVotedOption = 1
+                            ),
                             likeCount = 18,
                             likedByMe = false,
-                            commentCount = 1
+                            commentCount = 4
+                        )
+                    )
+                    SocialFeedCache.clear()
+                    SocialFeedCache.accept(posts, false, false)
+                    SocialDmCache.clear()
+                    SocialDmCache.acceptThreadList(
+                        listOf(DmThreadSummary(ashUuid, "Red", "Let's trade later today!", System.currentTimeMillis() - 1000 * 60 * 15, 2)),
+                        false,
+                        false
+                    )
+                }
+            ),
+            ScreenshotTask(
+                id = "social_feed_pixel",
+                category = "social_preview",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    SocialScreen(
+                        SmartphoneColor.RED,
+                        null,
+                        startOnDms = false,
+                        initialTab = SocialScreen.Tab.FEED,
+                        scaleOverride = 1.0f,
+                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.PIXEL
+                    )
+                }
+            ),
+            ScreenshotTask(
+                id = "social_dms_hd",
+                category = "social_preview",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    SocialScreen(
+                        SmartphoneColor.BLUE,
+                        null,
+                        startOnDms = true,
+                        initialTab = SocialScreen.Tab.DMS,
+                        scaleOverride = 1.0f,
+                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.HD
+                    )
+                },
+                postInit = {
+                    val threads = listOf(
+                        DmThreadSummary(ashUuid, "Red", "Let's trade later today!", System.currentTimeMillis() - 1000 * 60 * 15, 2),
+                        DmThreadSummary(garyUuid, "Blue", "You won't beat my Blastoise!", System.currentTimeMillis() - 1000 * 60 * 60, 0)
+                    )
+                    SocialDmCache.clear()
+                    SocialDmCache.acceptThreadList(threads, false, false)
+                }
+            ),
+            ScreenshotTask(
+                id = "social_dms_pixel",
+                category = "social_preview",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    SocialScreen(
+                        SmartphoneColor.BLUE,
+                        null,
+                        startOnDms = true,
+                        initialTab = SocialScreen.Tab.DMS,
+                        scaleOverride = 1.0f,
+                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.PIXEL
+                    )
+                }
+            ),
+            ScreenshotTask(
+                id = "social_feed",
+                category = "social",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = { SocialScreen(SmartphoneColor.RED, null, startOnDms = false, initialTab = SocialScreen.Tab.FEED, scaleOverride = 1.0f) },
+                postInit = {
+                    val posts = listOf(
+                        samplePost.copy(
+                            attachment = PokemonAttachment(
+                                species = "cobblemon:pikachu",
+                                aspects = setOf("shiny"),
+                                level = 25,
+                                nickname = "Sparky",
+                                gender = "MALE",
+                                ivs = listOf(31, 28, 25, 31, 30, 31),
+                                types = listOf("electric")
+                            )
+                        ),
+                        SocialPostView(
+                            id = 102L,
+                            authorUuid = garyUuid,
+                            authorName = "Blue",
+                            text = "Hey @Red, who takes the Cerulean Gym challenge today? #GymBattle",
+                            timestamp = System.currentTimeMillis() - 1000 * 60 * 45,
+                            attachment = null,
+                            photo = null,
+                            poll = SocialPollView(
+                                question = "Best starter for Kanto?",
+                                options = listOf("Bulbasaur", "Charmander", "Squirtle"),
+                                voteCounts = listOf(12, 27, 19),
+                                totalVotes = 58,
+                                userVotedOption = 1
+                            ),
+                            likeCount = 18,
+                            likedByMe = false,
+                            commentCount = 4
                         )
                     )
                     SocialFeedCache.clear()
@@ -362,12 +498,12 @@ object GuiScreenshotHarness {
             ScreenshotTask(
                 id = "social_dms",
                 category = "social",
-                guiWidth = 211,
-                guiHeight = 207,
-                createScreen = { SocialScreen(SmartphoneColor.RED, null, startOnDms = true, initialTab = SocialScreen.Tab.DMS) },
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = { SocialScreen(SmartphoneColor.BLUE, null, startOnDms = true, initialTab = SocialScreen.Tab.DMS, scaleOverride = 1.0f) },
                 postInit = {
                     val threads = listOf(
-                        DmThreadSummary(ashUuid, "Red", "Let's trade later today!", System.currentTimeMillis() - 1000 * 60 * 15, 1),
+                        DmThreadSummary(ashUuid, "Red", "Let's trade later today!", System.currentTimeMillis() - 1000 * 60 * 15, 2),
                         DmThreadSummary(garyUuid, "Blue", "You won't beat my Blastoise!", System.currentTimeMillis() - 1000 * 60 * 60, 0)
                     )
                     SocialDmCache.clear()
@@ -377,30 +513,45 @@ object GuiScreenshotHarness {
             ScreenshotTask(
                 id = "social_notifications",
                 category = "social",
-                guiWidth = 211,
-                guiHeight = 207,
-                createScreen = { SocialScreen(SmartphoneColor.RED, null, startOnDms = false, initialTab = SocialScreen.Tab.NOTIFICATIONS) },
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = { SocialScreen(SmartphoneColor.BLACK, null, startOnDms = false, initialTab = SocialScreen.Tab.NOTIFICATIONS, scaleOverride = 1.15f) },
                 postInit = {
                     val notifs = listOf(
                         SocialNotificationView(1L, ashUuid, "Red", SocialNotificationType.LIKE, 101L, "liked your post", System.currentTimeMillis() - 1000 * 60 * 5, false),
-                        SocialNotificationView(2L, garyUuid, "Blue", SocialNotificationType.COMMENT, 101L, "commented: Great catch!", System.currentTimeMillis() - 1000 * 60 * 30, true)
+                        SocialNotificationView(2L, garyUuid, "Blue", SocialNotificationType.COMMENT, 101L, "Great shiny catch!", System.currentTimeMillis() - 1000 * 60 * 30, true)
                     )
                     SocialNotificationCache.clear()
                     SocialNotificationCache.acceptList(notifs)
                 }
             ),
             ScreenshotTask(
+                id = "social_notif_settings",
+                category = "social",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    SocialScreen(
+                        SmartphoneColor.RED,
+                        null,
+                        startOnDms = false,
+                        initialTab = SocialScreen.Tab.NOTIFICATIONS,
+                        initialNotifSubTab = SocialScreen.NotificationSubTab.SETTINGS
+                    )
+                }
+            ),
+            ScreenshotTask(
                 id = "social_compose",
                 category = "social",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = { SocialComposeScreen(SmartphoneColor.RED, null, "Working on some exciting Cobblemon updates! #hype") }
             ),
             ScreenshotTask(
                 id = "social_post_detail",
                 category = "social",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = {
                     SocialCommentCache.accept(101L, listOf(
                         SocialCommentView(1L, 101L, garyUuid, "Blue", "Pikachu is overrated, check my Eevee!", System.currentTimeMillis() - 1000 * 60 * 20),
@@ -412,22 +563,22 @@ object GuiScreenshotHarness {
             ScreenshotTask(
                 id = "dm_thread",
                 category = "social",
-                guiWidth = 211,
-                guiHeight = 207,
-                createScreen = {
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = { DmThreadScreen(SmartphoneColor.RED, null, ashUuid, "Red") },
+                postInit = {
                     val msgs = listOf(
                         DmMessage(1L, ashUuid, "Hey, ready for a Cobblemon battle?", System.currentTimeMillis() - 1000 * 60 * 20),
                         DmMessage(2L, UUID.randomUUID(), "I'm ready! Heading to the arena now.", System.currentTimeMillis() - 1000 * 60 * 10)
                     )
                     SocialDmCache.acceptThreadPage(ashUuid, "Red", msgs, false, false)
-                    DmThreadScreen(SmartphoneColor.RED, null, ashUuid, "Red")
                 }
             ),
             ScreenshotTask(
                 id = "dm_new",
                 category = "social",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = { DmNewScreen(SmartphoneColor.RED, null) }
             ),
 
@@ -435,16 +586,16 @@ object GuiScreenshotHarness {
             ScreenshotTask(
                 id = "gps",
                 category = "gps",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = { GpsScreen(SmartphoneColor.RED, null) },
                 postInit = { GpsClientState.injectMockBiomes(sampleBiomes) }
             ),
             ScreenshotTask(
                 id = "structure_compass",
                 category = "gps",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = { StructureCompassScreen(SmartphoneColor.RED, null) },
                 postInit = { StructureCompassClientState.injectMockStructures(sampleStructures) }
             ),
@@ -453,15 +604,15 @@ object GuiScreenshotHarness {
             ScreenshotTask(
                 id = "rotom_settings",
                 category = "rotom",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = { RotomAppScreen(SmartphoneColor.RED, null, RotomAppScreen.Tab.SETTINGS) }
             ),
             ScreenshotTask(
                 id = "rotom_targets",
                 category = "rotom",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = {
                     val config = com.nbp.cobblemon_smartphone.client.RotomRadarClientState.config
                     config.targets.clear()
@@ -491,8 +642,8 @@ object GuiScreenshotHarness {
             ScreenshotTask(
                 id = "rotom_targets_empty",
                 category = "rotom",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = {
                     val config = com.nbp.cobblemon_smartphone.client.RotomRadarClientState.config
                     config.targets.clear()
@@ -502,9 +653,181 @@ object GuiScreenshotHarness {
             ScreenshotTask(
                 id = "rotom_add_target",
                 category = "rotom",
-                guiWidth = 211,
-                guiHeight = 207,
+                guiWidth = 0,
+                guiHeight = 0,
                 createScreen = { RotomAppScreen(SmartphoneColor.RED, null, RotomAppScreen.Tab.TARGETS, true) }
+            ),
+
+            // --- DATAPACK HD DEMO ---
+            ScreenshotTask(
+                id = "datapack_demo",
+                category = "datapack",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    val demoJson = """
+                        {
+                          "id": "demo:trainer_hub",
+                          "viewport": "large",
+                          "default_state": { "tab": "party" },
+                          "actions": {
+                            "heal": { "effects": [ { "type": "close_modal" } ] }
+                          },
+                          "body": [
+                            {
+                              "type": "column",
+                              "padding": { "horizontal": 8, "vertical": 5.5 },
+                              "width": "fill",
+                              "background": "header",
+                              "gap": 5,
+                              "children": [
+                                {
+                                  "type": "row",
+                                  "gap": 6,
+                                  "cross_align": "center",
+                                  "width": "fill",
+                                  "children": [
+                                    { "type": "icon", "icon": "SPARKLES", "size": 13, "color": "gold" },
+                                    { "type": "text", "text": "Trainer Hub - {player.name}", "size": 11.2, "weight": "bold", "color": "text_primary", "width": "weight(1)" },
+                                    { "type": "text", "text": "{coins} G", "size": 9.4, "weight": "bold", "color": "gold" }
+                                  ]
+                                },
+                                {
+                                  "type": "tabs",
+                                  "state_key": "tab",
+                                  "tabs": [
+                                    { "id": "party", "label": "Party ({lists.party.size})" },
+                                    { "id": "rewards", "label": "Rewards" }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "scroll",
+                              "scroll_id": "demo_party",
+                              "visible_if": "state.tab == 'party'",
+                              "padding": 8,
+                              "gap": 6,
+                              "for_each": "lists.party",
+                              "children": [
+                                {
+                                  "type": "card",
+                                  "padding": 7,
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "row",
+                                      "gap": 8,
+                                      "cross_align": "center",
+                                      "width": "fill",
+                                      "children": [
+                                        {
+                                          "type": "column",
+                                          "gap": 3,
+                                          "width": "weight(1)",
+                                          "children": [
+                                            { "type": "text", "text": "#{item.index} {item.name}  Lv.{item.level}", "size": 10.0, "weight": "bold", "color": "text_dark" },
+                                            { "type": "progress_bar", "progress": "{item.hp_ratio}", "h": 6.5, "fill_color": "success" },
+                                            { "type": "text", "text": "HP {item.hp}/{item.max_hp} - {item.nature}", "size": 8.2, "color": "text_dark_muted" }
+                                          ]
+                                        },
+                                        { "type": "button", "label": "Heal", "variant": "primary", "size": 8.8, "on_click": "heal" }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                    """.trimIndent()
+                    val def = com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenLoader.parseScreen(demoJson)!!
+                    com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenClientState.registerLocal(def)
+                    com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenClientState.acceptData(
+                        screenId = def.id,
+                        placeholders = mapOf("player.name" to "Red", "coins" to "1250"),
+                        lists = mapOf(
+                            "party" to listOf(
+                                mapOf("index" to "1", "name" to "Pikachu", "level" to "25", "hp" to "48", "max_hp" to "52", "hp_ratio" to "0.92", "nature" to "Timid"),
+                                mapOf("index" to "2", "name" to "Charizard", "level" to "36", "hp" to "80", "max_hp" to "120", "hp_ratio" to "0.67", "nature" to "Jolly"),
+                                mapOf("index" to "3", "name" to "Lapras", "level" to "30", "hp" to "115", "max_hp" to "115", "hp_ratio" to "1.0", "nature" to "Modest")
+                            )
+                        )
+                    )
+                    com.nbp.cobblemon_smartphone.client.gui.DatapackScreen(SmartphoneColor.RED, null, def.id)
+                }
+            ),
+            ScreenshotTask(
+                id = "datapack_demo_hd",
+                category = "datapack",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    com.nbp.cobblemon_smartphone.client.gui.DatapackScreen(
+                        SmartphoneColor.RED,
+                        null,
+                        "demo:trainer_hub",
+                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.HD
+                    )
+                }
+            ),
+
+            // --- UI COMPONENT SHOWROOM (HD vs PIXEL) ---
+            ScreenshotTask(
+                id = "showroom_controls_hd",
+                category = "showroom",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    HdShowroomScreen(
+                        color = SmartphoneColor.RED,
+                        initialPage = HdShowroomScreen.Page.CONTROLS,
+                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.HD,
+                        showSampleToast = true
+                    )
+                }
+            ),
+            ScreenshotTask(
+                id = "showroom_controls_pixel",
+                category = "showroom",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    HdShowroomScreen(
+                        color = SmartphoneColor.RED,
+                        initialPage = HdShowroomScreen.Page.CONTROLS,
+                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.PIXEL,
+                        showSampleToast = true
+                    )
+                }
+            ),
+            ScreenshotTask(
+                id = "showroom_feedback_hd",
+                category = "showroom",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    HdShowroomScreen(
+                        color = SmartphoneColor.RED,
+                        initialPage = HdShowroomScreen.Page.FEEDBACK_ICONS,
+                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.HD,
+                        showSampleToast = false
+                    )
+                }
+            ),
+            ScreenshotTask(
+                id = "showroom_feedback_pixel",
+                category = "showroom",
+                guiWidth = 0,
+                guiHeight = 0,
+                createScreen = {
+                    HdShowroomScreen(
+                        color = SmartphoneColor.RED,
+                        initialPage = HdShowroomScreen.Page.FEEDBACK_ICONS,
+                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.PIXEL,
+                        showSampleToast = false
+                    )
+                }
             )
         )
     }

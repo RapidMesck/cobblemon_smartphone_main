@@ -100,9 +100,10 @@ object DatapackActionLoader : PreparableReloadListener {
 
                             val hasKnownFunction = functions.any(DatapackActionFunction::isKnown)
                             val hasPatchouliBook = !patchouliBook.isNullOrBlank()
-                            if (commands.isEmpty() && !hasKnownFunction && useItems.isEmpty() && !hasPatchouliBook) {
+                            val hasOpenScreen = !definition.openScreen.isNullOrBlank()
+                            if (commands.isEmpty() && !hasKnownFunction && useItems.isEmpty() && !hasPatchouliBook && !hasOpenScreen) {
                                 CobblemonSmartphone.LOGGER.warn(
-                                    "Skipping datapack action '{}': no commands, known functions, use_items, or patchouli_book were defined",
+                                    "Skipping datapack action '{}': no commands, known functions, use_items, patchouli_book, or open_screen were defined",
                                     definition.id
                                 )
                                 continue

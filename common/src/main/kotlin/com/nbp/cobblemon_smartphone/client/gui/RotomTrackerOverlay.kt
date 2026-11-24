@@ -7,6 +7,7 @@ import com.cobblemon.mod.common.util.math.fromEulerXYZDegrees
 import com.mojang.blaze3d.platform.Lighting
 import com.mojang.blaze3d.systems.RenderSystem
 import com.nbp.cobblemon_smartphone.client.GpsClientState
+import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.client.RotomTrackerClientState
 import com.nbp.cobblemon_smartphone.client.keybind.SmartphoneKeybinds
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneGpsItems
@@ -38,6 +39,7 @@ object RotomTrackerOverlay {
     private val posableState = FloatingState()
 
     fun render(guiGraphics: GuiGraphics) {
+        if (!RotomScannerClientState.clientConfig.enableRotom) return
         if (!RotomTrackerClientState.isVisible()) return
 
         val target = RotomTrackerClientState.currentTracked ?: return

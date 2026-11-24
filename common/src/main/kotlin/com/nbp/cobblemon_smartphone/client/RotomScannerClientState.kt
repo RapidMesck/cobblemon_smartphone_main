@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.CobblemonSounds
 import com.nbp.cobblemon_smartphone.network.packet.RotomScanCompletePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomConfigPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.core.particles.DustParticleOptions
 import net.minecraft.core.particles.ParticleTypes
@@ -14,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 object RotomScannerClientState {
 
     data class ClientRotomConfig(
+        var enableRotom: Boolean = true,
         var enableScanner: Boolean = true,
         var enableAutoScanner: Boolean = true,
         var enableManualScanPriority: Boolean = true,
@@ -37,6 +39,7 @@ object RotomScannerClientState {
 
     fun updateConfig(packet: SyncRotomConfigPacket) {
         clientConfig = ClientRotomConfig(
+            enableRotom = packet.enableRotom,
             enableScanner = packet.enableScanner,
             enableAutoScanner = packet.enableAutoScanner,
             enableManualScanPriority = packet.enableManualScanPriority,
@@ -54,6 +57,12 @@ object RotomScannerClientState {
             socialDataShareChance = packet.socialDataShareChance,
             curiosityLanguage = packet.curiosityLanguage
         )
+    }
+
+    fun reset() {
+        activeScans.clear()
+        clientConfig = ClientRotomConfig()
+        SmartphoneHelper.syncedRotomEnabled = null
     }
 
     data class ActiveScan(

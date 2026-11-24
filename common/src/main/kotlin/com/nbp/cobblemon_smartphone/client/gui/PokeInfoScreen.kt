@@ -1,219 +1,199 @@
 package com.nbp.cobblemon_smartphone.client.gui
 
-import com.cobblemon.mod.common.api.gui.blitk
-import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.CobblemonSounds
-import com.cobblemon.mod.common.client.gui.drawProfilePokemon
 import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState
-import com.cobblemon.mod.common.entity.PoseType
-import com.cobblemon.mod.common.pokemon.RenderablePokemon
-import com.nbp.cobblemon_smartphone.item.SmartphoneColor
-import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
-import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
 import com.nbp.cobblemon_smartphone.client.PokeInfoClientState
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdAlign
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdBackground
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdBuilder
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdColorSpec
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdIconAtlas
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdPadding
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdPhoneScreen
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdSizeSpec
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdTextLayout
+import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.RequestSpeciesListPacket
 import com.nbp.cobblemon_smartphone.network.packet.SpeciesListResponsePacket
+import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
 import com.nbp.cobblemon_smartphone.util.PokeInfoDataProvider
-import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.EditBox
-import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.resources.language.I18n
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
-import org.joml.Quaternionf
 
+/**
+ * PokéInfo species browser screen built on the HD [HdPhoneScreen] UI engine.
+ */
 class PokeInfoScreen(
-    private val color: SmartphoneColor,
-    private val smartphoneStack: ItemStack? = null
-) : Screen(Component.translatable("cobblemon_smartphone.screen.pokeinfo")) {
+    color: SmartphoneColor,
+    smartphoneStack: ItemStack? = null,
+    scaleOverride: Float? = null
+) : HdPhoneScreen(
+    color,
+    smartphoneStack,
+    Component.translatable("cobblemon_smartphone.screen.pokeinfo"),
+    scaleOverride
+) {
 
-    private val frameTexture get() = color.getLargeScreenTexture()
-    private val theme get() = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
-    private val SECTION_TITLE_BG get() = theme.colors.primary
-    private val SECTION_CONTENT_BG get() = theme.colors.surface
-    private var screenX = 0
-    private var screenY = 0
-    private var scrollY = 0
-    private var maxScroll = 0
-    private var draggingScrollbar = false
-    private var dragStartMouseY = 0
-    private var dragStartScrollY = 0
-    private lateinit var searchBox: EditBox
+    override val viewportMode: ViewportMode = ViewportMode.Large
+    override val showBezelHdBadge: Boolean = true
+
     private var results: List<PokeInfoDataProvider.SpeciesInfo> = emptyList()
     private var allSpecies: List<PokeInfoDataProvider.SpeciesInfo> = emptyList()
     private var listRequestId = -1L
     private var listRequestStartedAt = 0L
     private var listLoading = true
     private var listErrorKey: String? = null
-    private val modelCache = mutableMapOf<String, RenderablePokemon?>()
-
-    override fun isPauseScreen(): Boolean = false
-
-    private fun lang(key: String): String =
-        Component.translatable("cobblemon_smartphone.pokeinfo.$key").string
+    private var displayLimit = PAGE_BATCH
+    private val floatingState = FloatingState()
 
     override fun init() {
-        screenX = (width - GUI_WIDTH) / 2
-        screenY = (height - GUI_HEIGHT) / 2
-        SmartphoneHelper.contextSmartphone = smartphoneStack
-        SmartphoneHelper.contextColor = color
-
-        searchBox = EditBox(
-            font,
-            screenX + SEARCH_X + 2,
-            screenY + SEARCH_Y + 3,
-            SEARCH_WIDTH - 4,
-            SEARCH_HEIGHT,
-            Component.translatable("cobblemon_smartphone.pokeinfo.search")
-        )
-        searchBox.setMaxLength(30)
-        searchBox.setBordered(false)
-        searchBox.setHint(Component.translatable("cobblemon_smartphone.pokeinfo.search"))
-        searchBox.setTextColor(theme.colors.textDarkMuted)
-        searchBox.setResponder { query -> onSearchChanged(query) }
-        addRenderableWidget(searchBox)
-
+        super.init()
         listRequestId = PokeInfoClientState.nextRequestId()
         PokeInfoClientState.beginListRequest(listRequestId)
         listRequestStartedAt = System.currentTimeMillis()
         listLoading = true
         listErrorKey = null
         RequestSpeciesListPacket(listRequestId).sendToServer()
-        scrollY = 0
     }
 
     override fun removed() {
-        modelCache.clear()
         PokeInfoClientState.cancelListRequest(listRequestId)
-        SmartphoneHelper.contextSmartphone = null
-        SmartphoneHelper.contextColor = null
         super.removed()
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         receiveSpeciesList()
-        val matrices = guiGraphics.pose()
-
-        val theme = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
-        SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
-        blitk(
-            matrixStack = matrices,
-            texture = com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper.resolveLargeFrameTexture(null, theme, color),
-            x = screenX,
-            y = screenY,
-            width = GUI_WIDTH,
-            height = GUI_HEIGHT
-        )
-
-        // Back button
-        val backHover = isInBackButton(mouseX, mouseY)
-        val backColor = if (backHover) theme.colors.gold else theme.colors.textPrimary
-        guiGraphics.drawString(font, lang("back"), screenX + BACK_X, screenY + BACK_Y, backColor, false)
-
-        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
-
-        // Search box background
-        val sx = screenX + SEARCH_X
-        val sy = screenY + SEARCH_Y
-        guiGraphics.fill(sx, sy, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, theme.colors.surface)
-        guiGraphics.fill(sx, sy, sx + SEARCH_WIDTH, sy + 1, SECTION_TITLE_BG)
-        guiGraphics.fill(sx, sy + SEARCH_HEIGHT - 1, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
-        guiGraphics.fill(sx, sy, sx + 1, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
-        guiGraphics.fill(sx + SEARCH_WIDTH - 1, sy, sx + SEARCH_WIDTH, sy + SEARCH_HEIGHT, SECTION_TITLE_BG)
-
-        searchBox.renderWidget(guiGraphics, mouseX, mouseY, delta)
-
-        guiGraphics.enableScissor(
-            screenX + CONTENT_X, screenY + LIST_START_Y,
-            screenX + CONTENT_X + LIST_WIDTH, screenY + LIST_END_Y
-        )
-
-        val startIndex = (scrollY / (CARD_HEIGHT + CARD_GAP)).coerceAtLeast(0)
-        val endIndex = ((scrollY + LIST_END_Y - LIST_START_Y) / (CARD_HEIGHT + CARD_GAP) + 1).coerceAtMost(results.size)
-        for (i in startIndex until endIndex) {
-            val cy = LIST_START_Y + i * (CARD_HEIGHT + CARD_GAP) - scrollY
-            renderCard(guiGraphics, mouseX, mouseY, i, cy, results[i])
-        }
-
-        guiGraphics.disableScissor()
-        if (results.isEmpty() && (listLoading || listErrorKey != null)) {
-            val message = Component.translatable(
-                listErrorKey ?: "cobblemon_smartphone.pokeinfo.loading_species"
-            ).string
-            val centerX = screenX + CONTENT_X + LIST_WIDTH / 2
-            val centerY = screenY + (LIST_START_Y + LIST_END_Y) / 2
-            guiGraphics.drawString(font, message, centerX - font.width(message) / 2, centerY, 0xFFAAAAAA.toInt(), false)
-        }
-        renderScrollbar(guiGraphics, mouseY)
-        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
+        super.render(guiGraphics, mouseX, mouseY, delta)
     }
 
-    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        val mx = mouseX.toInt()
-        val my = mouseY.toInt()
+    override fun buildContent(theme: SmartphoneTheme, builder: HdBuilder) {
+        val countSubtitle = if (!listLoading && listErrorKey == null) "${results.size} Pokémon" else null
+        builder.appHeader(
+            title = Component.translatable("cobblemon_smartphone.screen.pokeinfo").string,
+            subtitle = countSubtitle,
+            icon = HdIconAtlas.Icon.SEARCH,
+            iconColor = HdColorSpec.Token("primary")
+        )
 
-        // Back button
-        if (isInBackButton(mx, my)) {
-            playClickSound()
-            Minecraft.getInstance().setScreen(SmartphoneScreen(color, smartphoneStack))
-            return true
+        TrackerComponents.buildSearchBar(
+            builder = builder,
+            inputId = SEARCH_INPUT_ID,
+            placeholder = lang("search"),
+            onChange = { query -> onSearchChanged(query) }
+        )
+
+        builder.scroll(
+            scrollId = SCROLL_ID,
+            gap = 5f,
+            padding = HdPadding.symmetric(horizontal = 8f, vertical = 4f),
+            onNearBottom = {
+                if (displayLimit < results.size) {
+                    displayLimit = (displayLimit + PAGE_BATCH).coerceAtMost(results.size)
+                }
+            }
+        ) { list ->
+            if (results.isEmpty()) {
+                val message = if (listLoading || listErrorKey != null) {
+                    Component.translatable(listErrorKey ?: "cobblemon_smartphone.pokeinfo.loading_species").string
+                } else {
+                    "0 / ${allSpecies.size}"
+                }
+                TrackerComponents.buildEmptyState(list, message)
+            } else {
+                val count = displayLimit.coerceAtMost(results.size)
+                for (i in 0 until count) {
+                    buildSpeciesCard(list, results[i])
+                }
+            }
         }
+    }
 
-        val startIndex = (scrollY / (CARD_HEIGHT + CARD_GAP)).coerceAtLeast(0)
-        val endIndex = ((scrollY + LIST_END_Y - LIST_START_Y) / (CARD_HEIGHT + CARD_GAP) + 1).coerceAtMost(results.size)
-        for (i in startIndex until endIndex) {
-            val cy = screenY + LIST_START_Y + i * (CARD_HEIGHT + CARD_GAP) - scrollY
-            if (mx >= screenX + CONTENT_X && mx <= screenX + CONTENT_X + LIST_WIDTH &&
-                my >= cy && my <= cy + CARD_HEIGHT
-            ) {
+    private fun buildSpeciesCard(builder: HdBuilder, species: PokeInfoDataProvider.SpeciesInfo) {
+        val resolvedId = resolveSpeciesIdentifier(species)
+        val dexAndName = "#${String.format("%03d", species.dexNumber)} ${localizedPokemonName(species)}"
+        val types = listOfNotNull(species.primaryType, species.secondaryType)
+
+        builder.row(
+            gap = 8f,
+            crossAlign = HdAlign.CENTER,
+            padding = HdPadding.symmetric(horizontal = 8f, vertical = 5f),
+            width = HdSizeSpec.Fill,
+            background = HdBackground(
+                color = HdColorSpec.Token("primary", 0.90f),
+                radius = 8f,
+                borderWidth = 0.7f,
+                borderColor = HdColorSpec.Token("primary_border"),
+                shadowBlur = 4f,
+                shadowOffsetY = 1.5f,
+                shadowColor = HdColorSpec.Fixed(0x28000000)
+            )
+        ) { card ->
+            hoverBackground = HdBackground(
+                color = HdColorSpec.Token("primary_hover", 0.95f),
+                radius = 8f,
+                borderWidth = 0.8f,
+                borderColor = HdColorSpec.Token("gold"),
+                shadowBlur = 5f,
+                shadowOffsetY = 1.5f,
+                shadowColor = HdColorSpec.Fixed(0x32000000)
+            )
+            tooltip = Component.translatable("cobblemon_smartphone.tooltip.view_pokemon_details").string
+            onClick = {
                 playClickSound()
                 Minecraft.getInstance().setScreen(
-                    PokeInfoDetailScreen(color, smartphoneStack, results[i].speciesId, results[i].dexNumber)
+                    PokeInfoDetailScreen(color, smartphoneStack, species.speciesId, species.dexNumber)
                 )
-                return true
             }
-        }
 
-        // Scrollbar drag
-        if (maxScroll > 0) {
-            val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
-            val trackY = screenY + LIST_START_Y
-            val trackH = LIST_END_Y - LIST_START_Y
-            val handleH =
-                maxOf(12, (trackH.toFloat() * trackH / (results.size * (CARD_HEIGHT + CARD_GAP)).toFloat()).toInt())
-            val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
-            if (mx >= trackX && mx <= trackX + SCROLLBAR_WIDTH && my >= handleY && my <= handleY + handleH) {
-                draggingScrollbar = true
-                dragStartMouseY = my
-                dragStartScrollY = scrollY
-                return true
+            card.column(gap = 3.5f, width = HdSizeSpec.Weight(1f)) { left ->
+                left.text(
+                    text = dexAndName,
+                    size = 10.2f,
+                    weight = HdTextLayout.Weight.BOLD,
+                    color = HdColorSpec.Token("text_primary"),
+                    wrap = true
+                ) {
+                    width = HdSizeSpec.Fill
+                }
+                left.row(gap = 4f, crossAlign = HdAlign.CENTER) { typeRow ->
+                    types.forEach { type ->
+                        val typeBg = PokeInfoDetailScreen.typeColor(type)
+                        typeRow.row(
+                            padding = HdPadding.symmetric(horizontal = 6f, vertical = 2f),
+                            background = HdBackground(
+                                color = HdColorSpec.Fixed(typeBg),
+                                radius = 5f,
+                                borderWidth = 0.5f,
+                                borderColor = HdColorSpec.Fixed(0x45FFFFFF)
+                            )
+                        ) { pill ->
+                            pill.text(
+                                text = localizedTypeName(type),
+                                size = 7.8f,
+                                weight = HdTextLayout.Weight.BOLD,
+                                color = HdColorSpec.Fixed(0xFFFFFFFF.toInt())
+                            )
+                        }
+                    }
+                }
             }
+
+            card.pokemonView(
+                speciesId = resolvedId,
+                size = 34f,
+                floatingState = floatingState,
+                showShinyBadge = false
+            )
         }
-
-        return super.mouseClicked(mouseX, mouseY, button)
     }
 
-    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        draggingScrollbar = false
-        return super.mouseReleased(mouseX, mouseY, button)
-    }
-
-    override fun charTyped(codePoint: Char, modifiers: Int): Boolean {
-        return searchBox.charTyped(codePoint, modifiers) || super.charTyped(codePoint, modifiers)
-    }
-
-    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        if (searchBox.isFocused && searchBox.keyPressed(keyCode, scanCode, modifiers)) return true
-        return super.keyPressed(keyCode, scanCode, modifiers)
-    }
-
-    override fun mouseScrolled(mx: Double, my: Double, h: Double, v: Double): Boolean {
-        if (v == 0.0 || maxScroll == 0) return super.mouseScrolled(mx, my, h, v)
-        scrollY = (scrollY - v.toInt() * SCROLL_SPEED).coerceIn(0, maxScroll)
-        return true
+    private fun resolveSpeciesIdentifier(species: PokeInfoDataProvider.SpeciesInfo): String {
+        val sp = PokeInfoDataProvider.findSpecies(species.speciesId)
+            ?: PokeInfoDataProvider.findSpecies(species.name)
+        return sp?.resourceIdentifier?.toString() ?: species.speciesId
     }
 
     private fun onSearchChanged(query: String) {
@@ -223,13 +203,13 @@ class PokeInfoScreen(
         } else {
             allSpecies.filter { species ->
                 localizedPokemonName(species).lowercase().contains(normalized) ||
-                        species.name.lowercase().contains(normalized) ||
-                        species.speciesId.lowercase().contains(normalized) ||
-                        species.dexNumber.toString().startsWith(normalized)
+                    species.name.lowercase().contains(normalized) ||
+                    species.speciesId.lowercase().contains(normalized) ||
+                    species.dexNumber.toString().startsWith(normalized)
             }
         }
-        updateMaxScroll()
-        scrollY = 0
+        displayLimit = PAGE_BATCH
+        stateStore.scroll(SCROLL_ID).offset = 0f
     }
 
     private fun receiveSpeciesList() {
@@ -240,7 +220,7 @@ class PokeInfoScreen(
             when (response.status) {
                 SpeciesListResponsePacket.Status.SUCCESS -> {
                     allSpecies = response.species
-                    onSearchChanged(if (::searchBox.isInitialized) searchBox.value else "")
+                    onSearchChanged(stateStore.getInputText(SEARCH_INPUT_ID))
                 }
                 SpeciesListResponsePacket.Status.RATE_LIMITED -> listErrorKey = "cobblemon_smartphone.pokeinfo.error.rate_limited"
                 SpeciesListResponsePacket.Status.ERROR -> listErrorKey = "cobblemon_smartphone.pokeinfo.error.server"
@@ -249,101 +229,6 @@ class PokeInfoScreen(
             listLoading = false
             listErrorKey = "cobblemon_smartphone.pokeinfo.error.timeout"
         }
-    }
-
-    private fun renderScrollbar(guiGraphics: GuiGraphics, mouseY: Int) {
-        if (maxScroll <= 0) return
-        val trackX = screenX + CONTENT_X + LIST_WIDTH + 1
-        val trackY = screenY + LIST_START_Y
-        val trackH = LIST_END_Y - LIST_START_Y
-        val handleH =
-            maxOf(12, (trackH.toFloat() * trackH / (results.size * (CARD_HEIGHT + CARD_GAP)).toFloat()).toInt())
-        val handleY = trackY + (scrollY.toFloat() / maxScroll * (trackH - handleH)).toInt()
-
-        // Handle drag
-        if (draggingScrollbar) {
-            val dy = mouseY - dragStartMouseY
-            val scrollRange = trackH - handleH
-            if (scrollRange > 0) {
-                scrollY = (dragStartScrollY + (dy.toFloat() / scrollRange * maxScroll).toInt()).coerceIn(0, maxScroll)
-            }
-        }
-
-        // Track
-        guiGraphics.fill(trackX, trackY, trackX + SCROLLBAR_WIDTH, trackY + trackH, 0x20FFFFFF.toInt())
-        // Handle
-        val color = if (draggingScrollbar) 0x90FFFFFF.toInt() else 0x60FFFFFF.toInt()
-        guiGraphics.fill(trackX, handleY, trackX + SCROLLBAR_WIDTH, handleY + handleH, color)
-    }
-
-    private fun updateMaxScroll() {
-        maxScroll = maxOf(0, results.size * (CARD_HEIGHT + CARD_GAP) - (LIST_END_Y - LIST_START_Y))
-    }
-
-    private fun getModel(species: PokeInfoDataProvider.SpeciesInfo): RenderablePokemon? {
-        val key = species.speciesId
-        modelCache[key]?.let { return it }
-        if (modelCache.containsKey(key)) return null
-        val sp = PokeInfoDataProvider.findSpecies(species.speciesId) ?: PokeInfoDataProvider.findSpecies(species.name)
-        val model = if (sp != null) RenderablePokemon(sp, emptySet()) else null
-        modelCache[key] = model
-        return model
-    }
-
-    private fun renderCard(
-        guiGraphics: GuiGraphics,
-        mouseX: Int,
-        mouseY: Int,
-        index: Int,
-        cy: Int,
-        species: PokeInfoDataProvider.SpeciesInfo
-    ) {
-        val x1 = screenX + CONTENT_X
-        val y1 = screenY + cy
-        val x2 = screenX + CONTENT_X + LIST_WIDTH
-        val y2 = y1 + CARD_HEIGHT
-        val hovered = mouseX >= x1 && mouseX <= x2 && mouseY >= y1 && mouseY <= y2
-
-        // Card background
-        val bgColor = if (hovered) {
-            (theme.colors.primaryHover and 0x00FFFFFF) or 0xDF000000.toInt()
-        } else {
-            (theme.colors.primary and 0x00FFFFFF) or 0xBF000000.toInt()
-        }
-        guiGraphics.fill(x1, y1, x2, y2, bgColor)
-
-        // Divider line between cards
-        if (index > 0) {
-            guiGraphics.fill(x1 + 4, y1, x2 - 4, y1 + 1, 0x15FFFFFF.toInt())
-        }
-
-        // Left: dex number + name + type
-        val dexAndName = "#${String.format("%03d", species.dexNumber)} ${localizedPokemonName(species)}"
-        val textColor = if (hovered) theme.colors.gold else theme.colors.textPrimary
-        guiGraphics.drawString(font, dexAndName, x1 + 8, y1 + 3, textColor, false)
-
-        // Type line
-        val types = listOfNotNull(species.primaryType, species.secondaryType)
-        val typeText = types.joinToString(" / ") { localizedTypeName(it) }
-        val typeColor = (theme.colors.textSecondary and 0x00FFFFFF) or 0xB0000000.toInt()
-        guiGraphics.drawString(font, typeText, x1 + 8, y1 + 15, typeColor, false)
-
-        // Right: mini 3D model
-        val model = getModel(species)
-        if (model != null) {
-            val matrices = guiGraphics.pose()
-            matrices.pushPose()
-            matrices.translate((x2 - 18).toFloat(), (y1 + CARD_HEIGHT / 2 - 5).toFloat(), 0f)
-            drawProfilePokemon(
-                model, matrices, Quaternionf().rotateY(Math.toRadians(25.0).toFloat()),
-                PoseType.PROFILE, FloatingState(), 0f, 9f
-            )
-            matrices.popPose()
-        }
-    }
-
-    private fun playClickSound() {
-        Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
     }
 
     private fun localizedPokemonName(species: PokeInfoDataProvider.SpeciesInfo): String {
@@ -356,56 +241,13 @@ class PokeInfoScreen(
         return if (I18n.exists(key)) Component.translatable(key).string else type
     }
 
-    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
-
-        val tooltip = when {
-            isInBackButton(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.back_to_phone")
-            else -> {
-                val startIndex = (scrollY / (CARD_HEIGHT + CARD_GAP)).coerceAtLeast(0)
-                val endIndex = ((scrollY + LIST_END_Y - LIST_START_Y) / (CARD_HEIGHT + CARD_GAP) + 1)
-                    .coerceAtMost(results.size)
-                (startIndex until endIndex).firstOrNull { index ->
-                    val cy = screenY + LIST_START_Y + index * (CARD_HEIGHT + CARD_GAP) - scrollY
-                    mouseX >= screenX + CONTENT_X && mouseX <= screenX + CONTENT_X + LIST_WIDTH &&
-                            mouseY >= cy && mouseY <= cy + CARD_HEIGHT
-                }?.let { Component.translatable("cobblemon_smartphone.tooltip.view_pokemon_details") }
-            }
-        } ?: return
-        guiGraphics.renderTooltip(font, tooltip, mouseX, mouseY)
-    }
-
-    private fun isInBackButton(mouseX: Int, mouseY: Int): Boolean {
-        return mouseX >= screenX + BACK_X && mouseX <= screenX + BACK_X + 30 &&
-                mouseY >= screenY + BACK_Y - 2 && mouseY <= screenY + BACK_Y + 10
-    }
+    private fun lang(key: String): String =
+        Component.translatable("cobblemon_smartphone.pokeinfo.$key").string
 
     companion object {
         private const val REQUEST_TIMEOUT_MS = 10_000L
-        private const val GUI_WIDTH = 211
-        private const val GUI_HEIGHT = 207
-
-        private const val BACK_X = 20
-        private const val BACK_Y = 14
-
-        private const val SEARCH_X = 22
-        private const val SEARCH_Y = 28
-        private const val SEARCH_WIDTH = 167
-        private const val SEARCH_HEIGHT = 14
-
-        private const val CONTENT_X = 20
-        private const val CONTENT_WIDTH = 171
-        private const val SCROLLBAR_WIDTH = 5
-        private const val LIST_WIDTH = CONTENT_WIDTH - SCROLLBAR_WIDTH
-        private const val LIST_START_Y = 48
-        private const val LIST_END_Y = 195
-
-        private const val CARD_HEIGHT = 28
-        private const val CARD_GAP = 2
-        private const val SCROLL_SPEED = 15
-
-        private val HOME_SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone", "textures/gui/large_screen.png"
-        )
+        private const val PAGE_BATCH = 60
+        private const val SEARCH_INPUT_ID = "pokeinfo_search"
+        private const val SCROLL_ID = "pokeinfo_list"
     }
 }

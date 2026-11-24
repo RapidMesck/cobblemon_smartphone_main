@@ -32,7 +32,7 @@ object FabricSmartphoneKeybindHandler {
 
         // Se o jogador possuir um Rotom Phone e a mira manual estiver permitida:
         val rotomPhone = com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getEquippedRotomPhone(player)
-        if (rotomPhone != null && RotomScannerClientState.clientConfig.enableManualScanPriority) {
+        if (RotomScannerClientState.clientConfig.enableRotom && rotomPhone != null && RotomScannerClientState.clientConfig.enableManualScanPriority) {
             val dist = RotomScannerClientState.clientConfig.scanRadius
             val targeted = com.nbp.cobblemon_smartphone.util.RotomScannerHelper.findTargetedPokemon(player, dist)
             if (targeted != null && targeted.isAlive) {

@@ -1,5 +1,6 @@
 package com.nbp.cobblemon_smartphone.client.render
 
+import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.client.scanner.ScannerManager
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
@@ -170,6 +171,7 @@ object RotomClientManager {
      * Retorna o ItemStack do Rotom Phone do jogador (se possuir o upgrade do Rotom).
      */
     fun getEffectiveRotomPhone(player: Player): ItemStack? {
+        if (!RotomScannerClientState.clientConfig.enableRotom) return null
         val stack = getEffectiveSmartphone(player)
         return if (stack != null && stack.isRotomPhone()) stack else null
     }
@@ -369,6 +371,7 @@ object RotomClientManager {
             lastLocalHorizontal = null
             lastLocalSelfie = null
             lastLocalPhoto = null
+            RotomScannerClientState.reset()
             return
         }
         val isScreenOpen = RotomPlayerRenderLayer.isSmartphoneScreen(mc.screen)
@@ -378,7 +381,9 @@ object RotomClientManager {
         val isOpen = isScreenOpen || isScannerActive || isPhotoActive
         val isHorizontal = isScannerActive || isPhotoActive
         updateLocalState(isOpen, isHorizontal, isSelfieActive, isPhotoActive)
-        com.nbp.cobblemon_smartphone.client.RotomScannerClientState.tick()
-        com.nbp.cobblemon_smartphone.client.RotomDialogueClientState.tick()
+        if (RotomScannerClientState.clientConfig.enableRotom) {
+            RotomScannerClientState.tick()
+            com.nbp.cobblemon_smartphone.client.RotomDialogueClientState.tick()
+        }
     }
 }

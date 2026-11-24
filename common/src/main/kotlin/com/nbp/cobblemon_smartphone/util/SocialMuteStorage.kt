@@ -1,19 +1,32 @@
 package com.nbp.cobblemon_smartphone.util
 
+import com.nbp.cobblemon_smartphone.social.SocialNotificationPrefs
 import net.minecraft.server.level.ServerPlayer
 
 /**
- * Persists a player's "Do Not Disturb" flag for the Social app using the same [PreferencesSaver]
- * mixin as the action order and quick action bindings. Defaults to false (not muted).
+ * Persists a player's granular Social notification preferences (including Do Not Disturb)
+ * using the [PreferencesSaver] mixin. Falls back to the legacy [PreferencesSaver.SOCIAL_MUTED_KEY]
+ * boolean when reading older worlds.
  */
 object SocialMuteStorage {
-    fun read(player: ServerPlayer): Boolean {
+    fun readPrefs(player: ServerPlayer): SocialNotificationPrefs {
         val prefs = (player as PreferencesSaver).`cobblemonsmartphone$getSavedPreferences`()
-        return prefs.getBoolean(PreferencesSaver.SOCIAL_MUTED_KEY)
+        return if (prefs.contains(PreferencesSaver.SOCIAL_NOTIF_PREFS_KEY)) {
+            SocialNotificationPrefs.fromBitmask(prefs.getInt(PreferencesSaver.SOCIAL_NOTIF_PREFS_KEY))
+        } else {
+            SocialNotificationPrefs(doNotDisturb = prefs.getBoolean(PreferencesSaver.SOCIAL_MUTED_KEY))
+        }
     }
 
-    fun write(player: ServerPlayer, muted: Boolean) {
+    fun writePrefs(player: ServerPlayer, settings: SocialNotificationPrefs) {
         val prefs = (player as PreferencesSaver).`cobblemonsmartphone$getSavedPreferences`()
-        prefs.putBoolean(PreferencesSaver.SOCIAL_MUTED_KEY, muted)
+        prefs.putInt(PreferencesSaver.SOCIAL_NOTIF_PREFS_KEY, settings.toBitmask())
+        prefs.putBoolean(PreferencesSaver.SOCIAL_MUTED_KEY, settings.doNotDisturb)
+    }
+
+    fun read(player: ServerPlayer): Boolean = readPrefs(player).doNotDisturb
+
+    fun write(player: ServerPlayer, muted: Boolean) {
+        writePrefs(player, readPrefs(player).copy(doNotDisturb = muted))
     }
 }

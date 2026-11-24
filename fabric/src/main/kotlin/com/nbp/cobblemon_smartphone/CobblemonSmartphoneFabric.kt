@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone
 
 import com.nbp.cobblemon_smartphone.api.DatapackActionLoader
+import com.nbp.cobblemon_smartphone.command.SmartphoneCommands
 import com.nbp.cobblemon_smartphone.command.SocialCommands
 import com.nbp.cobblemon_smartphone.compat.SmartphoneCompatManager
 import com.nbp.cobblemon_smartphone.compat.tomsstorage.TomsStorageRemoteSession
@@ -8,6 +9,7 @@ import com.nbp.cobblemon_smartphone.client.ResourcePackActivationBehavior
 import com.nbp.cobblemon_smartphone.network.packet.SyncActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncedActionData
 import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackActionsPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncDatapackScreensPacket
 import com.nbp.cobblemon_smartphone.energy.ElectricPokemonCharger
 import com.nbp.cobblemon_smartphone.network.packet.SyncEnergyConfigPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncHiddenActionsPacket
@@ -31,6 +33,7 @@ import com.nbp.cobblemon_smartphone.util.SocialMuteStorage
 import com.nbp.cobblemon_smartphone.util.ThemeStorage
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
@@ -83,10 +86,13 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
                     def.requireUpgrade,
                     def.requireMod,
                     def.cooldownSeconds,
-                    def.patchouliBook
+                    def.patchouliBook,
+                    def.openScreen
                 )
             }
             SyncDatapackActionsPacket(data).sendToPlayer(handler.player)
+            SyncDatapackScreensPacket(com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenLoader.getSyncPayloads())
+                .sendToPlayer(handler.player)
             com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneSkinsPacket(
                 com.nbp.cobblemon_smartphone.skin.DatapackSkinLoader.getSkins()
             ).sendToPlayer(handler.player)
@@ -96,7 +102,7 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
             // DMs received while offline are already persisted; this lights up the badge on login.
             SyncUnreadPacket(SocialData.get(_server).totalUnreadFor(handler.player.uuid))
                 .sendToPlayer(handler.player)
-            SyncSocialMutePacket(SocialMuteStorage.read(handler.player)).sendToPlayer(handler.player)
+            SyncSocialMutePacket(SocialMuteStorage.readPrefs(handler.player)).sendToPlayer(handler.player)
             SyncMutedPlayersPacket(MutedPlayersStorage.read(handler.player).toList()).sendToPlayer(handler.player)
             val savedTheme = ThemeStorage.read(handler.player)
             if (savedTheme.isNotBlank()) {
@@ -124,6 +130,26 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
             ElectricPokemonCharger.tick(server)
             RotomServerManager.tick(server)
         }
+        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register { server, _, success ->
+            if (!success) return@register
+            val actionData = DatapackActionLoader.getDefinitions().map { def ->
+                SyncedActionData(
+                    def.id,
+                    def.texture,
+                    def.hoverTexture,
+                    def.requireUpgrade,
+                    def.requireMod,
+                    def.cooldownSeconds,
+                    def.patchouliBook,
+                    def.openScreen
+                )
+            }
+            val screensPayload = com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenLoader.getSyncPayloads()
+            server.playerList.players.forEach { p ->
+                SyncDatapackActionsPacket(actionData).sendToPlayer(p)
+                SyncDatapackScreensPacket(screensPayload).sendToPlayer(p)
+            }
+        }
         ServerTickEvents.END_SERVER_TICK.register(ServerTickEvents.EndTick(CallManager::tick))
     }
 
@@ -144,11 +170,13 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
     override fun registerCommands() {
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             SocialCommands.register(dispatcher)
+            SmartphoneCommands.register(dispatcher)
         }
     }
 
     override fun registerReloadListeners() {
         ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(DatapackActionReloadListenerWrapper())
         ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(DatapackSkinReloadListenerWrapper())
+        ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(DatapackScreenReloadListenerWrapper())
     }
 }

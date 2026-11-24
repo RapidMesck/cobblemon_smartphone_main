@@ -59,7 +59,7 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
     }
 
     fun getHandModel(stack: ItemStack): ResourceLocation {
-        return SmartphoneSkinHelper.resolveHandModel(stack, model, stack.isRotomPhone())
+        return SmartphoneSkinHelper.resolveHandModel(stack, model, SmartphoneHelper.isRotomEnabled() && stack.isRotomPhone())
     }
 
 
@@ -90,9 +90,10 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         interactionHand: InteractionHand
     ): InteractionResultHolder<ItemStack> {
         val stack = player.getItemInHand(interactionHand)
+        val rotomEnabled = SmartphoneHelper.isRotomEnabled(level.isClientSide)
 
         // Se estiver agachado e o smartphone for um Rotom Phone com acessório, remove o acessório e devolve
-        if (player.isCrouching && stack.isRotomPhone() && stack.getRotomAccessory() != null) {
+        if (rotomEnabled && player.isCrouching && stack.isRotomPhone() && stack.getRotomAccessory() != null) {
             if (!level.isClientSide) {
                 val returnedStack = SmartphoneHelper.createAccessoryStackFromPhone(stack)
                 stack.setRotomAccessory(null)
@@ -120,7 +121,7 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         }
 
         // Se for um Rotom Phone e estiver mirando em um Pokémon dentro do raio configurado:
-        if (stack.isRotomPhone()) {
+        if (rotomEnabled && stack.isRotomPhone()) {
             val scanDist = if (level.isClientSide) {
                 SmartphoneClientItemHandler.getClientScanRadius()
             } else {
@@ -163,6 +164,9 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         }
 
         val level = player.level()
+        if (!SmartphoneHelper.isRotomEnabled(level.isClientSide)) {
+            return InteractionResult.PASS
+        }
         val heldStack = player.getItemInHand(usedHand)
 
         // Se o smartphone for um Rotom Phone: prioriza o escaneamento deste Pokémon!
@@ -309,7 +313,7 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
         list: MutableList<Component>,
         tooltipFlag: TooltipFlag
     ) {
-        if (itemStack.isRotomPhone()) {
+        if (SmartphoneHelper.isRotomEnabled() && itemStack.isRotomPhone()) {
             val accessory = itemStack.getRotomAccessory()
             val genderText = when (accessory) {
                 "bow" -> Component.translatable("tooltip.cobblemon_smartphone.rotom_accessory.bow").withStyle(ChatFormatting.LIGHT_PURPLE)

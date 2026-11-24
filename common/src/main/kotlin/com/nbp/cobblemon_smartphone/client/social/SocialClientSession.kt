@@ -24,7 +24,7 @@ object SocialClientSession {
         SocialFeedCache.clear()
         SocialDmCache.clear()
         CallState.reset()
-        SocialMute.set(false)
+        SocialMute.reset()
         MutedPlayers.set(emptyList())
         SocialMutationState.clear()
     }

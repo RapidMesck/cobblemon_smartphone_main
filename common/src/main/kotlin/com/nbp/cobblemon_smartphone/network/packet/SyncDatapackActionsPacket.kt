@@ -19,7 +19,9 @@ class SyncDatapackActionsPacket(val actions: List<SyncedActionData>) : Cobblemon
                 val cooldownSeconds = buffer.readVarInt()
                 val hasPatchouli = buffer.readBoolean()
                 val patchouliBook = if (hasPatchouli) buffer.readUtf() else null
-                SyncedActionData(id, texture, hoverTexture, requireUpgrade, requireMod, cooldownSeconds, patchouliBook)
+                val hasOpenScreen = buffer.readBoolean()
+                val openScreen = if (hasOpenScreen) buffer.readUtf() else null
+                SyncedActionData(id, texture, hoverTexture, requireUpgrade, requireMod, cooldownSeconds, patchouliBook, openScreen)
             }
             return SyncDatapackActionsPacket(actions)
         }
@@ -40,6 +42,8 @@ class SyncDatapackActionsPacket(val actions: List<SyncedActionData>) : Cobblemon
             buffer.writeVarInt(action.cooldownSeconds)
             buffer.writeBoolean(action.patchouliBook != null)
             if (action.patchouliBook != null) buffer.writeUtf(action.patchouliBook)
+            buffer.writeBoolean(action.openScreen != null)
+            if (action.openScreen != null) buffer.writeUtf(action.openScreen)
         }
     }
 }
@@ -51,5 +55,6 @@ data class SyncedActionData(
     val requireUpgrade: String? = null,
     val requireMod: String? = null,
     val cooldownSeconds: Int = 0,
-    val patchouliBook: String? = null
+    val patchouliBook: String? = null,
+    val openScreen: String? = null
 )

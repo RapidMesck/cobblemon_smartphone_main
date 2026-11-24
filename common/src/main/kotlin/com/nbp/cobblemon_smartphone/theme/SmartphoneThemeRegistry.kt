@@ -39,8 +39,17 @@ object SmartphoneThemeRegistry {
         "wireless" to listOf("cobblemon_smartphone:wireless")
     )
 
+    private fun resolveClientResourceManager(): ResourceManager? {
+        if (SmartphoneThemeHelper.clientPlayerProvider == null) return null
+        return try {
+            net.minecraft.client.Minecraft.getInstance()?.resourceManager
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     fun getThemes(): List<SmartphoneTheme> {
-        val rm = try { net.minecraft.client.Minecraft.getInstance()?.resourceManager } catch (_: Exception) { null }
+        val rm = resolveClientResourceManager()
         if (rm != null && (lastResourceManager !== rm || themes.isEmpty())) {
             ensureLoaded(rm)
         }
@@ -49,7 +58,7 @@ object SmartphoneThemeRegistry {
 
     fun getTheme(id: String?): SmartphoneTheme {
         if (id == null) return SmartphoneTheme.DEFAULT
-        val rm = try { net.minecraft.client.Minecraft.getInstance()?.resourceManager } catch (_: Exception) { null }
+        val rm = resolveClientResourceManager()
         if (rm != null && (lastResourceManager !== rm || themes.isEmpty())) {
             ensureLoaded(rm)
         }

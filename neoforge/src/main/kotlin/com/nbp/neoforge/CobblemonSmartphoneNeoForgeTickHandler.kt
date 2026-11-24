@@ -1,6 +1,7 @@
 package com.nbp.neoforge
 
 import com.nbp.cobblemon_smartphone.client.GpsClientState
+import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.client.RotomTrackerClientState
 import com.nbp.cobblemon_smartphone.client.StructureCompassClientState
 import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
@@ -75,5 +76,6 @@ object CobblemonSmartphoneNeoForgeTickHandler {
         GpsClientState.reset()
         StructureCompassClientState.reset()
         RotomTrackerClientState.reset()
+        RotomScannerClientState.reset()
     }
 }

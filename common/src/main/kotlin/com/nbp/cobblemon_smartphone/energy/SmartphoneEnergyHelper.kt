@@ -15,7 +15,7 @@ const val ENERGY_TAG = "cobblemon_smartphone:energy"
 const val EXTRA_CAPACITY_TAG = "cobblemon_smartphone:extra_energy_capacity"
 
 fun ItemStack.isInfiniteEnergy(): Boolean {
-    return this.isRotomPhone() && CobblemonSmartphone.config.rotom.infiniteEnergy
+    return SmartphoneHelper.isRotomEnabled() && this.isRotomPhone() && CobblemonSmartphone.config.rotom.infiniteEnergy
 }
 
 fun ItemStack.getEnergy(): Int {

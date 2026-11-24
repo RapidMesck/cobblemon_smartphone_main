@@ -9,7 +9,7 @@ import net.minecraft.server.level.ServerPlayer
 object SaveSocialMuteHandler : ServerNetworkPacketHandler<SaveSocialMutePacket> {
     override fun handle(packet: SaveSocialMutePacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
-            SocialMuteStorage.write(player, packet.muted)
+            SocialMuteStorage.writePrefs(player, packet.prefs)
         }
     }
 }

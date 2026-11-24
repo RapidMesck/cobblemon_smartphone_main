@@ -172,6 +172,7 @@ class RotomPlayerRenderLayer(
             camera: Camera,
             partialTick: Float
         ) {
+            if (!RotomScannerClientState.clientConfig.enableRotom) return
             if (camera.isDetached) return
             val mc = Minecraft.getInstance()
             val player = mc.player ?: return
@@ -262,7 +263,7 @@ class RotomPlayerRenderLayer(
 
             val smartphoneStack = RotomClientManager.getEffectiveSmartphone(player) ?: return
             val color = (smartphoneStack.item as? SmartphoneItem)?.getColor() ?: SmartphoneColor.RED
-            val isRotom = smartphoneStack.isRotomPhone()
+            val isRotom = RotomScannerClientState.clientConfig.enableRotom && smartphoneStack.isRotomPhone()
 
             val mc = Minecraft.getInstance()
             val isLocalPlayer = (player == mc.player)

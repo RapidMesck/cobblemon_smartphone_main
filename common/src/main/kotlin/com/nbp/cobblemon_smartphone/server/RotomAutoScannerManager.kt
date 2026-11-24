@@ -55,6 +55,7 @@ object RotomAutoScannerManager {
     private val scanCooldowns = ConcurrentHashMap<String, Long>() // key = "playerUuid:entityId", value = timestamp
 
     fun setPlayerPriorityTarget(player: ServerPlayer, target: PokemonEntity) {
+        if (!CobblemonSmartphone.config.features.enableRotom) return
         if (!CobblemonSmartphone.config.features.enableScanner) return
         if (RotomServerManager.isPlayerInPhotoMode(player.uuid)) return
         val rotomConfig = CobblemonSmartphone.config.rotom
@@ -126,6 +127,7 @@ object RotomAutoScannerManager {
     }
 
     fun tick(server: MinecraftServer) {
+        if (!CobblemonSmartphone.config.features.enableRotom) return
         if (!CobblemonSmartphone.config.features.enableScanner) return
         val rotomConfig = CobblemonSmartphone.config.rotom
 

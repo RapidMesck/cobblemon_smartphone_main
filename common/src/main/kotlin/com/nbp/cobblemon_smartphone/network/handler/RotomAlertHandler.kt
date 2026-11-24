@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.network.handler
 
 import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.api.net.ClientNetworkPacketHandler
+import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.network.packet.RotomAlertPacket
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -10,6 +11,7 @@ import net.minecraft.network.chat.Component
 object RotomAlertHandler : ClientNetworkPacketHandler<RotomAlertPacket> {
     override fun handle(packet: RotomAlertPacket, client: Minecraft) {
         client.execute {
+            if (!RotomScannerClientState.clientConfig.enableRotom) return@execute
             val player = client.player ?: return@execute
 
             if (packet.soundAlert) {

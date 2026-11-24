@@ -14,6 +14,8 @@ data class DatapackActionDefinition(
     val useItems: List<UseItemEntry?>? = emptyList(),
     @SerializedName("patchouli_book", alternate = ["patchouli_id", "patchouliBook", "patchouliId"])
     val patchouliBook: String? = null,
+    @SerializedName("open_screen", alternate = ["screen_id", "openScreen", "screenId"])
+    val openScreen: String? = null,
     val order: Int = 0,
     @SerializedName("require_mod")
     val requireMod: String? = null,

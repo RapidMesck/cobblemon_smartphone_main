@@ -90,6 +90,16 @@ class RotomAccessoryItem(
         }
 
         // Localizar o Rotom Phone equipado ou no inventário do jogador
+        if (accessoryType != "remove" && !SmartphoneHelper.isRotomEnabled(level.isClientSide)) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(
+                    Component.translatable("message.nbp.rotom.disabled").withColor(0xfd0100),
+                    true
+                )
+            }
+            return InteractionResultHolder.fail(heldStack)
+        }
+
         val rotomPhone = SmartphoneHelper.getEquippedRotomPhone(player)
         if (rotomPhone == null) {
             if (level.isClientSide) {

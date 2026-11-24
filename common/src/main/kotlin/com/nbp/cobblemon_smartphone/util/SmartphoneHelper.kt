@@ -37,6 +37,20 @@ object SmartphoneHelper {
     const val ROTOM_RIBBON_COLOR_TAG = "rotom_ribbon_color"
     const val ROTOM_ACCESSORY_COLOR_TAG = "rotom_accessory_color"
 
+    /**
+     * Client-side synced value from SyncRotomConfigPacket (null on dedicated server or before join).
+     */
+    @Volatile
+    var syncedRotomEnabled: Boolean? = null
+
+    fun isRotomEnabled(isClientSide: Boolean = true): Boolean {
+        return if (isClientSide) {
+            syncedRotomEnabled ?: CobblemonSmartphone.config.features.enableRotom
+        } else {
+            CobblemonSmartphone.config.features.enableRotom
+        }
+    }
+
     fun getDyeDisplayRgb(color: DyeColor): Int {
         return when (color) {
             DyeColor.WHITE -> 0xF9FFFE
@@ -200,6 +214,7 @@ object SmartphoneHelper {
         tag.remove(ROTOM_ACCESSORY_TAG)
         tag.remove(ROTOM_RIBBON_COLOR_TAG)
         tag.remove(ROTOM_ACCESSORY_COLOR_TAG)
+        this.remove(DataComponents.DYED_COLOR)
         this.set(DataComponents.CUSTOM_DATA, CustomData.of(tag))
     }
 

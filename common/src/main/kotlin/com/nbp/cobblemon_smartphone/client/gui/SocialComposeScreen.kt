@@ -1,58 +1,51 @@
 package com.nbp.cobblemon_smartphone.client.gui
 
-import com.cobblemon.mod.common.CobblemonSounds
-import com.cobblemon.mod.common.api.gui.blitk
 import com.cobblemon.mod.common.client.CobblemonClient
-import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState
+import com.nbp.cobblemon_smartphone.client.gui.SocialComponents.lang
 import com.nbp.cobblemon_smartphone.client.social.SocialClientSession
 import com.nbp.cobblemon_smartphone.client.social.SocialMutationState
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient
-import com.nbp.cobblemon_smartphone.network.packet.SocialMutationResultPacket
+import com.nbp.cobblemon_smartphone.client.ui.hd.ButtonNode
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdAlign
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdBackground
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdBuilder
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdCanvas
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdColorSpec
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdIconAtlas
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdPadding
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdPhoneScreen
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdSizeSpec
+import com.nbp.cobblemon_smartphone.client.ui.hd.HdTextLayout
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.CreatePostPacket
 import com.nbp.cobblemon_smartphone.network.packet.SendDmPacket
-import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
-import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRenderer
-import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
-import com.cobblemon.mod.common.client.gui.drawProfilePokemon
-import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState
-import com.cobblemon.mod.common.entity.PoseType
-import com.cobblemon.mod.common.pokemon.RenderablePokemon
+import com.nbp.cobblemon_smartphone.network.packet.SocialMutationResultPacket
+import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.EditBox
-import net.minecraft.client.gui.components.MultiLineEditBox
-import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
-import org.joml.Quaternionf
 import java.util.UUID
 
 /**
- * Compose screen for a new post.
+ * HD post & DM attachment composer built on [HdPhoneScreen].
  *
- * Uses [MultiLineEditBox] rather than the single-line EditBox the search screens use: 280
- * characters on one scrolling line would be unusable.
- *
- * The attachment picker only ever yields a party *slot index*, which is what gets sent — the
- * server reads its own copy of the party and builds the snapshot, so the attachment can't be forged.
+ * The attachment picker only ever yields a party slot index; the server reads its own copy of the
+ * party to build the snapshot so attachments cannot be forged.
  */
 class SocialComposeScreen(
-    private val color: SmartphoneColor,
-    private val smartphoneStack: ItemStack? = null,
+    color: SmartphoneColor,
+    smartphoneStack: ItemStack? = null,
     private val initialText: String = "",
     private var photoId: UUID? = null,
     private val dmTargetUuid: UUID? = null,
     private val dmTargetName: String? = null
-) : Screen(Component.literal("New Post")) {
+) : HdPhoneScreen(color, smartphoneStack, Component.literal("New Post")) {
+
     private enum class AttachmentMode { NONE, POKEMON, PHOTO, POLL }
 
     private var pendingRequestId: Long? = null
-
-    private val frameTexture get() = color.getLargeScreenTexture()
-    private var screenX = 0
-    private var screenY = 0
     private var selectedSlot = -1
     private var attachmentMode = if (photoId != null) AttachmentMode.PHOTO else AttachmentMode.POKEMON
     private var showDetails = false
@@ -60,427 +53,333 @@ class SocialComposeScreen(
     private var showEvs = false
     private var showAbility = false
     private var showNature = false
-    private val partyModels = mutableMapOf<UUID, RenderablePokemon>()
     private val partyModelState = FloatingState()
-    private lateinit var editBox: MultiLineEditBox
-    private lateinit var pollQuestionBox: EditBox
-    private lateinit var pollOption1Box: EditBox
-    private lateinit var pollOption2Box: EditBox
-    private lateinit var pollOption3Box: EditBox
-    private lateinit var pollOption4Box: EditBox
 
     private val isDmCompose get() = dmTargetUuid != null
     private val maxLength get() = if (isDmCompose) SocialClientSession.capabilities.maxMessageLength else SocialClientSession.capabilities.maxPostLength
 
-    private val theme get() = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
-    private val TITLE_COLOR get() = theme.colors.textPrimary
-    private val TEXT_COLOR get() = theme.colors.textSecondary
-    private val MUTED_COLOR get() = theme.colors.textMuted
-    private val CONTENT_TEXT get() = theme.colors.textDark
-    private val CONTENT_DIM get() = theme.colors.textDarkMuted
-    private val SECTION_CONTENT_BG get() = theme.colors.surface
-    private val SLOT_BG_COLOR get() = theme.colors.surface
-    private val SLOT_HOVER_COLOR get() = theme.colors.surfaceHover
-    private val ACCENT_COLOR get() = theme.colors.primary
-    private val DANGER_COLOR get() = theme.colors.danger
-
-    override fun isPauseScreen(): Boolean = false
+    override val viewportMode: ViewportMode = ViewportMode.Large
+    override val showBezelBackButton: Boolean = false
 
     override fun init() {
-        screenX = (width - GUI_WIDTH) / 2
-        screenY = (height - GUI_HEIGHT) / 2
-        SmartphoneHelper.contextSmartphone = smartphoneStack
-        SmartphoneHelper.contextColor = color
-
-        editBox = object : MultiLineEditBox(
-            font,
-            screenX + CONTENT_X,
-            screenY + EDIT_Y,
-            CONTENT_WIDTH,
-            EDIT_HEIGHT,
-            Component.translatable("cobblemon_smartphone.social.placeholder"),
-            Component.translatable("cobblemon_smartphone.social.compose_title")
-        ) {
-            override fun renderDecorations(guiGraphics: GuiGraphics) {
-                val counter = "${value.length}/$maxLength"
-                guiGraphics.drawString(
-                    this@SocialComposeScreen.font,
-                    counter,
-                    screenX + CONTENT_X + CONTENT_WIDTH - this@SocialComposeScreen.font.width(counter) - 4,
-                    screenY + EDIT_Y + EDIT_HEIGHT - this@SocialComposeScreen.font.lineHeight - 2,
-                    if (value.length >= maxLength) DANGER_COLOR else theme.colors.textDark,
-                    false
-                )
-            }
-        }
-        editBox.setCharacterLimit(maxLength)
-        editBox.setValue(initialText.take(maxLength))
-        addRenderableWidget(editBox)
-
-        if (!isDmCompose) {
-            pollQuestionBox = EditBox(font, screenX + CONTENT_X, screenY + 104, CONTENT_WIDTH, 12, Component.literal(""))
-            pollQuestionBox.setHint(Component.translatable("cobblemon_smartphone.social.poll_question_hint"))
-            pollQuestionBox.setMaxLength(120)
-            pollQuestionBox.visible = attachmentMode == AttachmentMode.POLL
-            addRenderableWidget(pollQuestionBox)
-
-            pollOption1Box = EditBox(font, screenX + CONTENT_X, screenY + 118, CONTENT_WIDTH, 12, Component.literal(""))
-            pollOption1Box.setHint(Component.translatable("cobblemon_smartphone.social.poll_opt1_hint"))
-            pollOption1Box.setMaxLength(50)
-            pollOption1Box.visible = attachmentMode == AttachmentMode.POLL
-            addRenderableWidget(pollOption1Box)
-
-            pollOption2Box = EditBox(font, screenX + CONTENT_X, screenY + 132, CONTENT_WIDTH, 12, Component.literal(""))
-            pollOption2Box.setHint(Component.translatable("cobblemon_smartphone.social.poll_opt2_hint"))
-            pollOption2Box.setMaxLength(50)
-            pollOption2Box.visible = attachmentMode == AttachmentMode.POLL
-            addRenderableWidget(pollOption2Box)
-
-            pollOption3Box = EditBox(font, screenX + CONTENT_X, screenY + 146, CONTENT_WIDTH, 12, Component.literal(""))
-            pollOption3Box.setHint(Component.translatable("cobblemon_smartphone.social.poll_opt3_hint"))
-            pollOption3Box.setMaxLength(50)
-            pollOption3Box.visible = attachmentMode == AttachmentMode.POLL
-            addRenderableWidget(pollOption3Box)
-
-            pollOption4Box = EditBox(font, screenX + CONTENT_X, screenY + 160, CONTENT_WIDTH, 12, Component.literal(""))
-            pollOption4Box.setHint(Component.translatable("cobblemon_smartphone.social.poll_opt4_hint"))
-            pollOption4Box.setMaxLength(50)
-            pollOption4Box.visible = attachmentMode == AttachmentMode.POLL
-            addRenderableWidget(pollOption4Box)
-        }
-
-        setInitialFocus(editBox)
+        super.init()
+        stateStore.input("compose_body", initialText.take(maxLength))
     }
 
-    override fun removed() {
-        SmartphoneHelper.contextSmartphone = null
-        SmartphoneHelper.contextColor = null
-        super.removed()
+    override fun onBackPressed() {
+        val target = dmTargetUuid
+        Minecraft.getInstance().setScreen(
+            if (target != null) DmThreadScreen(color, smartphoneStack, target, dmTargetName ?: target.toString().take(8))
+            else SocialScreen(color, smartphoneStack)
+        )
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         consumePostResult()
-        val matrices = guiGraphics.pose()
-
-        val theme = SmartphoneThemeHelper.resolveCurrentTheme(smartphoneStack)
-        SmartphoneThemeRenderer.renderLargeTheme(guiGraphics, theme, screenX, screenY)
-        blitk(matrixStack = matrices, texture = com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper.resolveLargeFrameTexture(null, theme, color), x = screenX, y = screenY, width = GUI_WIDTH, height = GUI_HEIGHT)
-
-        SmartphoneBatteryRenderer.render(guiGraphics, screenX, screenY, isLargeScreen = true, smartphoneStack)
-
-        guiGraphics.fill(screenX + CONTENT_X, screenY + 24, screenX + CONTENT_X + CONTENT_WIDTH, screenY + 38, theme.colors.headerNavy)
-        SocialUi.drawIcon(guiGraphics, if (isDmCompose) SocialUi.Icon.MESSAGE else SocialUi.Icon.FEED, screenX + CONTENT_X + 5, screenY + TITLE_Y - 1, theme.colors.gold)
-        guiGraphics.drawString(font, lang(if (isDmCompose) "new_message" else "compose_title"), screenX + CONTENT_X + 15, screenY + TITLE_Y, TITLE_COLOR, false)
-
-        // MultiLineEditBox exposes render() publicly; renderContents() is protected.
-        val ex = screenX + CONTENT_X
-        val ey = screenY + EDIT_Y
-        SocialUi.surface(guiGraphics, ex, ey, CONTENT_WIDTH, EDIT_HEIGHT, colors = theme.colors)
-        guiGraphics.fill(ex, ey, ex + CONTENT_WIDTH, ey + 1, ACCENT_COLOR)
-        guiGraphics.fill(ex, ey + EDIT_HEIGHT - 1, ex + CONTENT_WIDTH, ey + EDIT_HEIGHT, ACCENT_COLOR)
-        guiGraphics.fill(ex, ey, ex + 1, ey + EDIT_HEIGHT, ACCENT_COLOR)
-        guiGraphics.fill(ex + CONTENT_WIDTH - 1, ey, ex + CONTENT_WIDTH, ey + EDIT_HEIGHT, ACCENT_COLOR)
-        editBox.render(guiGraphics, mouseX, mouseY, delta)
-
-        renderAttachmentButtons(guiGraphics, mouseX, mouseY)
-        when (attachmentMode) {
-            AttachmentMode.POKEMON -> {
-                renderPartyPicker(guiGraphics, mouseX, mouseY)
-                renderPrivacyOptions(guiGraphics)
-            }
-            AttachmentMode.PHOTO -> renderPhotoPreview(guiGraphics)
-            AttachmentMode.POLL -> renderPollInputs(guiGraphics, mouseX, mouseY, delta)
-            AttachmentMode.NONE -> Unit
-        }
-        renderFooterButtons(guiGraphics, mouseX, mouseY)
-
-        renderHoveredTooltip(guiGraphics, mouseX, mouseY)
+        super.render(guiGraphics, mouseX, mouseY, delta)
     }
 
-    private fun partySlots() = CobblemonClient.storage.party.slots
-
-    private fun renderPollInputs(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
-        if (isDmCompose) return
-        pollQuestionBox.render(guiGraphics, mouseX, mouseY, delta)
-        pollOption1Box.render(guiGraphics, mouseX, mouseY, delta)
-        pollOption2Box.render(guiGraphics, mouseX, mouseY, delta)
-        pollOption3Box.render(guiGraphics, mouseX, mouseY, delta)
-        pollOption4Box.render(guiGraphics, mouseX, mouseY, delta)
-    }
-
-    private fun updatePollBoxVisibility() {
-        if (isDmCompose) return
-        val visible = attachmentMode == AttachmentMode.POLL
-        pollQuestionBox.visible = visible
-        pollOption1Box.visible = visible
-        pollOption2Box.visible = visible
-        pollOption3Box.visible = visible
-        pollOption4Box.visible = visible
-    }
-
-    private fun renderAttachmentButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val w = attachButtonWidth()
-        drawAttachmentButton(guiGraphics, lang("attach_pokemon"), attachPokemonX(), w, attachmentMode == AttachmentMode.POKEMON, isInAttachPokemon(mouseX, mouseY))
-        drawAttachmentButton(guiGraphics, lang("photo"), photoButtonX(), w, attachmentMode == AttachmentMode.PHOTO, isInPhotoButton(mouseX, mouseY))
-        if (!isDmCompose) {
-            drawAttachmentButton(guiGraphics, lang("poll"), pollButtonX(), w, attachmentMode == AttachmentMode.POLL, isInPollButton(mouseX, mouseY))
-        }
-    }
-
-    private fun drawAttachmentButton(guiGraphics: GuiGraphics, label: String, x: Int, width: Int, active: Boolean, hovered: Boolean) {
-        val y = screenY + ATTACH_BUTTON_Y
-        SocialUi.surface(guiGraphics, x, y, width, ATTACH_BUTTON_HEIGHT, hovered, colors = theme.colors)
-        if (active) guiGraphics.fill(x + 1, y + 1, x + width - 1, y + ATTACH_BUTTON_HEIGHT - 1, ACCENT_COLOR)
-        val trimmed = font.plainSubstrByWidth(label, width - 6)
-        guiGraphics.drawString(font, trimmed, x + (width - font.width(trimmed)) / 2, y + 2, if (active) TITLE_COLOR else CONTENT_TEXT, false)
-    }
-
-    private fun renderPhotoPreview(guiGraphics: GuiGraphics) {
-        val id = photoId ?: return
-        val x = screenX + CONTENT_X + (CONTENT_WIDTH - PHOTO_PREVIEW_WIDTH) / 2
-        val y = screenY + PHOTO_PREVIEW_Y
-        guiGraphics.fill(x - 1, y - 1, x + PHOTO_PREVIEW_WIDTH + 1, y + PHOTO_PREVIEW_HEIGHT + 1, ACCENT_COLOR)
-        SocialPhotoClient.texture(id)?.let {
-            val dimensions = SocialPhotoClient.dimensions(id) ?: (PHOTO_PREVIEW_WIDTH to PHOTO_PREVIEW_HEIGHT)
-            guiGraphics.fill(x, y, x + PHOTO_PREVIEW_WIDTH, y + PHOTO_PREVIEW_HEIGHT, SLOT_BG_COLOR)
-            guiGraphics.blit(
-                it, x, y, PHOTO_PREVIEW_WIDTH, PHOTO_PREVIEW_HEIGHT, 0f, 0f,
-                dimensions.first, dimensions.second, dimensions.first, dimensions.second
-            )
-        }
-        val status = when {
-            SocialPhotoClient.didUploadFail(id) -> lang("photo_failed")
-            SocialPhotoClient.isUploadReady(id) -> null
-            else -> lang("photo_uploading")
-        }
-        status?.let {
-            guiGraphics.drawString(font, it, screenX + CONTENT_X + (CONTENT_WIDTH - font.width(it)) / 2, screenY + PHOTO_STATUS_Y, if (SocialPhotoClient.didUploadFail(id)) DANGER_COLOR else CONTENT_DIM, false)
-        }
-    }
-
-    private fun renderPartyPicker(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        partySlots().forEachIndexed { index, pokemon ->
-            val (x, y) = slotPos(index)
-            val hovered = isInSlot(mouseX, mouseY, index)
-            val selected = selectedSlot == index
-            SocialUi.surface(guiGraphics, x, y, SLOT_WIDTH, SLOT_HEIGHT, hovered && pokemon != null, colors = theme.colors)
-
-            pokemon?.let {
-                val model = partyModels.getOrPut(it.uuid) { it.asRenderablePokemon() }
-                renderPartyModel(guiGraphics, model, x, y)
-            }
-
-            val label = pokemon?.let { it.nickname?.string ?: it.species.name } ?: "-"
-            val trimmed = font.plainSubstrByWidth(label, SLOT_TEXT_WIDTH)
-            guiGraphics.drawString(
-                font,
-                trimmed,
-                x + 2,
-                y + 2,
-                when {
-                    pokemon == null -> CONTENT_DIM
-                    else -> CONTENT_TEXT
-                },
-                false
-            )
-            pokemon?.let {
-                guiGraphics.drawString(font, "Lv${it.level}", x + 2, y + 10, CONTENT_DIM, false)
-            }
-            if (selected) {
-                guiGraphics.fill(x, y, x + SLOT_WIDTH, y + 1, theme.colors.gold)
-                guiGraphics.fill(x, y + SLOT_HEIGHT - 1, x + SLOT_WIDTH, y + SLOT_HEIGHT, theme.colors.gold)
-                guiGraphics.fill(x, y, x + 1, y + SLOT_HEIGHT, theme.colors.gold)
-                guiGraphics.fill(x + SLOT_WIDTH - 1, y, x + SLOT_WIDTH, y + SLOT_HEIGHT, theme.colors.gold)
-            }
-        }
-    }
-
-    private fun renderPartyModel(guiGraphics: GuiGraphics, model: RenderablePokemon, x: Int, y: Int) {
-        guiGraphics.enableScissor(x + 1, y + 1, x + SLOT_WIDTH - 1, y + SLOT_HEIGHT - 1)
-        val matrices = guiGraphics.pose()
-        matrices.pushPose()
-        matrices.translate((x + SLOT_MODEL_X).toFloat(), (y + SLOT_MODEL_Y).toFloat(), 0f)
-        drawProfilePokemon(
-            model,
-            matrices,
-            Quaternionf().rotateY(Math.toRadians(25.0).toFloat()),
-            PoseType.PROFILE,
-            partyModelState,
-            0f,
-            SLOT_MODEL_SCALE
+    override fun buildContent(theme: SmartphoneTheme, builder: HdBuilder) {
+        // Floating Island Header
+        builder.appHeader(
+            title = lang(if (isDmCompose) "new_message" else "compose_title"),
+            icon = if (isDmCompose) HdIconAtlas.Icon.MESSAGE else HdIconAtlas.Icon.EDIT,
+            iconColor = HdColorSpec.Token("primary")
         )
-        matrices.popPose()
-        guiGraphics.disableScissor()
+
+        builder.scroll(
+            scrollId = "compose_scroll",
+            gap = 7f,
+            padding = HdPadding.symmetric(horizontal = 7f, vertical = 6f)
+        ) { sb ->
+            // Multi-line text input
+            sb.textInput(
+                inputId = "compose_body",
+                placeholder = lang("placeholder"),
+                initialText = initialText.take(maxLength),
+                maxLength = maxLength,
+                multiline = true,
+                showCounter = true
+            ) {
+                width = HdSizeSpec.Fill
+                height = HdSizeSpec.Fixed(74f)
+                fontSizeDp = 9.4f
+                padding = HdPadding.all(8f)
+            }
+
+            // Attachment mode pills
+            sb.row(gap = 6f, width = HdSizeSpec.Fill) { ab ->
+                ab.pill(
+                    label = lang("attach_pokemon"),
+                    icon = HdIconAtlas.Icon.SPARKLES,
+                    active = attachmentMode == AttachmentMode.POKEMON,
+                    onClick = {
+                        playClickSound()
+                        photoId?.let(SocialPhotoClient::removeDraft)
+                        photoId = null
+                        attachmentMode = if (attachmentMode == AttachmentMode.POKEMON) AttachmentMode.NONE else AttachmentMode.POKEMON
+                    }
+                ) {
+                    width = HdSizeSpec.Weight(1f)
+                }
+
+                ab.pill(
+                    label = lang("photo"),
+                    icon = HdIconAtlas.Icon.CAMERA,
+                    active = attachmentMode == AttachmentMode.PHOTO,
+                    onClick = {
+                        if (pendingRequestId != null) return@pill
+                        playClickSound()
+                        selectedSlot = -1
+                        photoId?.let(SocialPhotoClient::removeDraft)
+                        photoId = null
+                        attachmentMode = AttachmentMode.PHOTO
+                        val bodyText = stateStore.getInputText("compose_body")
+                        SocialPhotoClient.beginCapture(color, smartphoneStack, bodyText, dmTargetUuid, dmTargetName)
+                    }
+                ) {
+                    width = HdSizeSpec.Weight(1f)
+                }
+
+                if (!isDmCompose) {
+                    ab.pill(
+                        label = lang("poll"),
+                        icon = HdIconAtlas.Icon.POLL,
+                        active = attachmentMode == AttachmentMode.POLL,
+                        onClick = {
+                            playClickSound()
+                            selectedSlot = -1
+                            photoId?.let(SocialPhotoClient::removeDraft)
+                            photoId = null
+                            attachmentMode = if (attachmentMode == AttachmentMode.POLL) AttachmentMode.NONE else AttachmentMode.POLL
+                        }
+                    ) {
+                        width = HdSizeSpec.Weight(1f)
+                    }
+                }
+            }
+
+            // Attachment section
+            when (attachmentMode) {
+                AttachmentMode.POKEMON -> buildPokemonPicker(sb)
+                AttachmentMode.PHOTO -> buildPhotoPreview(sb)
+                AttachmentMode.POLL -> buildPollEditor(sb)
+                AttachmentMode.NONE -> Unit
+            }
+        }
+
+        // Floating footer bar: Cancel / Post
+        builder.column(
+            padding = HdPadding.only(left = 7f, right = 7f, top = 3f, bottom = 7f),
+            width = HdSizeSpec.Fill
+        ) { wrap ->
+            wrap.row(
+                gap = 8f,
+                crossAlign = HdAlign.CENTER,
+                padding = HdPadding.all(5f),
+                width = HdSizeSpec.Fill,
+                background = HdBackground(
+                    color = HdColorSpec.Token("surface"),
+                    radius = 12f,
+                    borderWidth = 0.85f,
+                    borderColor = HdColorSpec.Token("primary_border"),
+                    shadowBlur = 6f,
+                    shadowOffsetY = 2f,
+                    shadowColor = HdColorSpec.Fixed(0x28000000)
+                )
+            ) { fb ->
+                fb.button(lang("cancel"), variant = ButtonNode.Variant.SURFACE, radius = 8f) {
+                    width = HdSizeSpec.Weight(1f)
+                    tooltip = Component.translatable("cobblemon_smartphone.tooltip.social_cancel").string
+                    onClick = {
+                        playClickSound()
+                        onBackPressed()
+                    }
+                }
+                val postLabel = if (!isDmCompose && isOnPostCooldown()) "${remainingPostCooldownSec()}s" else lang(if (isDmCompose) "send" else "post")
+                fb.button(postLabel, icon = HdIconAtlas.Icon.SEND, variant = ButtonNode.Variant.PRIMARY, radius = 8f, enabled = canPost()) {
+                    width = HdSizeSpec.Weight(1f)
+                    tooltip = Component.translatable("cobblemon_smartphone.tooltip.social_create_post").string
+                    onClick = { submitPost() }
+                }
+            }
+        }
     }
 
-    private fun renderFooterButtons(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        drawButton(guiGraphics, lang("cancel"), cancelX(), screenY + BUTTON_Y, isInCancel(mouseX, mouseY), false)
-        val postLabel = if (!isDmCompose && isOnPostCooldown()) "${remainingPostCooldownSec()}s" else lang(if (isDmCompose) "send" else "post")
-        drawButton(guiGraphics, postLabel, postX(), screenY + BUTTON_Y, isInPost(mouseX, mouseY), canPost())
-    }
+    private fun buildPokemonPicker(sb: HdBuilder) {
+        val slots = CobblemonClient.storage.party.slots
+        sb.grid(columns = 3, colGap = 5f, rowGap = 5f, width = HdSizeSpec.Fill) { gb ->
+            for (index in 0 until 6) {
+                val pokemon = slots.getOrNull(index)
+                val selected = selectedSlot == index
+                val borderCol = if (selected) HdColorSpec.Token("gold") else HdColorSpec.Token("primary_border")
+                val bgCol = if (selected) HdColorSpec.Token("surface_hover") else HdColorSpec.Token("surface")
+                gb.row(
+                    gap = 4f,
+                    crossAlign = HdAlign.CENTER,
+                    padding = HdPadding.symmetric(horizontal = 5f, vertical = 4f),
+                    width = HdSizeSpec.Fill,
+                    background = HdBackground(
+                        color = bgCol,
+                        radius = 8f,
+                        borderWidth = if (selected) 1.3f else 0.8f,
+                        borderColor = borderCol
+                    )
+                ) { slotRow ->
+                    this.height = HdSizeSpec.Fixed(38f)
+                    if (pokemon != null) {
+                        this.tooltip = Component.translatable("cobblemon_smartphone.tooltip.social_select_pokemon").string
+                        this.onClick = {
+                            playClickSound()
+                            selectedSlot = if (selectedSlot == index) -1 else index
+                            showDetails = false
+                            showIvs = false
+                            showEvs = false
+                            showAbility = false
+                            showNature = false
+                        }
+                    }
+                    slotRow.column(gap = 1f, width = HdSizeSpec.Weight(1f)) { tb ->
+                        val label = pokemon?.let { it.nickname?.string ?: it.species.name } ?: "—"
+                        tb.text(label, size = 8.4f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token(if (pokemon != null) "text_dark" else "text_dark_muted"))
+                        if (pokemon != null) {
+                            tb.text("Lv.${pokemon.level}", size = 7.6f, color = HdColorSpec.Token("text_dark_muted"))
+                        }
+                    }
+                    if (pokemon != null) {
+                        slotRow.pokemonView(
+                            speciesId = pokemon.species.resourceIdentifier.toString(),
+                            aspects = pokemon.aspects,
+                            size = 28f,
+                            floatingState = partyModelState,
+                            showShinyBadge = false
+                        )
+                    }
+                }
+            }
+        }
 
-    private fun renderPrivacyOptions(guiGraphics: GuiGraphics) {
+        // Privacy options
         val available = selectedSlot >= 0
-        drawCheckbox(guiGraphics, OPTION_SHOW_MORE_X, OPTIONS_Y, lang("show_more"), showDetails, available)
-        drawCheckbox(guiGraphics, OPTION_IVS_X, OPTIONS_DETAIL_Y, "IVs", showIvs, available && showDetails)
-        drawCheckbox(guiGraphics, OPTION_EVS_X, OPTIONS_DETAIL_Y, "EVs", showEvs, available && showDetails)
-        drawCheckbox(guiGraphics, OPTION_ABILITY_X, OPTIONS_DETAIL_Y, lang("ability"), showAbility, available && showDetails)
-        drawCheckbox(guiGraphics, OPTION_NATURE_X, OPTIONS_DETAIL_Y, lang("nature"), showNature, available && showDetails)
-    }
-
-    private fun drawCheckbox(guiGraphics: GuiGraphics, relativeX: Int, relativeY: Int, label: String, checked: Boolean, enabled: Boolean) {
-        val x = screenX + CONTENT_X + relativeX
-        val y = screenY + relativeY
-        val border = if (enabled) ACCENT_COLOR else CONTENT_DIM
-        guiGraphics.fill(x, y, x + CHECKBOX_SIZE, y + CHECKBOX_SIZE, border)
-        guiGraphics.fill(x + 1, y + 1, x + CHECKBOX_SIZE - 1, y + CHECKBOX_SIZE - 1, SLOT_BG_COLOR)
-        if (checked && enabled) {
-            guiGraphics.fill(x + 2, y + 3, x + 4, y + 5, ACCENT_COLOR)
-            guiGraphics.fill(x + 4, y + 2, x + 6, y + 4, ACCENT_COLOR)
-        }
-        val matrices = guiGraphics.pose()
-        matrices.pushPose()
-        matrices.translate((x + CHECKBOX_SIZE + 3).toFloat(), (y + 1).toFloat(), 0f)
-        val textScale = if (relativeY == OPTIONS_DETAIL_Y) OPTION_DETAIL_TEXT_SCALE else OPTION_TEXT_SCALE
-        matrices.scale(textScale, textScale, 1f)
-        guiGraphics.drawString(font, label, 0, 0, if (enabled) CONTENT_TEXT else CONTENT_DIM, false)
-        matrices.popPose()
-    }
-
-    private fun drawButton(guiGraphics: GuiGraphics, label: String, x: Int, y: Int, hovered: Boolean, primary: Boolean) {
-        val bg = when {
-            primary && hovered -> ACCENT_COLOR
-            primary -> ACCENT_COLOR
-            hovered -> SLOT_HOVER_COLOR
-            else -> SLOT_BG_COLOR
-        }
-        SocialUi.surface(guiGraphics, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, hovered, colors = theme.colors)
-        if (primary) guiGraphics.fill(x + 1, y + 1, x + BUTTON_WIDTH - 1, y + BUTTON_HEIGHT - 1, bg)
-        guiGraphics.drawString(
-            font,
-            label,
-            x + (BUTTON_WIDTH - font.width(label)) / 2,
-            y + (BUTTON_HEIGHT - font.lineHeight) / 2 + 1,
-            if (primary) TITLE_COLOR else CONTENT_TEXT,
-            false
-        )
-    }
-
-    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        val mx = mouseX.toInt()
-        val my = mouseY.toInt()
-
-        if (isInCancel(mx, my)) {
-            playClickSound()
-            back()
-            return true
-        }
-        if (isInPost(mx, my)) {
-            if (!canPost()) return true
-            playClickSound()
-            val requestId = SocialMutationState.nextRequestId()
-            pendingRequestId = requestId
-            val slot = selectedSlot.takeIf { attachmentMode == AttachmentMode.POKEMON } ?: -1
-            val readyPhoto = photoId?.takeIf { attachmentMode == AttachmentMode.PHOTO && SocialPhotoClient.isUploadReady(it) }
-            val pollQ = if (!isDmCompose && attachmentMode == AttachmentMode.POLL) pollQuestionBox.value.trim() else null
-            val pollOpts = if (!isDmCompose && attachmentMode == AttachmentMode.POLL) {
-                listOf(pollOption1Box.value, pollOption2Box.value, pollOption3Box.value, pollOption4Box.value)
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
-            } else emptyList()
-
-            if (dmTargetUuid != null) {
-                SendDmPacket(
-                    requestId, dmTargetUuid, editBox.value.trim(), slot, showDetails,
-                    showDetails && showIvs, showDetails && showEvs, showDetails && showAbility,
-                    showDetails && showNature, readyPhoto
-                ).sendToServer()
-            } else {
-                CreatePostPacket(
-                    requestId, editBox.value.trim(), slot, showDetails,
-                    showDetails && showIvs, showDetails && showEvs, showDetails && showAbility,
-                    showDetails && showNature, readyPhoto, pollQ, pollOpts
-                ).sendToServer()
-            }
-            return true
-        }
-
-        if (isInAttachPokemon(mx, my)) {
-            playClickSound()
-            photoId?.let(SocialPhotoClient::removeDraft)
-            photoId = null
-            attachmentMode = if (attachmentMode == AttachmentMode.POKEMON) AttachmentMode.NONE else AttachmentMode.POKEMON
-            updatePollBoxVisibility()
-            return true
-        }
-        if (isInPhotoButton(mx, my)) {
-            if (pendingRequestId != null) return true
-            playClickSound()
-            selectedSlot = -1
-            photoId?.let(SocialPhotoClient::removeDraft)
-            photoId = null
-            attachmentMode = AttachmentMode.PHOTO
-            updatePollBoxVisibility()
-            SocialPhotoClient.beginCapture(color, smartphoneStack, editBox.value, dmTargetUuid, dmTargetName)
-            return true
-        }
-        if (!isDmCompose && isInPollButton(mx, my)) {
-            playClickSound()
-            selectedSlot = -1
-            photoId?.let(SocialPhotoClient::removeDraft)
-            photoId = null
-            attachmentMode = if (attachmentMode == AttachmentMode.POLL) AttachmentMode.NONE else AttachmentMode.POLL
-            updatePollBoxVisibility()
-            return true
-        }
-
-        if (selectedSlot >= 0 && isInOption(mx, my, OPTION_SHOW_MORE_X, OPTIONS_Y, OPTION_SHOW_MORE_WIDTH)) {
-            playClickSound()
-            showDetails = !showDetails
-            return true
-        }
-        if (selectedSlot >= 0 && showDetails) {
-            when {
-                isInOption(mx, my, OPTION_IVS_X, OPTIONS_DETAIL_Y, OPTION_IVS_WIDTH) -> showIvs = !showIvs
-                isInOption(mx, my, OPTION_EVS_X, OPTIONS_DETAIL_Y, OPTION_EVS_WIDTH) -> showEvs = !showEvs
-                isInOption(mx, my, OPTION_ABILITY_X, OPTIONS_DETAIL_Y, OPTION_ABILITY_WIDTH) -> showAbility = !showAbility
-                isInOption(mx, my, OPTION_NATURE_X, OPTIONS_DETAIL_Y, OPTION_NATURE_WIDTH) -> showNature = !showNature
-                else -> null
-            }?.let {
+        sb.card(gap = 4f, padding = HdPadding.symmetric(horizontal = 8f, vertical = 6f), shadowBlur = 3f) { pb ->
+            pb.checkbox(lang("show_more"), showDetails, enabled = available, onToggle = {
                 playClickSound()
-                return true
+                showDetails = it
+            })
+            if (available && showDetails) {
+                pb.row(gap = 6f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { dr ->
+                    dr.checkbox("IVs", showIvs, enabled = true, fontSize = 8f, onToggle = { playClickSound(); showIvs = it }) {
+                        width = HdSizeSpec.Weight(1f)
+                    }
+                    dr.checkbox("EVs", showEvs, enabled = true, fontSize = 8f, onToggle = { playClickSound(); showEvs = it }) {
+                        width = HdSizeSpec.Weight(1f)
+                    }
+                    dr.checkbox(lang("ability"), showAbility, enabled = true, fontSize = 8f, onToggle = { playClickSound(); showAbility = it }) {
+                        width = HdSizeSpec.Weight(1f)
+                    }
+                    dr.checkbox(lang("nature"), showNature, enabled = true, fontSize = 8f, onToggle = { playClickSound(); showNature = it }) {
+                        width = HdSizeSpec.Weight(1f)
+                    }
+                }
             }
         }
+    }
 
-        if (attachmentMode == AttachmentMode.POKEMON) partySlots().forEachIndexed { index, pokemon ->
-            if (pokemon != null && isInSlot(mx, my, index)) {
-                playClickSound()
-                // Clicking the selected slot clears the attachment.
-                selectedSlot = if (selectedSlot == index) -1 else index
-                showDetails = false
-                showIvs = false
-                showEvs = false
-                showAbility = false
-                showNature = false
-                return true
+    private fun buildPhotoPreview(sb: HdBuilder) {
+        val id = photoId ?: return
+        sb.card(gap = 5f, padding = HdPadding.all(8f), shadowBlur = 4f) { pb ->
+            val tex = SocialPhotoClient.texture(id)
+            if (tex != null) {
+                pb.row(mainAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { ir ->
+                    ir.image(tex, 200f, 112f, radius = 7f) {
+                        borderWidth = 0.8f
+                        borderColor = HdColorSpec.Token("primary_border")
+                    }
+                }
+            }
+            val status = when {
+                SocialPhotoClient.didUploadFail(id) -> lang("photo_failed") to HdColorSpec.Token("danger")
+                SocialPhotoClient.isUploadReady(id) -> null
+                else -> lang("photo_uploading") to HdColorSpec.Token("text_dark_muted")
+            }
+            status?.let { (msg, col) ->
+                pb.text(msg, size = 8.6f, weight = HdTextLayout.Weight.MEDIUM, color = col, align = HdAlign.CENTER) {
+                    width = HdSizeSpec.Fill
+                }
             }
         }
+    }
 
-        return super.mouseClicked(mouseX, mouseY, button)
+    private fun buildPollEditor(sb: HdBuilder) {
+        if (isDmCompose) return
+        sb.card(gap = 5f, padding = HdPadding.all(8f), shadowBlur = 4f) { pb ->
+            pb.textInput("poll_q", placeholder = Component.translatable("cobblemon_smartphone.social.poll_question_hint").string, maxLength = 120) {
+                fontSizeDp = 9f
+                padding = HdPadding.symmetric(horizontal = 8f, vertical = 4.5f)
+            }
+            pb.textInput("poll_opt1", placeholder = Component.translatable("cobblemon_smartphone.social.poll_opt1_hint").string, maxLength = 50) {
+                fontSizeDp = 8.8f
+                padding = HdPadding.symmetric(horizontal = 8f, vertical = 4f)
+            }
+            pb.textInput("poll_opt2", placeholder = Component.translatable("cobblemon_smartphone.social.poll_opt2_hint").string, maxLength = 50) {
+                fontSizeDp = 8.8f
+                padding = HdPadding.symmetric(horizontal = 8f, vertical = 4f)
+            }
+            pb.textInput("poll_opt3", placeholder = Component.translatable("cobblemon_smartphone.social.poll_opt3_hint").string, maxLength = 50) {
+                fontSizeDp = 8.8f
+                padding = HdPadding.symmetric(horizontal = 8f, vertical = 4f)
+            }
+            pb.textInput("poll_opt4", placeholder = Component.translatable("cobblemon_smartphone.social.poll_opt4_hint").string, maxLength = 50) {
+                fontSizeDp = 8.8f
+                padding = HdPadding.symmetric(horizontal = 8f, vertical = 4f)
+            }
+        }
     }
 
     private fun canPost(): Boolean {
+        val body = stateStore.getInputText("compose_body")
         val hasPokemon = attachmentMode == AttachmentMode.POKEMON && selectedSlot >= 0
         val hasReadyPhoto = attachmentMode == AttachmentMode.PHOTO && photoId?.let(SocialPhotoClient::isUploadReady) == true
+        val pollQ = stateStore.getInputText("poll_q")
+        val poll1 = stateStore.getInputText("poll_opt1")
+        val poll2 = stateStore.getInputText("poll_opt2")
         val hasValidPoll = !isDmCompose && attachmentMode == AttachmentMode.POLL &&
-            pollQuestionBox.value.isNotBlank() &&
-            pollOption1Box.value.isNotBlank() &&
-            pollOption2Box.value.isNotBlank()
+            pollQ.isNotBlank() && poll1.isNotBlank() && poll2.isNotBlank()
 
         return pendingRequestId == null && (isDmCompose || !isOnPostCooldown()) &&
-            (editBox.value.isNotBlank() || hasPokemon || hasReadyPhoto || hasValidPoll) &&
+            (body.isNotBlank() || hasPokemon || hasReadyPhoto || hasValidPoll) &&
             (attachmentMode != AttachmentMode.PHOTO || photoId == null || hasReadyPhoto) &&
             (attachmentMode != AttachmentMode.POLL || hasValidPoll)
+    }
+
+    private fun submitPost() {
+        if (!canPost()) return
+        playClickSound()
+        val requestId = SocialMutationState.nextRequestId()
+        pendingRequestId = requestId
+        val body = stateStore.getInputText("compose_body").trim()
+        val slot = selectedSlot.takeIf { attachmentMode == AttachmentMode.POKEMON } ?: -1
+        val readyPhoto = photoId?.takeIf { attachmentMode == AttachmentMode.PHOTO && SocialPhotoClient.isUploadReady(it) }
+        val pollQ = if (!isDmCompose && attachmentMode == AttachmentMode.POLL) stateStore.getInputText("poll_q").trim() else null
+        val pollOpts = if (!isDmCompose && attachmentMode == AttachmentMode.POLL) {
+            listOf("poll_opt1", "poll_opt2", "poll_opt3", "poll_opt4")
+                .map { stateStore.getInputText(it).trim() }
+                .filter { it.isNotBlank() }
+        } else emptyList()
+
+        if (dmTargetUuid != null) {
+            SendDmPacket(
+                requestId, dmTargetUuid, body, slot, showDetails,
+                showDetails && showIvs, showDetails && showEvs, showDetails && showAbility,
+                showDetails && showNature, readyPhoto
+            ).sendToServer()
+        } else {
+            CreatePostPacket(
+                requestId, body, slot, showDetails,
+                showDetails && showIvs, showDetails && showEvs, showDetails && showAbility,
+                showDetails && showNature, readyPhoto, pollQ, pollOpts
+            ).sendToServer()
+        }
     }
 
     private fun consumePostResult() {
@@ -490,83 +389,12 @@ class SocialComposeScreen(
         if (status == SocialMutationResultPacket.Status.SUCCESS) {
             if (!isDmCompose) lastPostTime = System.currentTimeMillis()
             photoId?.let(SocialPhotoClient::removeDraft)
-            back()
+            onBackPressed()
         } else {
             Minecraft.getInstance().player?.displayClientMessage(
                 Component.translatable("message.nbp.social.result.${status.name.lowercase()}"), true
             )
         }
-    }
-
-    private fun back() {
-        val target = dmTargetUuid
-        Minecraft.getInstance().setScreen(
-            if (target != null) DmThreadScreen(color, smartphoneStack, target, dmTargetName ?: target.toString().take(8))
-            else SocialScreen(color, smartphoneStack)
-        )
-    }
-
-    // --- Hit testing ---
-
-    private fun slotPos(index: Int): Pair<Int, Int> {
-        val col = index % PICKER_COLUMNS
-        val row = index / PICKER_COLUMNS
-        return screenX + CONTENT_X + col * (SLOT_WIDTH + SLOT_GAP) to screenY + PICKER_Y + row * (SLOT_HEIGHT + SLOT_GAP)
-    }
-
-    private fun isInSlot(mouseX: Int, mouseY: Int, index: Int): Boolean {
-        val (x, y) = slotPos(index)
-        return mouseX in x..(x + SLOT_WIDTH) && mouseY in y..(y + SLOT_HEIGHT)
-    }
-
-    private fun isInOption(mouseX: Int, mouseY: Int, relativeX: Int, relativeY: Int, width: Int): Boolean {
-        val x = screenX + CONTENT_X + relativeX
-        val y = screenY + relativeY
-        return mouseX in x..(x + width) && mouseY in (y - 1)..(y + CHECKBOX_SIZE + 1)
-    }
-
-    private fun cancelX() = screenX + CONTENT_X
-    private fun postX() = screenX + CONTENT_X + CONTENT_WIDTH - BUTTON_WIDTH
-
-    private fun isInCancel(mouseX: Int, mouseY: Int) = inButton(mouseX, mouseY, cancelX())
-    private fun isInPost(mouseX: Int, mouseY: Int) = inButton(mouseX, mouseY, postX())
-
-    private fun attachButtonWidth() = if (isDmCompose) 81 else 53
-    private fun attachPokemonX() = screenX + CONTENT_X
-    private fun photoButtonX() = screenX + CONTENT_X + attachButtonWidth() + 2
-    private fun pollButtonX() = screenX + CONTENT_X + (attachButtonWidth() + 2) * 2
-
-    private fun isInAttachPokemon(mouseX: Int, mouseY: Int) = inAttachButton(mouseX, mouseY, attachPokemonX())
-    private fun isInPhotoButton(mouseX: Int, mouseY: Int) = inAttachButton(mouseX, mouseY, photoButtonX())
-    private fun isInPollButton(mouseX: Int, mouseY: Int) = inAttachButton(mouseX, mouseY, pollButtonX())
-
-    private fun inAttachButton(mouseX: Int, mouseY: Int, x: Int) =
-        mouseX in x..(x + attachButtonWidth()) && mouseY in (screenY + ATTACH_BUTTON_Y)..(screenY + ATTACH_BUTTON_Y + ATTACH_BUTTON_HEIGHT)
-
-    private fun inButton(mouseX: Int, mouseY: Int, x: Int): Boolean =
-        mouseX in x..(x + BUTTON_WIDTH) && mouseY in (screenY + BUTTON_Y)..(screenY + BUTTON_Y + BUTTON_HEIGHT)
-
-    private fun renderHoveredTooltip(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        if (SmartphoneBatteryRenderer.renderTooltip(font, guiGraphics, screenX, screenY, mouseX, mouseY, isLargeScreen = true, smartphoneStack)) return
-
-        val tooltip = when {
-            isInCancel(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_cancel")
-            isInPost(mouseX, mouseY) -> Component.translatable("cobblemon_smartphone.tooltip.social_create_post")
-            findHoveredSlot(mouseX, mouseY) != null -> Component.translatable("cobblemon_smartphone.tooltip.social_select_pokemon")
-            else -> null
-        } ?: return
-        guiGraphics.renderTooltip(font, tooltip, mouseX, mouseY)
-    }
-
-    private fun findHoveredSlot(mouseX: Int, mouseY: Int): Int? =
-        partySlots().indices.firstOrNull { index ->
-            partySlots()[index] != null && isInSlot(mouseX, mouseY, index)
-        }
-
-    private fun lang(key: String): String = Component.translatable("cobblemon_smartphone.social.$key").string
-
-    private fun playClickSound() {
-        Minecraft.getInstance().player?.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
     }
 
     companion object {
@@ -579,64 +407,5 @@ class SocialComposeScreen(
             ((postCooldownSec * 1000L) - (System.currentTimeMillis() - lastPostTime)).coerceAtLeast(0)
 
         fun remainingPostCooldownSec(): Int = ((remainingPostCooldownMs() + 999) / 1000).toInt()
-
-        private const val GUI_WIDTH = 211
-        private const val GUI_HEIGHT = 207
-
-        // The 211x207 texture is the whole phone including the bezel. The lit screen is only
-        // x 20..191 and y 24..194 — anything drawn outside this lands on the frame, so every Y
-        // below stays within 24..194 and the picker row math must not overflow the bottom.
-        private const val SCREEN_LEFT = 20
-
-        private const val CONTENT_X = SCREEN_LEFT
-        private const val CONTENT_WIDTH = 165
-
-        private const val TITLE_Y = 27
-        private const val EDIT_Y = 40
-        private const val EDIT_HEIGHT = 48
-        private const val COUNTER_Y = 98
-        private const val ATTACH_BUTTON_Y = 92
-        private const val ATTACH_BUTTON_WIDTH = 80
-        private const val ATTACH_BUTTON_HEIGHT = 10
-        private const val PICKER_Y = 104
-        private const val PHOTO_PREVIEW_Y = 107
-        private const val PHOTO_PREVIEW_WIDTH = 106
-        private const val PHOTO_PREVIEW_HEIGHT = 59
-        private const val PHOTO_STATUS_Y = 166
-
-        // 3 * SLOT_WIDTH + 2 * SLOT_GAP == CONTENT_WIDTH
-        private const val PICKER_COLUMNS = 3
-        private const val SLOT_WIDTH = 53
-        private const val SLOT_HEIGHT = 20
-        private const val SLOT_GAP = 2
-        private const val SLOT_TEXT_WIDTH = 32
-        private const val SLOT_MODEL_X = 43
-        private const val SLOT_MODEL_Y = 4
-        private const val SLOT_MODEL_SCALE = 7f
-
-        private const val OPTIONS_Y = 149
-        private const val OPTIONS_DETAIL_Y = 161
-        private const val CHECKBOX_SIZE = 7
-        private const val OPTION_SHOW_MORE_X = 0
-        private const val OPTION_IVS_X = 0
-        private const val OPTION_EVS_X = 41
-        private const val OPTION_ABILITY_X = 82
-        private const val OPTION_NATURE_X = 123
-        private const val OPTION_SHOW_MORE_WIDTH = 66
-        private const val OPTION_IVS_WIDTH = 38
-        private const val OPTION_EVS_WIDTH = 38
-        private const val OPTION_ABILITY_WIDTH = 38
-        private const val OPTION_NATURE_WIDTH = 42
-        private const val OPTION_TEXT_SCALE = 0.75f
-        private const val OPTION_DETAIL_TEXT_SCALE = 0.58f
-
-        private const val BUTTON_Y = 176
-        private const val BUTTON_WIDTH = 52
-        private const val BUTTON_HEIGHT = 14
-
-        private val SCREEN_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon_smartphone",
-            "textures/gui/large_screen.png"
-        )
     }
 }

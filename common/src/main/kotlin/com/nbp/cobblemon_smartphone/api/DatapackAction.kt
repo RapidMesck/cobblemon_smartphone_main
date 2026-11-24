@@ -1,7 +1,9 @@
 package com.nbp.cobblemon_smartphone.api
 
 import com.cobblemon.mod.common.CobblemonSounds
+import com.nbp.cobblemon_smartphone.client.gui.DatapackScreen
 import com.nbp.cobblemon_smartphone.isModLoaded
+import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.network.packet.ExecuteDatapackActionPacket
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
@@ -26,6 +28,12 @@ class DatapackAction(private val definition: DatapackActionDefinition) : Smartph
     override fun onClick() {
         val player = Minecraft.getInstance().player ?: return
         player.playSound(CobblemonSounds.POKEDEX_CLICK, 0.5f, 1f)
+        val screenTarget = definition.openScreen
+        if (!screenTarget.isNullOrBlank()) {
+            val color = SmartphoneHelper.contextColor ?: SmartphoneColor.RED
+            DatapackScreen.openTargetScreen(color, SmartphoneHelper.contextSmartphone, screenTarget)
+            return
+        }
         ExecuteDatapackActionPacket(id).sendToServer()
         Minecraft.getInstance().setScreen(null)
     }
