@@ -770,64 +770,6 @@ object GuiScreenshotHarness {
                         styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.HD
                     )
                 }
-            ),
-
-            // --- UI COMPONENT SHOWROOM (HD vs PIXEL) ---
-            ScreenshotTask(
-                id = "showroom_controls_hd",
-                category = "showroom",
-                guiWidth = 0,
-                guiHeight = 0,
-                createScreen = {
-                    HdShowroomScreen(
-                        color = SmartphoneColor.RED,
-                        initialPage = HdShowroomScreen.Page.CONTROLS,
-                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.HD,
-                        showSampleToast = true
-                    )
-                }
-            ),
-            ScreenshotTask(
-                id = "showroom_controls_pixel",
-                category = "showroom",
-                guiWidth = 0,
-                guiHeight = 0,
-                createScreen = {
-                    HdShowroomScreen(
-                        color = SmartphoneColor.RED,
-                        initialPage = HdShowroomScreen.Page.CONTROLS,
-                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.PIXEL,
-                        showSampleToast = true
-                    )
-                }
-            ),
-            ScreenshotTask(
-                id = "showroom_feedback_hd",
-                category = "showroom",
-                guiWidth = 0,
-                guiHeight = 0,
-                createScreen = {
-                    HdShowroomScreen(
-                        color = SmartphoneColor.RED,
-                        initialPage = HdShowroomScreen.Page.FEEDBACK_ICONS,
-                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.HD,
-                        showSampleToast = false
-                    )
-                }
-            ),
-            ScreenshotTask(
-                id = "showroom_feedback_pixel",
-                category = "showroom",
-                guiWidth = 0,
-                guiHeight = 0,
-                createScreen = {
-                    HdShowroomScreen(
-                        color = SmartphoneColor.RED,
-                        initialPage = HdShowroomScreen.Page.FEEDBACK_ICONS,
-                        styleOverride = com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle.PIXEL,
-                        showSampleToast = false
-                    )
-                }
             )
         )
     }
