@@ -174,6 +174,89 @@ class ImageNode(
     }
 }
 
+class AppIconNode(
+    var theme: com.nbp.cobblemon_smartphone.theme.SmartphoneTheme,
+    var actionId: String?,
+    var defaultTexture: ResourceLocation,
+    var sizeDp: Float = 30f,
+    var alphaScale: Float = 1f
+) : HdNode() {
+
+    override fun measureContent(ctx: HdMeasureContext, availContentW: Float, availContentH: Float): Pair<Float, Float> =
+        sizeDp to sizeDp
+
+    override fun renderContent(rc: HdRenderContext) {
+        val inner = bounds.inset(padding)
+        val glyph = com.nbp.cobblemon_smartphone.theme.SmartphoneAppIconRenderer.resolveBuiltInGlyph(
+            theme = theme,
+            actionId = actionId,
+            defaultTexture = defaultTexture,
+            hovered = false
+        )
+        if (glyph == null) {
+            val resolved = if (actionId != null) {
+                theme.getAppIcon(actionId!!, defaultTexture)
+            } else {
+                defaultTexture
+            }
+            val alphaByte = (255 * alphaScale).toInt().coerceIn(0, 255)
+            val tintArgb = (alphaByte shl 24) or 0x00FFFFFF
+            rc.canvas.texture(
+                location = resolved,
+                x = inner.x,
+                y = inner.y,
+                w = inner.width,
+                h = inner.height,
+                tint = tintArgb,
+                filter = HdCanvas.TextureFilter.NEAREST
+            )
+            return
+        }
+
+        val palette = com.nbp.cobblemon_smartphone.theme.SmartphoneAppIconRenderer.computePalette(
+            colors = rc.colors,
+            hovered = false,
+            alphaScale = alphaScale
+        )
+        rc.canvas.texture(
+            location = com.nbp.cobblemon_smartphone.theme.SmartphoneAppIconRenderer.SQUIRCLE_BODY,
+            x = inner.x,
+            y = inner.y,
+            w = inner.width,
+            h = inner.height,
+            tint = palette.bodyArgb,
+            filter = HdCanvas.TextureFilter.NEAREST
+        )
+        rc.canvas.texture(
+            location = com.nbp.cobblemon_smartphone.theme.SmartphoneAppIconRenderer.SQUIRCLE_SHEEN,
+            x = inner.x,
+            y = inner.y,
+            w = inner.width,
+            h = inner.height,
+            tint = palette.sheenArgb,
+            filter = HdCanvas.TextureFilter.NEAREST
+        )
+        rc.canvas.texture(
+            location = com.nbp.cobblemon_smartphone.theme.SmartphoneAppIconRenderer.SQUIRCLE_BORDER,
+            x = inner.x,
+            y = inner.y,
+            w = inner.width,
+            h = inner.height,
+            tint = palette.borderArgb,
+            filter = HdCanvas.TextureFilter.NEAREST
+        )
+        rc.canvas.texture(
+            location = glyph,
+            x = inner.x,
+            y = inner.y,
+            w = inner.width,
+            h = inner.height,
+            tint = palette.glyphArgb,
+            filter = HdCanvas.TextureFilter.NEAREST
+        )
+    }
+}
+
 class PlayerAvatarNode(
     var uuid: java.util.UUID,
     var playerName: String,

@@ -319,26 +319,26 @@ def draw_gps(c: Canvas) -> None:
 
 
 def draw_structure_compass(c: Canvas) -> None:
-    # Minimal circular compass with white/mid monochrome needle
+    # Faithful Structure Compass: crisp location pin (top-right) + creeper/structure head (bottom-left)
     art = [
-        ".....WWWWWWWW.....",
-        "...WWWWWWWWWWWW...",
-        "..WWWWKKKKKKWWWW..",
-        ".WWWKKKKKKKKKKWWW.",
-        ".WWKKKKKKKKKWWWWW.",
-        "WWWKKKKKKKKWWWWWWW",
-        "WWKKKKKKKKWWWWWWKW",
-        "WWKKKKKKKWWWWKWKKW",
-        "WWKKKKKKMMMWKKKKKW",
-        "WWKKKKKMMKKKKKKKKW",
-        "WWKKKKMMMMKKKKKKKW",
-        "WWKKMMMMKKKKKKKKKW",
-        "WWWKMMMKKKKKKKKWWW",
-        ".WWKKKKKKKKKKKKWW.",
-        ".MMMKKKKKKKKKKMMM.",
-        "..MMMMKKKKKKMMMM..",
-        "...MMMMMMMMMMMM...",
-        ".....MMMMMMMM.....",
+        "........WWWWWW....",
+        ".......WWWWWWWW...",
+        "......WWWKKKKWWW..",
+        "......WWKKKKKKWW..",
+        "......WWKKKKKKWW..",
+        "......WWWKKKKWWW..",
+        ".......WWWWWWWW...",
+        "........WWWWWW....",
+        ".........WWWW.....",
+        ".WWWWWWW..WW......",
+        "WWWWWWWWW.MM......",
+        "WWKKWKKWW.........",
+        "WWKKWKKWW.........",
+        "WWWWKWWWW.........",
+        "WWWKWWKWW.........",
+        "WWWKWWKWW.........",
+        "WWWWWWWWW.........",
+        ".MMMMMMM..........",
     ]
     c.draw_bitmap(9, 9, art, {"W": c.w, "M": c.m, "K": c.k})
 
@@ -414,26 +414,30 @@ def draw_pokeinfo(c: Canvas) -> None:
 
 
 def draw_rotom(c: Canvas) -> None:
-    # Minimalist Rotom silhouette with lightning crest, dark eyes & smile
+    # Faithful Rotom sprite silhouette: tall straight top spire, round body with
+    # tall oval eyes & smile, pointed bottom tail, and wide Z-shaped lightning arms
+    # extending downward-outward to both sides
     art = [
-        "........WW......",
-        ".......WWW......",
-        "......WW........",
-        "......WWWW......",
-        ".....WWWWWW.....",
-        "...WWWWWWWWWW...",
-        "..WWWWWWWWWWWW..",
-        "WWWWWWWWWWWWWWWW",
-        "W.WWMMWWWWMMWW.W",
-        "..WMKMWWWWMKMW..",
-        "..WMKMWWWWMKMW..",
-        "..WWMMWWWWMMWW..",
-        "..WWWWWWWWWWWW..",
-        "...WWWKWWWKWWW..",
-        "....WWWKKKWWW...",
-        ".....MMMMMMM....",
+        "...........MM...........",
+        "...........WW...........",
+        "..........MWWM..........",
+        "..........WWWW..........",
+        ".........MWWWWM.........",
+        "........WWWWWWWW........",
+        ".......WWKWWWWKWW.......",
+        ".......WKWKWWKWKW.......",
+        ".......WKWKWWKWKW.......",
+        ".......WWWWKKWWWW.......",
+        "..MMMMM.WWWWWWWW.MMMMM..",
+        ".MMWWWMMMWWWWWWMMMWWWMM.",
+        "...MMWWMW.WWWW.WMWWMM...",
+        "....MMWW..MWWM..WWMM....",
+        "..MMWWMM...MM...MMWWMM..",
+        ".MMWWMM....MM....MMWWMM.",
+        "MMWWMM............MMWWMM",
+        "MMMM...............MMMM.",
     ]
-    c.draw_bitmap(10, 10, art, {"W": c.w, "M": c.m, "K": c.k})
+    c.draw_bitmap(6, 9, art, {"W": c.w, "M": c.m, "K": c.k})
 
 
 def draw_cobbledollars(c: Canvas) -> None:
@@ -460,51 +464,52 @@ def draw_cobbledollars(c: Canvas) -> None:
 
 
 def draw_pokenav(c: Canvas) -> None:
-    # Minimal radar crosshair & blip
+    # Faithful CobbleNav PokeNav handheld silhouette: top clasp + rounded oval body + center Pokeball button
     art = [
-        ".....WWWWWWWW.....",
-        "...WWWWWWWWWWWW...",
-        "..WWWKKKKKKKKWWW..",
-        ".WWKKKKKWWKKKKKWW.",
-        ".WKKKKKKWWKKKKKKW.",
-        "WWKKKKWWWWWWKKKKWW",
-        "WKKKKWKKKKKKWKKKKW",
-        "WKKKWKKKKKKKKWKKKW",
-        "WWWWKKKKWWKKKKWWWW",
-        "WWWWKKKKWWKKKKWWWW",
-        "WKKKWKKKKKKKKWKKKW",
-        "WKKKKWKKKKKKWKKKKW",
-        "WWKKKKWWWWWWKKKKWW",
-        ".WKKKKKKWWKKKKKKW.",
-        ".MMKKKKKWWKKKKKMM.",
-        "..MMMKKKKKKKKMMM..",
+        "......WWWWWW......",
+        "......WKKKKW......",
+        "...WWWWKKKKWWWW...",
+        "..WWWWWKKKKWWWWW..",
+        ".WWWWWWKKKKWWWWWW.",
+        ".WWWWWWWWWWWWWWWW.",
+        "WWWWWWWWWWWWWWWWWW",
+        "WWWWWWKKKKKKWWWWWW",
+        "WWWWWKKWWWWKKWWWWW",
+        "WWWWWKWWWWWWKWWWWW",
+        "WWWWWKKKKKKKKWWWWW",
+        "WWWWWKMMWWMMKWWWWW",
+        "WWWWWKKMMMMKKWWWWW",
+        "WWWWWWKKKKKKWWWWWW",
+        ".WWWWWWWWWWWWWWWW.",
+        ".WWWWWWWWWWWWWWWW.",
+        "..WWWWWWWWWWWWWW..",
         "...MMMMMMMMMMMM...",
-        ".....MMMMMMMM.....",
     ]
     c.draw_bitmap(9, 9, art, {"W": c.w, "M": c.m, "K": c.k})
-    c.rect(20, 13, 21, 14, c.w)
 
 
 def draw_fishnav(c: Canvas) -> None:
-    # Minimalist fish + wave
+    # Faithful CobbleNav FishingNav silhouette: top-left antenna + top clasp + side grips + circular dial
     art = [
-        "........WWWWWW....",
-        "......WWWWWWWWWW..",
-        ".....WWWWWWWWWWWW.",
-        ".WW.WWWWWWWWWWKWWW",
-        ".WWWWWWWWWWWWWWWWW",
-        "WWWWWWWWWWWWWWWWWW",
-        "WWWWWWWWWWWWWWWWWW",
+        "..WW..............",
+        "..WW..WWWWWW......",
+        "..WW.WWKKKKWW.....",
+        "..WWWWWKKKKWWWWW..",
+        "..WWWWWWWWWWWWWW..",
         ".WWWWWWWWWWWWWWWW.",
-        ".WW.WWWWWWWWWWWW..",
-        "......WWWWWWWW....",
-        "........MMMM......",
-        "..................",
-        "..MMMM....MMMM....",
-        ".MM..MM..MM..MM...",
-        "MM....MMMM....MM..",
+        "WWWWWWKKKKKKWWWWWW",
+        "WWWWWKKWWWWKKWWWWW",
+        "WWWWWKWWKKWWKWWWWW",
+        "WWWWWKWWKKWWKWWWWW",
+        "WWWWWKWWWWWWKWWWWW",
+        "WWWWWKKWWWWKKWWWWW",
+        "WWWWWWKKKKKKWWWWWW",
+        ".WWWWWWWWWWWWWWWW.",
+        "..WWWWWWWWWWWWWW..",
+        "...WWWWWWWWWWWW...",
+        "....MMMMMMMMMM....",
     ]
-    c.draw_bitmap(9, 10, art, {"W": c.w, "M": c.m, "K": c.k})
+    c.draw_bitmap(9, 9, art, {"W": c.w, "M": c.m, "K": c.k})
 
 
 def draw_trainer(c: Canvas) -> None:
@@ -529,25 +534,27 @@ def draw_trainer(c: Canvas) -> None:
 
 
 def draw_waystone(c: Canvas) -> None:
-    # Faceted warp-stone gem
+    # Faithful Ender Pearl / Warp Orb silhouette: crisp circular orb with centered
+    # dark core and bright top-left + bottom-right specular crescent highlights
     art = [
-        ".....WWWWWWWW.....",
-        "....WWWWWWWWWW....",
-        "...WWWWWWWWWWWW...",
-        "..WWWMMMMMMMMWWW..",
-        ".WWWMKKKKKKKKMWWW.",
-        "WWWMMKKWWWWKKMMWWW",
-        "WWWMMKKWWWWKKMMWWW",
-        "WWWMMKKMMMMKKMMWWW",
-        "WWWMMKKKKKKKKMMWWW",
-        "WWWMMKKKKKKKKMMWWW",
-        ".WWWMKKKKKKKKMWWW.",
-        "..WWWMMMMMMMMWWW..",
-        "...WWWWWWWWWWWW...",
-        "....MMMMMMMMMM....",
-        ".....MMMMMMMM.....",
+        ".....KKKKKK.....",
+        "...KKMMMMMMKK...",
+        "..KMMWWWWMMMMK..",
+        ".KMMWWMMMMDDDDK.",
+        ".KMWWMDKKDDMDDK.",
+        "KMMWMDKKKKDDMMMK",
+        "KMMWMDKKKKDDMMMK",
+        "KMMMMDKKKKDDMMMK",
+        "KMMMMDKKKKDDMMMK",
+        "KMMMDDKKKKDMMMMK",
+        "KMMMDDDKKDDWMMMK",
+        ".KDDDDMMMMWWMMK.",
+        ".KDDDDMMMWWMMMK.",
+        "..KMMMMMMWMMMK..",
+        "...KKMMMMMMKK...",
+        ".....KKKKKK.....",
     ]
-    c.draw_bitmap(9, 10, art, {"W": c.w, "M": c.m, "K": c.k})
+    c.draw_bitmap(10, 10, art, {"W": c.w, "M": c.m, "D": c.d, "K": c.k})
 
 
 def draw_patchouli(c: Canvas) -> None:
@@ -650,15 +657,79 @@ APPS: list[tuple[str, Callable[[Canvas], None]]] = [
 ]
 
 
+def save_base_layers() -> None:
+    """Export shared white/alpha squircle masks for dynamic Style B runtime tinting."""
+    base_dir = BUTTONS_DIR / "base"
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Body mask (pure white inside squircle body)
+    body_img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    bpx = body_img.load()
+    for x, y in BODY_MASK:
+        bpx[x, y] = (255, 255, 255, 255)
+    body_img.save(base_dir / "squircle_body.png", format="PNG")
+
+    # 2. Sheen + inner rim mask (white with pre-baked subtle alpha)
+    sheen_img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    spx = sheen_img.load()
+    for x, y in TOP_SHEEN_MASK:
+        spx[x, y] = (255, 255, 255, 32)
+    for x, y in INNER_RIM_MASK:
+        spx[x, y] = (255, 255, 255, 44)
+    sheen_img.save(base_dir / "squircle_sheen.png", format="PNG")
+
+    # 3. Border mask (pure white 1px outer border)
+    border_img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    rpx = border_img.load()
+    for x, y in BORDER_MASK:
+        rpx[x, y] = (255, 255, 255, 255)
+    border_img.save(base_dir / "squircle_border.png", format="PNG")
+
+
+class GlyphCanvas(Canvas):
+    """Transparent 36x36 canvas that only draws the monochrome glyph (no squircle)."""
+
+    def __init__(self) -> None:
+        self.img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+        self.px = self.img.load()
+        self.hover = False
+
+    @property
+    def w(self) -> tuple[int, int, int, int]:
+        return (255, 255, 255, 255)
+
+    @property
+    def m(self) -> tuple[int, int, int, int]:
+        return (188, 196, 206, 255)
+
+    @property
+    def d(self) -> tuple[int, int, int, int]:
+        return (116, 126, 140, 255)
+
+    @property
+    def k(self) -> tuple[int, int, int, int]:
+        return (24, 30, 40, 220)
+
+
 def main() -> None:
+    save_base_layers()
+    glyphs_dir = BUTTONS_DIR / "glyphs"
+    glyphs_dir.mkdir(parents=True, exist_ok=True)
+
     for stem, drawer in APPS:
+        # Transparent glyph layer for runtime Style B tinting
+        gc = GlyphCanvas()
+        drawer(gc)
+        gc.img.save(glyphs_dir / f"{stem}.png", format="PNG")
+
+        # Fallback composed monochrome icons (normal + hover)
         for hover in (False, True):
             canvas = Canvas(hover=hover)
             drawer(canvas)
             suffix = "_hover" if hover else ""
             out_path = BUTTONS_DIR / f"{stem}{suffix}.png"
             canvas.img.save(out_path, format="PNG")
-    print(f"Generated {len(APPS) * 2} minimalist monochrome app icons (normal + hover) in {BUTTONS_DIR}")
+    print(f"Generated 3 base masks, {len(APPS)} glyph layers, and {len(APPS) * 2} fallback icons in {BUTTONS_DIR}")
 
 
 if __name__ == "__main__":

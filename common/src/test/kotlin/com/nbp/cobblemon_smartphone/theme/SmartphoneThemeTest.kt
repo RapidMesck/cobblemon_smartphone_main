@@ -276,4 +276,37 @@ class SmartphoneThemeTest {
         val craftingDefault = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/crafting.png")
         assertEquals(craftingDefault, theme.getAppIcon("cobblemon_smartphone:crafting", craftingDefault))
     }
+
+    @Test
+    fun `Style B app icon renderer resolves built-in glyphs and respects custom overrides`() {
+        val rotomDefault = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/rotom.png")
+        val rotomGlyph = ResourceLocation.fromNamespaceAndPath("cobblemon_smartphone", "textures/gui/buttons/glyphs/rotom.png")
+        val customIcon = ResourceLocation.fromNamespaceAndPath("mypack", "textures/gui/custom_rotom.png")
+
+        // Built-in icon with no override uses dynamic Style B glyph
+        assertEquals(
+            rotomGlyph,
+            SmartphoneAppIconRenderer.resolveBuiltInGlyph(SmartphoneTheme.DEFAULT, "cobblemon_smartphone:rotom", rotomDefault)
+        )
+
+        // Theme with custom override bypasses dynamic Style B
+        val customTheme = SmartphoneTheme(
+            id = "mypack:custom",
+            name = Component.literal("Custom"),
+            wallpaper = SmartphoneTheme.DEFAULT_WALLPAPER,
+            appIcons = mapOf("cobblemon_smartphone:rotom" to customIcon)
+        )
+        assertNull(
+            SmartphoneAppIconRenderer.resolveBuiltInGlyph(customTheme, "cobblemon_smartphone:rotom", rotomDefault)
+        )
+
+        // External datapack icon bypasses dynamic Style B
+        assertNull(
+            SmartphoneAppIconRenderer.resolveBuiltInGlyph(SmartphoneTheme.DEFAULT, "mypack:app", customIcon)
+        )
+
+        // Palette hover state brightens glyph to pure white
+        val hoverPalette = SmartphoneAppIconRenderer.computePalette(SmartphoneThemeColors.DEFAULT, hovered = true)
+        assertEquals(0xFFFFFFFF.toInt(), hoverPalette.glyphArgb)
+    }
 }

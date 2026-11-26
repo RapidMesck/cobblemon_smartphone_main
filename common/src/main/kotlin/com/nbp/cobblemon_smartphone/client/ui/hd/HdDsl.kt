@@ -264,6 +264,18 @@ class HdBuilder(
         configure
     )
 
+    fun appIcon(
+        theme: com.nbp.cobblemon_smartphone.theme.SmartphoneTheme,
+        actionId: String?,
+        defaultTexture: ResourceLocation,
+        size: Float = 30f,
+        alphaScale: Float = 1f,
+        configure: AppIconNode.() -> Unit = {}
+    ): AppIconNode = add(
+        AppIconNode(theme, actionId, defaultTexture, size, alphaScale),
+        configure
+    )
+
     fun avatar(
         uuid: UUID,
         name: String,

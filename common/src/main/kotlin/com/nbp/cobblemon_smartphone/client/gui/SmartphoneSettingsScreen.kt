@@ -310,14 +310,13 @@ class SmartphoneSettingsScreen(
             body.card(gap = 0f, padding = HdPadding.symmetric(horizontal = 8f, vertical = 6f), radius = 10f, shadowBlur = 4f) { card ->
                 card.row(gap = 8f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { row ->
                     // App icon
-                    row.image(
-                        texture = theme.getAppIcon(action.id, action.texture),
-                        w = 30f,
-                        h = 30f,
-                        filter = HdCanvas.TextureFilter.NEAREST
-                    ) {
-                        if (isHidden) tint = HdColorSpec.Fixed(0x66FFFFFF)
-                    }
+                    row.appIcon(
+                        theme = theme,
+                        actionId = action.id,
+                        defaultTexture = action.texture,
+                        size = 30f,
+                        alphaScale = if (isHidden) 0.4f else 1f
+                    )
 
                     // Name + Hotkey button
                     row.column(gap = 3f, width = HdSizeSpec.Weight(1f)) { info ->

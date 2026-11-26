@@ -89,18 +89,17 @@ class SmartphoneScreen(
         pagedActions().forEachIndexed { index, action ->
             val (x, y) = getButtonPosition(index)
             val hovered = isHovered(mouseX, mouseY, x, y)
-            val texture = if (hovered) {
-                theme.getAppHoverIcon(action.id, action.hoverTexture)
-            } else {
-                theme.getAppIcon(action.id, action.texture)
-            }
-            blitk(
-                matrixStack = matrices,
-                texture = texture,
+            com.nbp.cobblemon_smartphone.theme.SmartphoneAppIconRenderer.render(
+                guiGraphics = guiGraphics,
+                theme = theme,
+                actionId = action.id,
+                defaultTexture = action.texture,
+                defaultHoverTexture = action.hoverTexture,
                 x = screenX + x,
                 y = screenY + y,
                 width = BUTTON_WIDTH,
-                height = BUTTON_HEIGHT
+                height = BUTTON_HEIGHT,
+                hovered = hovered
             )
             renderBadge(guiGraphics, action.badgeCount(), x, y, theme)
         }

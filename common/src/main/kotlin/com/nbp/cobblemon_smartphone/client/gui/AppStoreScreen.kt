@@ -189,11 +189,6 @@ class AppStoreScreen(
 
     private fun buildAppCard(body: HdBuilder, theme: SmartphoneTheme, entry: StoreEntry) {
         val isPending = pendingInstallKey == entry.upgradeKey
-        val iconTex = if (entry.actionId != null) {
-            theme.getAppIcon(entry.actionId, entry.iconTexture)
-        } else {
-            entry.iconTexture
-        }
 
         body.card(
             gap = 0f,
@@ -202,16 +197,13 @@ class AppStoreScreen(
             shadowBlur = 4f
         ) { card ->
             card.row(gap = 8f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { row ->
-                row.image(
-                    texture = iconTex,
-                    w = 30f,
-                    h = 30f,
-                    filter = HdCanvas.TextureFilter.NEAREST
-                ) {
-                    if (!entry.isInstalled && !entry.hasSdCard) {
-                        tint = HdColorSpec.Fixed(0x99FFFFFF.toInt())
-                    }
-                }
+                row.appIcon(
+                    theme = theme,
+                    actionId = entry.actionId,
+                    defaultTexture = entry.iconTexture,
+                    size = 30f,
+                    alphaScale = if (!entry.isInstalled && !entry.hasSdCard) 0.6f else 1f
+                )
 
                 row.column(gap = 2f, width = HdSizeSpec.Weight(1f)) { info ->
                     info.text(

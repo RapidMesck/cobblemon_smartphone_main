@@ -75,6 +75,22 @@ data class SmartphoneTheme(
     fun getLargeFrameTexture(defaultColorTexture: ResourceLocation): ResourceLocation =
         largeFrame ?: defaultColorTexture
 
+    fun hasCustomAppIcon(actionId: String, defaultTexture: ResourceLocation): Boolean {
+        if (appIcons.containsKey(actionId)) return true
+        val fileName = defaultTexture.path.substringAfterLast('/')
+        if (appIcons.containsKey(fileName)) return true
+        val baseName = fileName.removeSuffix(".png")
+        return appIcons.containsKey(baseName)
+    }
+
+    fun hasCustomAppHoverIcon(actionId: String, defaultHoverTexture: ResourceLocation): Boolean {
+        if (appHoverIcons.containsKey(actionId) || appIcons.containsKey(actionId)) return true
+        val fileName = defaultHoverTexture.path.substringAfterLast('/')
+        if (appHoverIcons.containsKey(fileName) || appIcons.containsKey(fileName)) return true
+        val baseName = fileName.removeSuffix(".png")
+        return appHoverIcons.containsKey(baseName) || appIcons.containsKey(baseName)
+    }
+
     fun getAppIcon(actionId: String, defaultTexture: ResourceLocation): ResourceLocation {
         appIcons[actionId]?.let { return it }
         val fileName = defaultTexture.path.substringAfterLast('/')
