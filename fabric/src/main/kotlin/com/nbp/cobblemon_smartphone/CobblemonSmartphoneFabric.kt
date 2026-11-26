@@ -21,6 +21,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneGpsItems
 import com.nbp.cobblemon_smartphone.network.packet.SyncThemePacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneRecipeSerializers
 import com.nbp.cobblemon_smartphone.server.RotomServerManager
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
@@ -180,6 +181,12 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
                 .displayItems(CobblemonSmartphoneItems::addToGroup)
                 .build()
         )
+    }
+
+    override fun registerRecipeSerializers() {
+        CobblemonSmartphoneRecipeSerializers.register { resourceLocation, serializer ->
+            Registry.register(CobblemonSmartphoneRecipeSerializers.registry, resourceLocation, serializer)
+        }
     }
 
     override fun registerCommands() {

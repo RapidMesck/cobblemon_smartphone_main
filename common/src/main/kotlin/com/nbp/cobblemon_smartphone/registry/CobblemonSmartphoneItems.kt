@@ -53,6 +53,28 @@ object CobblemonSmartphoneItems : RegistryProvider<Registry<Item>, ResourceKey<R
         return add(model.modelName + SmartphoneItem.BASE_REGISTRY_KEY, SmartphoneItem(model))
     }
 
+    fun getSmartphone(color: SmartphoneColor): Item = when (color) {
+        SmartphoneColor.WHITE -> WHITE_SMARTPHONE
+        SmartphoneColor.ORANGE -> ORANGE_SMARTPHONE
+        SmartphoneColor.MAGENTA -> MAGENTA_SMARTPHONE
+        SmartphoneColor.LIGHT_BLUE -> LIGHT_BLUE_SMARTPHONE
+        SmartphoneColor.YELLOW -> YELLOW_SMARTPHONE
+        SmartphoneColor.LIME -> LIME_SMARTPHONE
+        SmartphoneColor.PINK -> PINK_SMARTPHONE
+        SmartphoneColor.GRAY -> GRAY_SMARTPHONE
+        SmartphoneColor.LIGHT_GRAY -> LIGHT_GRAY_SMARTPHONE
+        SmartphoneColor.CYAN -> CYAN_SMARTPHONE
+        SmartphoneColor.PURPLE -> PURPLE_SMARTPHONE
+        SmartphoneColor.BLUE -> BLUE_SMARTPHONE
+        SmartphoneColor.BROWN -> BROWN_SMARTPHONE
+        SmartphoneColor.GREEN -> GREEN_SMARTPHONE
+        SmartphoneColor.RED -> RED_SMARTPHONE
+        SmartphoneColor.BLACK -> BLACK_SMARTPHONE
+    }
+
+    fun getSmartphoneOrNull(dyeColor: DyeColor): Item? =
+        SmartphoneColor.fromDyeColorOrNull(dyeColor)?.let(::getSmartphone)
+
     fun addToGroup(displayContext: ItemDisplayParameters, entries: Output) {
         entries.accept(WHITE_SMARTPHONE)
         entries.accept(ORANGE_SMARTPHONE)

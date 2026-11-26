@@ -201,6 +201,7 @@ object CobblemonSmartphone {
         config = SmartphoneConfig.load()
         this.implementation = implementation
         implementation.registerItems()
+        implementation.registerRecipeSerializers()
         implementation.registerReloadListeners()
         implementation.registerCommands()
         registerDefaultActions()

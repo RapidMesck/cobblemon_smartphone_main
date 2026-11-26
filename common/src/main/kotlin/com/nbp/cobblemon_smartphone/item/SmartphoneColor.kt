@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.item
 
 import com.cobblemon.mod.common.client.pokedex.PokedexType
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.item.DyeColor
 
 enum class SmartphoneColor(val modelName: String) {
 
@@ -21,6 +22,35 @@ enum class SmartphoneColor(val modelName: String) {
     GREEN("green"),
     RED("red"),
     BLACK("black");
+
+    fun toDyeColor(): DyeColor = when (this) {
+        WHITE -> DyeColor.WHITE
+        ORANGE -> DyeColor.ORANGE
+        MAGENTA -> DyeColor.MAGENTA
+        LIGHT_BLUE -> DyeColor.LIGHT_BLUE
+        YELLOW -> DyeColor.YELLOW
+        LIME -> DyeColor.LIME
+        PINK -> DyeColor.PINK
+        GRAY -> DyeColor.GRAY
+        LIGHT_GRAY -> DyeColor.LIGHT_GRAY
+        CYAN -> DyeColor.CYAN
+        PURPLE -> DyeColor.PURPLE
+        BLUE -> DyeColor.BLUE
+        BROWN -> DyeColor.BROWN
+        GREEN -> DyeColor.GREEN
+        RED -> DyeColor.RED
+        BLACK -> DyeColor.BLACK
+    }
+
+    companion object {
+        private val byModelName: Map<String, SmartphoneColor> = entries.associateBy { it.modelName }
+
+        /**
+         * Maps a [DyeColor] to its matching [SmartphoneColor], or returns `null` for non-vanilla
+         * colors injected by enum-extending mods such as Dye Depot.
+         */
+        fun fromDyeColorOrNull(dyeColor: DyeColor): SmartphoneColor? = byModelName[dyeColor.serializedName]
+    }
 
     fun toPokedexType(): PokedexType = when (this) {
         WHITE -> PokedexType.WHITE

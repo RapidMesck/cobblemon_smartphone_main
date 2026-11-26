@@ -7,6 +7,8 @@ interface Implementation {
 
     fun registerItems()
 
+    fun registerRecipeSerializers()
+
     fun registerCommands()
 
     fun registerReloadListeners()

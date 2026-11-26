@@ -22,6 +22,7 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncUnreadPacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialCapabilitiesPacket
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneGpsItems
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneRecipeSerializers
 import com.nbp.cobblemon_smartphone.server.RotomServerManager
 import com.nbp.cobblemon_smartphone.social.CallManager
 import com.nbp.cobblemon_smartphone.social.SocialData
@@ -203,6 +204,16 @@ class CobblemonSmartphoneNeoForge : Implementation {
                             .displayItems(CobblemonSmartphoneItems::addToGroup)
                             .build()
                     )
+                }
+            }
+        }
+    }
+
+    override fun registerRecipeSerializers() {
+        MOD_BUS.addListener<RegisterEvent> { event ->
+            event.register(Registries.RECIPE_SERIALIZER) { helper ->
+                CobblemonSmartphoneRecipeSerializers.register { resourceLocation, serializer ->
+                    helper.register(resourceLocation, serializer)
                 }
             }
         }
