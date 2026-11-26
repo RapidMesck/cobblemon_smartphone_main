@@ -315,9 +315,8 @@ def recolor_icon_image(src_img, wp_conf):
 
     return Image.fromarray(arr_out)
 
-print("Starting full generation of 16 themes (wallpapers, button icons, elements, JSON)...")
+print("Starting generation of 16 themes (wallpapers, elements, JSON)...")
 
-button_files = [os.path.basename(p) for p in sorted(glob.glob(os.path.join(BUTTONS_DIR, "*.png")))]
 element_files = ["home_button.png", "prev_button.png", "next_button.png", "settings_button.png"]
 
 for color_name, data in themes_data.items():
@@ -331,17 +330,7 @@ for color_name, data in themes_data.items():
     recolored_home.save(wp_small_path, format="PNG")
     recolored_large.save(wp_large_path, format="PNG")
 
-    # 2. Buttons
-    theme_btn_dir = os.path.join(THEMES_TEXTURES_DIR, color_name, "buttons")
-    os.makedirs(theme_btn_dir, exist_ok=True)
-    for bfile in button_files:
-        src_btn = os.path.join(BUTTONS_DIR, bfile)
-        dst_btn = os.path.join(theme_btn_dir, bfile)
-        im = Image.open(src_btn)
-        rec = recolor_icon_image(im, wp_conf)
-        rec.save(dst_btn, format="PNG")
-
-    # 3. Elements
+    # 2. Elements (app icons now use theme-independent colorful default textures)
     theme_elem_dir = os.path.join(THEMES_TEXTURES_DIR, color_name, "elements")
     os.makedirs(theme_elem_dir, exist_ok=True)
     for efile in element_files:
@@ -352,7 +341,7 @@ for color_name, data in themes_data.items():
             rec = recolor_icon_image(im, wp_conf)
             rec.save(dst_elem, format="PNG")
 
-    # 4. JSON
+    # 3. JSON
     theme_json = {
         "id": f"cobblemon_smartphone:{color_name}",
         "name": f"theme.cobblemon_smartphone.{color_name}",
@@ -395,6 +384,6 @@ for color_name, data in themes_data.items():
     with open(theme_path, "w", encoding="utf-8") as f:
         json.dump(theme_json, f, indent=2)
 
-    print(f" -> {color_name:12}: generated wallpapers, {len(button_files)} buttons, {len(element_files)} elements, and JSON (order {data['order']})")
+    print(f" -> {color_name:12}: generated wallpapers, {len(element_files)} elements, and JSON (order {data['order']})")
 
 print("All 16 themes and complete assets generated successfully!")
