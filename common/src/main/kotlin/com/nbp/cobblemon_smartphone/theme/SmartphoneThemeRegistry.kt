@@ -11,7 +11,7 @@ object SmartphoneThemeRegistry {
     private var lastResourceManager: ResourceManager? = null
 
     val STANDARD_APP_BUTTONS = listOf(
-        "ae2", "cloud", "cobbledollars", "crafting", "fishnav", "gps", "heal",
+        "ae2", "app_store", "cloud", "cobbledollars", "crafting", "fishnav", "gps", "heal",
         "patchouli", "pc", "pokedex", "pokeinfo", "pokenav", "refinedstorage",
         "rotom", "social", "structure_compass", "toms_storage", "trainer",
         "waystone", "wireless"
@@ -19,6 +19,7 @@ object SmartphoneThemeRegistry {
 
     val STANDARD_BUTTON_ACTIONS = mapOf(
         "ae2" to listOf("cobblemon_smartphone:ae2_terminal", "cobblemon_smartphone:ae2_crafting_terminal"),
+        "app_store" to listOf("cobblemon_smartphone:app_store"),
         "cloud" to listOf("cobblemon_smartphone:cloud"),
         "cobbledollars" to listOf("cobblemon_smartphone:cobbledollars_shop"),
         "crafting" to listOf("cobblemon_smartphone:crafting"),
@@ -57,12 +58,13 @@ object SmartphoneThemeRegistry {
     }
 
     fun getTheme(id: String?): SmartphoneTheme {
-        if (id == null) return SmartphoneTheme.DEFAULT
         val rm = resolveClientResourceManager()
         if (rm != null && (lastResourceManager !== rm || themes.isEmpty())) {
             ensureLoaded(rm)
         }
-        return themes.firstOrNull { it.id == id } ?: SmartphoneTheme.DEFAULT
+        val defaultTheme = themes.firstOrNull { it.id == SmartphoneTheme.DEFAULT_ID } ?: SmartphoneTheme.DEFAULT
+        if (id == null) return defaultTheme
+        return themes.firstOrNull { it.id == id } ?: defaultTheme
     }
 
     fun ensureLoaded(resourceManager: ResourceManager) {

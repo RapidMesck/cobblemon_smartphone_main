@@ -73,6 +73,6 @@ object SmartphoneThemeHelper {
             return SmartphoneThemeRegistry.getTheme(preferred)
         }
 
-        return SmartphoneTheme.DEFAULT
+        return SmartphoneThemeRegistry.getTheme(SmartphoneTheme.DEFAULT_ID)
     }
 }

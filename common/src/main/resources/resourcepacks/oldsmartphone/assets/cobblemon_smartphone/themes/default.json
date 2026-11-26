@@ -1,0 +1,7 @@
+{
+  "id": "cobblemon_smartphone:default",
+  "name": "theme.cobblemon_smartphone.default",
+  "wallpaper": "cobblemon_smartphone:textures/gui/home_screen.png",
+  "large_wallpaper": "cobblemon_smartphone:textures/gui/large_screen.png",
+  "order": 0
+}

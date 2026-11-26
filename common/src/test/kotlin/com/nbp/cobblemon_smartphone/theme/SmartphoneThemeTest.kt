@@ -309,4 +309,26 @@ class SmartphoneThemeTest {
         val hoverPalette = SmartphoneAppIconRenderer.computePalette(SmartphoneThemeColors.DEFAULT, hovered = true)
         assertEquals(0xFFFFFFFF.toInt(), hoverPalette.glyphArgb)
     }
+
+    @Test
+    fun `oldsmartphone builtin pack overrides default theme with all old app icons`() {
+        val packRoot = java.nio.file.Path.of("src/main/resources/resourcepacks/oldsmartphone/assets/cobblemon_smartphone")
+        val defaultThemeJson = packRoot.resolve("themes/default.json")
+        assertTrue(java.nio.file.Files.exists(defaultThemeJson), "Missing oldsmartphone default theme override: $defaultThemeJson")
+
+        val obj = JsonParser.parseString(java.nio.file.Files.readString(defaultThemeJson)).asJsonObject
+        assertEquals(SmartphoneTheme.DEFAULT_ID, obj.get("id").asString)
+        assertEquals(0, obj.get("order").asInt)
+
+        assertEquals(
+            SmartphoneAppIconRenderer.BUILTIN_GLYPH_STEMS,
+            SmartphoneThemeRegistry.STANDARD_APP_BUTTONS.toSet()
+        )
+
+        val buttonsDir = packRoot.resolve("textures/gui/themes/default/buttons")
+        for (stem in SmartphoneThemeRegistry.STANDARD_APP_BUTTONS) {
+            assertTrue(java.nio.file.Files.exists(buttonsDir.resolve("$stem.png")), "Missing old icon: $stem.png")
+            assertTrue(java.nio.file.Files.exists(buttonsDir.resolve("${stem}_hover.png")), "Missing old hover icon: ${stem}_hover.png")
+        }
+    }
 }
