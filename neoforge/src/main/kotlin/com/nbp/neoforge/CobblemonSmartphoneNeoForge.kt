@@ -126,7 +126,20 @@ class CobblemonSmartphoneNeoForge : Implementation {
             player.server?.let { CallManager.onLogout(it, player) }
             TomsStorageRemoteSession.onLogout(player)
             RotomServerManager.onPlayerDisconnect(player)
+            com.nbp.cobblemon_smartphone.server.RotomAutoScannerManager.clearPlayerCooldowns(player.uuid)
             com.nbp.cobblemon_smartphone.social.SmartphoneInteractionManager.onLogout(player)
+            com.nbp.cobblemon_smartphone.social.SocialPhotoManager.onPlayerDisconnect(player.uuid)
+            com.nbp.cobblemon_smartphone.network.handler.RequestGpsSearchHandler.cancelForPlayer(player.uuid)
+            com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenExecutor.onPlayerDisconnect(player.uuid)
+            com.nbp.cobblemon_smartphone.network.handler.ExecuteDatapackActionHandler.onPlayerDisconnect(player.uuid)
+        }
+        NeoForge.EVENT_BUS.addListener<net.neoforged.neoforge.event.server.ServerStoppingEvent> { _ ->
+            com.nbp.cobblemon_smartphone.network.handler.RequestGpsSearchHandler.clearAll()
+            RotomServerManager.clearAll()
+            com.nbp.cobblemon_smartphone.server.RotomAutoScannerManager.clearAll()
+            com.nbp.cobblemon_smartphone.social.SocialPhotoManager.clearAll()
+            com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenExecutor.clearAll()
+            com.nbp.cobblemon_smartphone.network.handler.ExecuteDatapackActionHandler.clearAll()
         }
 
         // Close out the remote-access bypass once the remotely-opened Toms Storage terminal
@@ -150,9 +163,11 @@ class CobblemonSmartphoneNeoForge : Implementation {
                 )
             }
             val screensPayload = com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenLoader.getSyncPayloads()
+            val skinsPayload = com.nbp.cobblemon_smartphone.skin.DatapackSkinLoader.getSkins()
             event.relevantPlayers.forEach { player ->
                 SyncDatapackActionsPacket(actionData).sendToPlayer(player)
                 SyncDatapackScreensPacket(screensPayload).sendToPlayer(player)
+                com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneSkinsPacket(skinsPayload).sendToPlayer(player)
             }
         }
         NeoForge.EVENT_BUS.addListener<ServerTickEvent.Post> { event ->
@@ -173,12 +188,8 @@ class CobblemonSmartphoneNeoForge : Implementation {
     override fun registerItems() {
         with(MOD_BUS) {
             addListener<RegisterEvent> { event ->
-                event.register(CobblemonSmartphoneItems.resourceKey) { helper ->
+                event.register(Registries.ITEM) { helper ->
                     CobblemonSmartphoneItems.register { resourceLocation, item -> helper.register(resourceLocation, item) }
-                }
-            }
-            addListener<RegisterEvent> { event ->
-                event.register(CobblemonSmartphoneGpsItems.resourceKey) { helper ->
                     CobblemonSmartphoneGpsItems.register { resourceLocation, item -> helper.register(resourceLocation, item) }
                 }
             }

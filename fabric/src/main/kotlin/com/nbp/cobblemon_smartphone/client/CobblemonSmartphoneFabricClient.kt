@@ -18,11 +18,20 @@ import com.nbp.cobblemon_smartphone.compat.voicechat.VoiceChatBridge
 import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessHolder
 import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessImpl
 import net.fabricmc.loader.api.FabricLoader
+import com.nbp.cobblemon_smartphone.item.SdCardItem
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry
+import com.nbp.cobblemon_smartphone.config.SmartphoneConfig
+import com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenClientState
 import net.fabricmc.api.ClientModInitializer
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
 import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin
+import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.minecraft.client.Minecraft
@@ -30,16 +39,33 @@ import net.minecraft.client.Minecraft
 class CobblemonSmartphoneFabricClient : ClientModInitializer {
     override fun onInitializeClient() {
         // Refined Storage serializes its slot reference in the menu-open packet.
-        // Register the smartphone's inert client-side decoder before the first grid opens.
-        if (FabricLoader.getInstance().isModLoaded("refinedstorage")) {
-            RefinedStorageAccessImpl.initializeClient()
-        } else {
-            RefinedStorageAccessHolder.instance?.initializeClient()
+        // Defer client-side decoder registration until CLIENT_STARTED so Refined Storage's own
+        // ClientModInitializer is guaranteed to have initialized RefinedStorageApi regardless of load order.
+        ClientLifecycleEvents.CLIENT_STARTED.register { _ ->
+            try {
+                if (FabricLoader.getInstance().isModLoaded("refinedstorage")) {
+                    RefinedStorageAccessImpl.initializeClient()
+                } else {
+                    RefinedStorageAccessHolder.instance?.initializeClient()
+                }
+            } catch (t: Throwable) {
+                CobblemonSmartphone.LOGGER.error("Failed to initialize Refined Storage client compatibility", t)
+            }
         }
 
         com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper.clientPlayerProvider = { Minecraft.getInstance().player }
         com.nbp.cobblemon_smartphone.skin.SmartphoneSkinRegistry.clientResourceManagerProvider = { Minecraft.getInstance()?.resourceManager }
         RotomInteractionClientHandler.register()
+
+        ColorProviderRegistry.ITEM.register(
+            { stack, tintIndex -> if (tintIndex == 0) SmartphoneHelper.getRibbonTintColor(stack) else -1 },
+            CobblemonSmartphoneItems.ROTOM_RIBBON,
+            CobblemonSmartphoneItems.ROTOM_BOWTIE
+        )
+        ColorProviderRegistry.ITEM.register(
+            { stack, tintIndex -> if (tintIndex == 1) SdCardItem.getTintColor(stack) else -1 },
+            CobblemonSmartphoneItems.SD_CARD
+        )
 
         ModelLoadingPlugin.register { context ->
             SmartphoneColor.entries.forEach { color ->
@@ -112,6 +138,11 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             StructureCompassClientState.reset()
             RotomTrackerClientState.reset()
             RotomScannerClientState.reset()
+            RotomClientManager.reset()
+            SmartphoneHelper.clearClientContext()
+            DatapackScreenClientState.clear()
+            SmartphoneActionRegistry.clearDatapackActions()
+            CobblemonSmartphone.config = SmartphoneConfig.load()
         }
 
         CobblemonSmartphoneFabricNetworkManager.registerClientHandlers()

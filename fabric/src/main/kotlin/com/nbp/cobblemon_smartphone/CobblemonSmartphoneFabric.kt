@@ -54,7 +54,6 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
         CobblemonSmartphone.init(this)
         networkManager.registerMessages()
         networkManager.registerServerHandlers()
-        registerReloadListeners()
 
         SmartphoneHelper.getSmartphoneImpl = { player -> SmartphoneCompatManager.getSmartphone(player) }
 
@@ -116,10 +115,24 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
 
         // End any call a player was in when they disconnect, restoring the other side's voice group.
         ServerPlayConnectionEvents.DISCONNECT.register { handler, server ->
-            CallManager.onLogout(server, handler.player)
-            TomsStorageRemoteSession.onLogout(handler.player)
-            RotomServerManager.onPlayerDisconnect(handler.player)
-            com.nbp.cobblemon_smartphone.social.SmartphoneInteractionManager.onLogout(handler.player)
+            val player = handler.player
+            CallManager.onLogout(server, player)
+            TomsStorageRemoteSession.onLogout(player)
+            RotomServerManager.onPlayerDisconnect(player)
+            com.nbp.cobblemon_smartphone.server.RotomAutoScannerManager.clearPlayerCooldowns(player.uuid)
+            com.nbp.cobblemon_smartphone.social.SmartphoneInteractionManager.onLogout(player)
+            com.nbp.cobblemon_smartphone.social.SocialPhotoManager.onPlayerDisconnect(player.uuid)
+            com.nbp.cobblemon_smartphone.network.handler.RequestGpsSearchHandler.cancelForPlayer(player.uuid)
+            com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenExecutor.onPlayerDisconnect(player.uuid)
+            com.nbp.cobblemon_smartphone.network.handler.ExecuteDatapackActionHandler.onPlayerDisconnect(player.uuid)
+        }
+        ServerLifecycleEvents.SERVER_STOPPING.register { _ ->
+            com.nbp.cobblemon_smartphone.network.handler.RequestGpsSearchHandler.clearAll()
+            RotomServerManager.clearAll()
+            com.nbp.cobblemon_smartphone.server.RotomAutoScannerManager.clearAll()
+            com.nbp.cobblemon_smartphone.social.SocialPhotoManager.clearAll()
+            com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenExecutor.clearAll()
+            com.nbp.cobblemon_smartphone.network.handler.ExecuteDatapackActionHandler.clearAll()
         }
         // Fabric API has no generic "container closed" event, so a per-tick poll (see
         // TomsStorageRemoteSession.tick) is what closes out the remote-access bypass once the
@@ -145,9 +158,11 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
                 )
             }
             val screensPayload = com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenLoader.getSyncPayloads()
+            val skinsPayload = com.nbp.cobblemon_smartphone.skin.DatapackSkinLoader.getSkins()
             server.playerList.players.forEach { p ->
                 SyncDatapackActionsPacket(actionData).sendToPlayer(p)
                 SyncDatapackScreensPacket(screensPayload).sendToPlayer(p)
+                com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneSkinsPacket(skinsPayload).sendToPlayer(p)
             }
         }
         ServerTickEvents.END_SERVER_TICK.register(ServerTickEvents.EndTick(CallManager::tick))

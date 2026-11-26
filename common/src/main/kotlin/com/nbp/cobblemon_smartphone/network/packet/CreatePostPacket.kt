@@ -26,6 +26,10 @@ class CreatePostPacket(
 ) : CobblemonSmartphoneNetworkPacket<CreatePostPacket> {
     companion object {
         val ID = smartphoneResource("create_post")
+        const val MAX_POLL_QUESTION_LENGTH = 256
+        const val MAX_POLL_OPTIONS = 10
+        const val MAX_POLL_OPTION_LENGTH = 128
+
         fun decode(buffer: RegistryFriendlyByteBuf): CreatePostPacket {
             val reqId = buffer.readVarLong()
             val text = buffer.readUtf(4_096)
@@ -38,9 +42,12 @@ class CreatePostPacket(
             val photoId = if (buffer.readBoolean()) buffer.readUUID() else null
             val hasPoll = buffer.readBoolean()
             val (pollQuestion, pollOptions) = if (hasPoll) {
-                val q = buffer.readUtf()
+                val q = buffer.readUtf(MAX_POLL_QUESTION_LENGTH)
                 val count = buffer.readVarInt()
-                val opts = (0 until count).map { buffer.readUtf() }
+                if (count < 0 || count > MAX_POLL_OPTIONS) {
+                    throw IllegalArgumentException("Invalid poll option count: $count")
+                }
+                val opts = (0 until count).map { buffer.readUtf(MAX_POLL_OPTION_LENGTH) }
                 q to opts
             } else {
                 null to emptyList()
@@ -67,9 +74,10 @@ class CreatePostPacket(
         photoId?.let(buffer::writeUUID)
         buffer.writeBoolean(pollQuestion != null)
         pollQuestion?.let {
-            buffer.writeUtf(it)
-            buffer.writeVarInt(pollOptions.size)
-            pollOptions.forEach { opt -> buffer.writeUtf(opt) }
+            buffer.writeUtf(it.take(MAX_POLL_QUESTION_LENGTH), MAX_POLL_QUESTION_LENGTH)
+            val boundedOpts = pollOptions.take(MAX_POLL_OPTIONS)
+            buffer.writeVarInt(boundedOpts.size)
+            boundedOpts.forEach { opt -> buffer.writeUtf(opt.take(MAX_POLL_OPTION_LENGTH), MAX_POLL_OPTION_LENGTH) }
         }
     }
 }

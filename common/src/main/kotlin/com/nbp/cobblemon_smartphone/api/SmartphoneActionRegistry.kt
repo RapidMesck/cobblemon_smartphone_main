@@ -16,6 +16,12 @@ object SmartphoneActionRegistry {
         datapackActions.clear()
     }
 
+    fun getAllActions(): List<SmartphoneAction> =
+        actions + datapackActions
+
+    fun getActionById(id: String): SmartphoneAction? =
+        (actions + datapackActions).firstOrNull { it.id == id }
+
     fun getEnabledActions(): List<SmartphoneAction> =
         (actions + datapackActions).filter { it.isEnabled() }
 }

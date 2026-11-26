@@ -16,7 +16,6 @@ import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
 import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
 import com.nbp.cobblemon_smartphone.skin.SmartphoneSkinHelper
 import com.nbp.cobblemon_smartphone.upgrade.SimulatedItemUse
-import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
 import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper.getRotomAccessory
@@ -351,15 +350,6 @@ class SmartphoneItem(private val model: SmartphoneColor) : Item(Properties().sta
                     "%,d".format(max)
                 ).withStyle(color)
             )
-        }
-
-        // Show installed upgrades
-        val upgrades = SmartphoneUpgradeRegistry.getInstalledUpgrades(itemStack)
-        for (upgrade in upgrades) {
-            val name = upgrade.displayName ?: Component.translatable(
-                "upgrade.cobblemon_smartphone.${upgrade.id}"
-            )
-            list.add(name.copy().withStyle(ChatFormatting.GREEN))
         }
     }
 }

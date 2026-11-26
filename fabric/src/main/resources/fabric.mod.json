@@ -24,6 +24,9 @@
     ],
     "voicechat": [
       "com.nbp.cobblemon_smartphone.compat.voicechat.SmartphoneVoicechatPlugin"
+    ],
+    "jei_mod_plugin": [
+      "com.nbp.cobblemon_smartphone.compat.jei.SmartphoneJeiPlugin"
     ]
   },
   "mixins": [
@@ -34,7 +37,9 @@
     "fabricloader": ">=0.16.5",
     "minecraft": "~1.21.1",
     "java": ">=21",
-    "fabric-api": "*"
+    "fabric-api": "*",
+    "fabric-language-kotlin": "*",
+    "cobblemon": ">=1.6.0"
   },
   "suggests": {
     "trinkets": ">=3.10.0",

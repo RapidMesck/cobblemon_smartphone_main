@@ -16,7 +16,6 @@
         "CameraMixin",
         "GuiGraphicsMixin",
         "HumanoidModelMixin",
-        "ItemColorsMixin",
         "ItemRendererMixin",
         "KeyboardHandlerMixin",
         "LevelRendererMixin",

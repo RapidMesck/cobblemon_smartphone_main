@@ -54,6 +54,16 @@ object RotomAutoScannerManager {
     private val playerSessions = ConcurrentHashMap<UUID, PlayerScanSession>()
     private val scanCooldowns = ConcurrentHashMap<String, Long>() // key = "playerUuid:entityId", value = timestamp
 
+    fun clearPlayerCooldowns(playerUuid: UUID) {
+        val prefix = "$playerUuid:"
+        scanCooldowns.keys.removeIf { it.startsWith(prefix) }
+    }
+
+    fun clearAll() {
+        playerSessions.clear()
+        scanCooldowns.clear()
+    }
+
     fun setPlayerPriorityTarget(player: ServerPlayer, target: PokemonEntity) {
         if (!CobblemonSmartphone.config.features.enableRotom) return
         if (!CobblemonSmartphone.config.features.enableScanner) return

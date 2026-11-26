@@ -12,6 +12,9 @@ dependencies {
     // Simple Voice Chat (optional). Loader-agnostic plain API jar, compile-time only — every
     // reference to it is isolated behind an isModLoaded check so the mod runs fine without it.
     compileOnly "de.maxhenkel.voicechat:voicechat-api:$rootProject.voicechat_api_version"
+    // JEI (optional). Compile-time API only; discovered by JEI on NeoForge via @JeiPlugin and on
+    // Fabric via the "jei_mod_plugin" entrypoint in fabric.mod.json.
+    modCompileOnly "mezz.jei:jei-1.21.1-common-api:$rootProject.jei_version"
     testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
 }
 

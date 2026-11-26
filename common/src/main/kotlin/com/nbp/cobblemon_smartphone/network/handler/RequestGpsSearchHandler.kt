@@ -25,6 +25,7 @@ object RequestGpsSearchHandler : ServerNetworkPacketHandler<RequestGpsSearchPack
 
     override fun handle(packet: RequestGpsSearchPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
+            if (player.hasDisconnected()) return@execute
             if (!CobblemonSmartphone.config.features.enableGps) return@execute
 
             synchronized(activeSearches) {
@@ -32,6 +33,16 @@ object RequestGpsSearchHandler : ServerNetworkPacketHandler<RequestGpsSearchPack
             }
 
             val level = player.serverLevel()
+
+            if (!com.nbp.cobblemon_smartphone.util.SmartphoneHelper.hasUpgradeOnAnySmartphone(
+                    player,
+                    "upgrade_gps",
+                    "cobblemon_smartphone:gps"
+                )
+            ) {
+                sendResult(player, packet.requestId, GpsSearchResultPacket.Status.ERROR, level)
+                return@execute
+            }
 
             if (!limiter.tryAcquire(player.uuid)) {
                 sendResult(player, packet.requestId, GpsSearchResultPacket.Status.RATE_LIMITED, level)
@@ -55,6 +66,19 @@ object RequestGpsSearchHandler : ServerNetworkPacketHandler<RequestGpsSearchPack
         }
     }
 
+    fun cancelForPlayer(playerId: UUID) {
+        synchronized(activeSearches) {
+            activeSearches.remove(playerId)?.cancel()
+        }
+    }
+
+    fun clearAll() {
+        synchronized(activeSearches) {
+            activeSearches.values.forEach { it.cancel() }
+            activeSearches.clear()
+        }
+    }
+
     private fun startSearch(
         server: MinecraftServer,
         player: ServerPlayer,
@@ -71,20 +95,26 @@ object RequestGpsSearchHandler : ServerNetworkPacketHandler<RequestGpsSearchPack
             onFound = { pos ->
                 server.execute {
                     completeSearch(player.uuid, task)
-                    sendResult(player, requestId, GpsSearchResultPacket.Status.FOUND, level, pos)
+                    if (!player.hasDisconnected()) {
+                        sendResult(player, requestId, GpsSearchResultPacket.Status.FOUND, level, pos)
+                    }
                 }
             },
             onFinished = { found ->
                 if (!found) {
                     server.execute {
                         completeSearch(player.uuid, task)
-                        sendResult(player, requestId, GpsSearchResultPacket.Status.NOT_FOUND, level)
+                        if (!player.hasDisconnected()) {
+                            sendResult(player, requestId, GpsSearchResultPacket.Status.NOT_FOUND, level)
+                        }
                     }
                 }
             },
             onProgress = { currentRing, maxRing ->
                 server.execute {
-                    GpsSearchProgressPacket(requestId, currentRing, maxRing).sendToPlayer(player)
+                    if (!player.hasDisconnected()) {
+                        GpsSearchProgressPacket(requestId, currentRing, maxRing).sendToPlayer(player)
+                    }
                 }
             }
         )

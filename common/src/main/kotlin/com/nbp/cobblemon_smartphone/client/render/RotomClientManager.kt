@@ -45,6 +45,22 @@ object RotomClientManager {
     @Volatile
     private var serverSocialSyncReceived: Boolean = false
 
+    fun reset() {
+        lastLocalOpen = null
+        lastLocalHorizontal = null
+        lastLocalSelfie = null
+        lastLocalPhoto = null
+        remoteOpenStates.clear()
+        remoteHorizontalStates.clear()
+        remoteSelfieStates.clear()
+        remotePhotoStates.clear()
+        remoteRotomVisuals.clear()
+        activeSessions.clear()
+        playerToSessionId.clear()
+        fallbackCheckStates.clear()
+        serverSocialSyncReceived = false
+    }
+
     fun isPlayerOpen(uuid: UUID): Boolean {
         return remoteOpenStates[uuid] == true
     }

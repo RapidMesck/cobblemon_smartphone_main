@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "cobblenav"
+      ]
+    }
+  ],
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "cobblenav"
+    }
+  ],
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "cobblemon:upgrade"
+    },
+    {
+      "item": "cobblenav:fishingnav_item"
+    }
+  ],
+  "result": {
+    "id": "cobblemon_smartphone:sd_card",
+    "count": 1,
+    "components": {
+      "minecraft:custom_data": {
+        "cobblemon_smartphone:sd_card_upgrade": "upgrade_fishingnav"
+      }
+    }
+  }
+}

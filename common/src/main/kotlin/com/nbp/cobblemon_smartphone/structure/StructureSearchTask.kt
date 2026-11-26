@@ -9,10 +9,10 @@ import net.minecraft.world.level.levelgen.structure.Structure
 
 /**
  * Looks up the nearest instance of a structure using the same vanilla lookup that backs
- * `/locate structure` and treasure/explorer maps (`ChunkGenerator#findNearestMapStructure`), which
- * reads structure placement straight from the generator's structure sets — unlike biomes there's no
- * need for a manual chunk-by-chunk scan (see GpsBiomeSearchTask). Still runs off the main thread
- * since resolving structure references can trigger chunk generation within the search radius.
+ * `/locate structure` and treasure/explorer maps (`ChunkGenerator#findNearestMapStructure`).
+ *
+ * Must run on the server thread: `findNearestMapStructure` accesses `ServerChunkCache` to resolve
+ * structure starts, which is not thread-safe and can deadlock or crash off-thread.
  */
 class StructureSearchTask(
     private val level: ServerLevel,
@@ -22,40 +22,15 @@ class StructureSearchTask(
     private val skipKnownStructures: Boolean,
     private val onFound: (BlockPos) -> Unit,
     private val onFinished: (Boolean) -> Unit
-) : Thread("cobblemon-smartphone-structure-search") {
+) {
 
-    @Volatile private var active = true
-
-    init {
-        isDaemon = true
-        priority = Thread.MIN_PRIORITY
-    }
-
-    fun cancel() {
-        active = false
-    }
-
-    override fun run() {
-        if (!SearchConcurrencyLimiter.tryAcquire()) {
-            onFinished(false)
-            return
-        }
-        try {
-            runSearch()
-        } finally {
-            SearchConcurrencyLimiter.release()
-        }
-    }
-
-    private fun runSearch() {
-        if (!active) return
-
+    fun runOnServerThread() {
         val holder = level.registryAccess()
             .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
             .getHolder(targetKey)
             .orElse(null)
         if (holder == null) {
-            if (active) onFinished(false)
+            onFinished(false)
             return
         }
 
@@ -67,7 +42,6 @@ class StructureSearchTask(
             null
         }
 
-        if (!active) return
         val pos = result?.first
         if (pos != null) onFound(pos) else onFinished(false)
     }

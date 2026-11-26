@@ -1,7 +1,12 @@
 package com.nbp.cobblemon_smartphone.registry
 
+import com.nbp.cobblemon_smartphone.isModLoaded
+import com.nbp.cobblemon_smartphone.item.BatteryUpgradeItem
+import com.nbp.cobblemon_smartphone.item.SdCardItem
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
 import com.nbp.cobblemon_smartphone.item.SmartphoneItem
+import com.nbp.cobblemon_smartphone.upgrade.SmartphoneUpgradeRegistry
+import com.nbp.cobblemon_smartphone.upgrade.createSdCardStack
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
@@ -39,6 +44,10 @@ object CobblemonSmartphoneItems : RegistryProvider<Registry<Item>, ResourceKey<R
     val ROTOM_RIBBON = add("rotom_ribbon", com.nbp.cobblemon_smartphone.item.RotomAccessoryItem("bow"))
     val ROTOM_BOWTIE = add("rotom_bowtie", com.nbp.cobblemon_smartphone.item.RotomAccessoryItem("tie"))
     val ROTOM_ACCESSORY_REMOVER = add("rotom_accessory_remover", com.nbp.cobblemon_smartphone.item.RotomAccessoryItem("remove", Item.Properties().stacksTo(1)))
+    val SD_CARD = add("sd_card", SdCardItem())
+    val BATTERY_TIER1 = add("battery_tier1", BatteryUpgradeItem(1, "upgrade_battery_tier1", 1000))
+    val BATTERY_TIER2 = add("battery_tier2", BatteryUpgradeItem(2, "upgrade_battery_tier2", 5000))
+    val BATTERY_TIER3 = add("battery_tier3", BatteryUpgradeItem(3, "upgrade_battery_tier3", 15000))
 
     private fun smartphoneItem(model: SmartphoneColor): Item {
         return add(model.modelName + SmartphoneItem.BASE_REGISTRY_KEY, SmartphoneItem(model))
@@ -72,5 +81,15 @@ object CobblemonSmartphoneItems : RegistryProvider<Registry<Item>, ResourceKey<R
             entries.accept(SmartphoneHelper.createColoredBowtie(color))
         }
         entries.accept(ROTOM_ACCESSORY_REMOVER)
+        entries.accept(BATTERY_TIER1)
+        entries.accept(BATTERY_TIER2)
+        entries.accept(BATTERY_TIER3)
+
+        for (upgrade in SmartphoneUpgradeRegistry.getAppUpgrades()) {
+            val reqMod = upgrade.requiredModId
+            if (reqMod == null || isModLoaded(reqMod)) {
+                entries.accept(createSdCardStack(upgrade.nbtKey))
+            }
+        }
     }
 }

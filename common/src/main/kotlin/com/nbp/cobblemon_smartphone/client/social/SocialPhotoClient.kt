@@ -168,6 +168,11 @@ object SocialPhotoClient {
                 val bytes = compressJpeg(buffered, SocialPhotoManager.MAX_BYTES)
                 val preview = bufferedToNative(scalePreview(buffered))
                 Minecraft.getInstance().execute {
+                    val mc = Minecraft.getInstance()
+                    if (mc.player == null || mc.connection == null) {
+                        preview.close()
+                        return@execute
+                    }
                     val id = UUID.randomUUID()
                     dimensions[id] = preview.width to preview.height
                     registerTexture(id, preview)
@@ -178,15 +183,17 @@ object SocialPhotoClient {
                         UploadSocialPhotoPacket(id, bytes.size, offset, bytes.copyOfRange(offset, end)).sendToServer()
                         offset = end
                     }
-                    Minecraft.getInstance().setScreen(
+                    mc.setScreen(
                         SocialComposeScreen(draft.color, draft.stack, draft.text, id, draft.dmTargetUuid, draft.dmTargetName)
                     )
                 }
             } catch (_: Exception) {
                 runCatching { source.close() }
                 Minecraft.getInstance().execute {
-                    Minecraft.getInstance().player?.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.nbp.social.photo_failed"), true)
-                    Minecraft.getInstance().setScreen(
+                    val mc = Minecraft.getInstance()
+                    val player = mc.player ?: return@execute
+                    player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.nbp.social.photo_failed"), true)
+                    mc.setScreen(
                         SocialComposeScreen(draft.color, draft.stack, draft.text, dmTargetUuid = draft.dmTargetUuid, dmTargetName = draft.dmTargetName)
                     )
                 }
@@ -315,6 +322,23 @@ object SocialPhotoClient {
         releaseTexture(id)
         dimensions.remove(id)
         requested.remove(id)
+    }
+
+    fun clear() {
+        val wasCamera = cameraActive || captureArmed
+        captureDraft = null
+        captureTicks = 0
+        captureArmed = false
+        cameraActive = false
+        rightButtonWasDown = false
+        if (wasCamera) {
+            runCatching { Minecraft.getInstance().options.hideGui = previousHideGui }
+        }
+        uploadStates.clear()
+        downloads.clear()
+        requested.clear()
+        dimensions.clear()
+        textures.keys.toList().forEach { releaseTexture(it) }
     }
 
     private fun registerTexture(id: UUID, image: NativeImage) {

@@ -1,5 +1,6 @@
 package com.nbp.cobblemon_smartphone
 
+import com.nbp.cobblemon_smartphone.actions.AppStoreAction
 import com.nbp.cobblemon_smartphone.actions.CraftingAction
 import com.nbp.cobblemon_smartphone.actions.EnderAction
 import com.nbp.cobblemon_smartphone.actions.GpsAction
@@ -68,92 +69,126 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(StructureCompassAction)
         SmartphoneActionRegistry.register(SocialAction)
         SmartphoneActionRegistry.register(RotomAppAction)
+        SmartphoneActionRegistry.register(AppStoreAction)
     }
 
     fun registerDefaultUpgrades() {
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = "upgrade_crafting",
-                nbtKey = "upgrade_crafting"
+                nbtKey = "upgrade_crafting",
+                isAppUpgrade = true,
+                actionId = CraftingAction.id,
+                accentColor = 0xD98A4E
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = "upgrade_pokenav",
                 nbtKey = "upgrade_pokenav",
-                requiredModId = "cobblenav"
+                requiredModId = "cobblenav",
+                isAppUpgrade = true,
+                actionId = OpenCobblenavAction.id,
+                accentColor = 0x4FC3F7
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = "upgrade_fishingnav",
                 nbtKey = "upgrade_fishingnav",
-                requiredModId = "cobblenav"
+                requiredModId = "cobblenav",
+                isAppUpgrade = true,
+                actionId = OpenCobblenavFishingnavAction.id,
+                accentColor = 0x26A69A
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = GpsAction.UPGRADE_NBT_KEY,
-                nbtKey = GpsAction.UPGRADE_NBT_KEY
+                nbtKey = GpsAction.UPGRADE_NBT_KEY,
+                isAppUpgrade = true,
+                actionId = GpsAction.id,
+                accentColor = 0x66BB6A
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = StructureCompassAction.UPGRADE_NBT_KEY,
-                nbtKey = StructureCompassAction.UPGRADE_NBT_KEY
+                nbtKey = StructureCompassAction.UPGRADE_NBT_KEY,
+                isAppUpgrade = true,
+                actionId = StructureCompassAction.id,
+                accentColor = 0x26C6DA
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = "upgrade_waystone",
                 nbtKey = "upgrade_waystone",
-                requiredModId = "waystones"
+                requiredModId = "waystones",
+                isAppUpgrade = true,
+                actionId = OpenWaystonesAction.id,
+                accentColor = 0xAB47BC
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = TomsStorageLink.UPGRADE_NBT_KEY,
                 nbtKey = TomsStorageLink.UPGRADE_NBT_KEY,
-                requiredModId = TomsStorageLink.MOD_ID
+                requiredModId = TomsStorageLink.MOD_ID,
+                isAppUpgrade = true,
+                actionId = OpenTomsStorageAction.id,
+                accentColor = 0xFFA726
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = OpenRefinedStorageAction.UPGRADE_NBT_KEY,
                 nbtKey = OpenRefinedStorageAction.UPGRADE_NBT_KEY,
-                requiredModId = OpenRefinedStorageAction.MOD_ID
+                requiredModId = OpenRefinedStorageAction.MOD_ID,
+                isAppUpgrade = true,
+                actionId = OpenRefinedStorageAction.id,
+                accentColor = 0x42A5F5
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = OpenAE2Action.UPGRADE_NBT_KEY,
                 nbtKey = OpenAE2Action.UPGRADE_NBT_KEY,
-                requiredModId = OpenAE2Action.MOD_ID
+                requiredModId = OpenAE2Action.MOD_ID,
+                isAppUpgrade = true,
+                actionId = OpenAE2Action.id,
+                accentColor = 0x7E57C2
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = OpenAE2CraftingAction.UPGRADE_NBT_KEY,
                 nbtKey = OpenAE2CraftingAction.UPGRADE_NBT_KEY,
-                requiredModId = OpenAE2CraftingAction.MOD_ID
+                requiredModId = OpenAE2CraftingAction.MOD_ID,
+                isAppUpgrade = true,
+                actionId = OpenAE2CraftingAction.id,
+                accentColor = 0xEC407A
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = "upgrade_battery_tier1",
-                nbtKey = "upgrade_battery_tier1"
+                nbtKey = "upgrade_battery_tier1",
+                isAppUpgrade = false
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = "upgrade_battery_tier2",
-                nbtKey = "upgrade_battery_tier2"
+                nbtKey = "upgrade_battery_tier2",
+                isAppUpgrade = false
             )
         )
         SmartphoneUpgradeRegistry.register(
             SmartphoneUpgrade(
                 id = "upgrade_battery_tier3",
-                nbtKey = "upgrade_battery_tier3"
+                nbtKey = "upgrade_battery_tier3",
+                isAppUpgrade = false
             )
         )
     }

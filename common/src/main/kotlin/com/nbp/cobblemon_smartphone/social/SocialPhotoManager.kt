@@ -34,6 +34,18 @@ object SocialPhotoManager {
     private val ready = mutableMapOf<UUID, Pair<UUID, SocialPhotoRef>>()
     private val downloadsByPlayer = mutableMapOf<UUID, ArrayDeque<Long>>()
 
+    fun onPlayerDisconnect(playerId: UUID) {
+        uploads.entries.removeIf { it.value.owner == playerId }
+        ready.entries.removeIf { it.value.first == playerId }
+        downloadsByPlayer.remove(playerId)
+    }
+
+    fun clearAll() {
+        uploads.clear()
+        ready.clear()
+        downloadsByPlayer.clear()
+    }
+
     fun acceptChunk(server: MinecraftServer, player: ServerPlayer, id: UUID, total: Int, offset: Int, chunk: ByteArray) {
         cleanupExpired()
         if (total !in 1..MAX_BYTES || chunk.isEmpty() || chunk.size > com.nbp.cobblemon_smartphone.network.packet.UploadSocialPhotoPacket.MAX_CHUNK_BYTES) {

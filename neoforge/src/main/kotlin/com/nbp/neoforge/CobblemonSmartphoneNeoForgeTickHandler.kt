@@ -77,5 +77,11 @@ object CobblemonSmartphoneNeoForgeTickHandler {
         StructureCompassClientState.reset()
         RotomTrackerClientState.reset()
         RotomScannerClientState.reset()
+        RotomClientManager.reset()
+        com.nbp.cobblemon_smartphone.util.SmartphoneHelper.clearClientContext()
+        com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenClientState.clear()
+        com.nbp.cobblemon_smartphone.api.SmartphoneActionRegistry.clearDatapackActions()
+        com.nbp.cobblemon_smartphone.CobblemonSmartphone.config =
+            com.nbp.cobblemon_smartphone.config.SmartphoneConfig.load()
     }
 }

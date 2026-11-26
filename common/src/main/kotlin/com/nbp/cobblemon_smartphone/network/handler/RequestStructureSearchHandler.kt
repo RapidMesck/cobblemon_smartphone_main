@@ -20,17 +20,23 @@ import java.util.UUID
  *  RequestGpsSearchHandler's request/response and single-search-per-player bookkeeping. */
 object RequestStructureSearchHandler : ServerNetworkPacketHandler<RequestStructureSearchPacket> {
     private val limiter = PokeInfoRequestLimiter(400L)
-    private val activeSearches = mutableMapOf<UUID, StructureSearchTask>()
 
     override fun handle(packet: RequestStructureSearchPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
+            if (player.hasDisconnected()) return@execute
             if (!CobblemonSmartphone.config.features.enableStructureCompass) return@execute
 
-            synchronized(activeSearches) {
-                activeSearches.remove(player.uuid)?.cancel()
-            }
-
             val level = player.serverLevel()
+
+            if (!com.nbp.cobblemon_smartphone.util.SmartphoneHelper.hasUpgradeOnAnySmartphone(
+                    player,
+                    "upgrade_structure_compass",
+                    "cobblemon_smartphone:structure_compass"
+                )
+            ) {
+                sendResult(player, packet.requestId, StructureSearchResultPacket.Status.ERROR, level)
+                return@execute
+            }
 
             if (!limiter.tryAcquire(player.uuid)) {
                 sendResult(player, packet.requestId, StructureSearchResultPacket.Status.RATE_LIMITED, level)
@@ -50,47 +56,34 @@ object RequestStructureSearchHandler : ServerNetworkPacketHandler<RequestStructu
                 return@execute
             }
 
-            startSearch(server, player, level, key, packet.requestId)
+            startSearch(player, level, key, packet.requestId)
         }
     }
 
     private fun startSearch(
-        server: MinecraftServer,
         player: ServerPlayer,
         level: ServerLevel,
         key: ResourceKey<Structure>,
         requestId: Long
     ) {
-        lateinit var task: StructureSearchTask
-        task = StructureSearchTask(
+        val task = StructureSearchTask(
             level = level,
             origin = player.blockPosition(),
             targetKey = key,
             searchRadiusChunks = CobblemonSmartphone.config.structureCompass.searchRadiusChunks,
             skipKnownStructures = CobblemonSmartphone.config.structureCompass.skipKnownStructures,
             onFound = { pos ->
-                server.execute {
-                    completeSearch(player.uuid, task)
+                if (!player.hasDisconnected()) {
                     sendResult(player, requestId, StructureSearchResultPacket.Status.FOUND, level, pos)
                 }
             },
             onFinished = { found ->
-                if (!found) {
-                    server.execute {
-                        completeSearch(player.uuid, task)
-                        sendResult(player, requestId, StructureSearchResultPacket.Status.NOT_FOUND, level)
-                    }
+                if (!found && !player.hasDisconnected()) {
+                    sendResult(player, requestId, StructureSearchResultPacket.Status.NOT_FOUND, level)
                 }
             }
         )
-        synchronized(activeSearches) { activeSearches[player.uuid] = task }
-        task.start()
-    }
-
-    private fun completeSearch(playerId: UUID, task: StructureSearchTask) {
-        synchronized(activeSearches) {
-            if (activeSearches[playerId] === task) activeSearches.remove(playerId)
-        }
+        task.runOnServerThread()
     }
 
     private fun sendResult(

@@ -16,6 +16,9 @@ object SmartphoneUpgradeRegistry {
 
     fun getAllUpgrades(): Collection<SmartphoneUpgrade> = upgrades.values
 
+    fun getAppUpgrades(): List<SmartphoneUpgrade> =
+        upgrades.values.filter { it.isAppUpgrade }
+
     fun getInstalledUpgrades(stack: ItemStack): List<SmartphoneUpgrade> =
         upgrades.values.filter { stack.hasUpgrade(it.nbtKey) }
 }

@@ -33,7 +33,7 @@ object SmartphoneCompatManager {
             try {
                 TrinketsCompat.register()
                 CobblemonSmartphone.LOGGER.info("Trinkets compatibility initialized successfully")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 CobblemonSmartphone.LOGGER.error("Failed to initialize Trinkets compatibility", e)
                 trinketsLoaded = false
             }
@@ -49,7 +49,7 @@ object SmartphoneCompatManager {
                 SmartphoneStorageLinkRegistry.register(RefinedStorageLink)
                 RefinedStorageAccessHolder.instance = RefinedStorageAccessImpl
                 CobblemonSmartphone.LOGGER.info("Refined Storage compatibility initialized successfully")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 CobblemonSmartphone.LOGGER.error("Failed to initialize Refined Storage compatibility", e)
             }
         }
@@ -58,7 +58,7 @@ object SmartphoneCompatManager {
             try {
                 com.nbp.cobblemon_smartphone.compat.energy.SmartphoneFabricEnergyStorage.register()
                 CobblemonSmartphone.LOGGER.info("TeamReborn Energy compatibility initialized successfully")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 CobblemonSmartphone.LOGGER.error("Failed to initialize TeamReborn Energy compatibility", e)
             }
         }
@@ -83,7 +83,7 @@ object SmartphoneCompatManager {
         if (!trinketsLoaded) return null
         return try {
             TrinketsCompat.getEquippedSmartphone(player)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             CobblemonSmartphone.LOGGER.error("Error checking Trinkets slots", e)
             null
         }
@@ -98,7 +98,7 @@ object SmartphoneCompatManager {
         if (!accessoriesLoaded) return null
         return try {
             AccessoriesCompat.getEquippedSmartphone(player)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             CobblemonSmartphone.LOGGER.error("Error checking Accessories slots", e)
             null
         }

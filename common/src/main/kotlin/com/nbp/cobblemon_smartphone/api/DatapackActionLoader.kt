@@ -68,7 +68,19 @@ object DatapackActionLoader : PreparableReloadListener {
                         val definition = DatapackActionDefinition.GSON.fromJson(
                             element, DatapackActionDefinition::class.java
                         )
-                        if (definition != null && definition.id.isNotBlank()) {
+                        if (definition != null && !definition.id.isNullOrBlank()) {
+                            val tex = definition.texture
+                            val hoverTex = definition.hoverTexture
+                            if (tex.isNullOrBlank() || hoverTex.isNullOrBlank() ||
+                                net.minecraft.resources.ResourceLocation.tryParse(tex) == null ||
+                                net.minecraft.resources.ResourceLocation.tryParse(hoverTex) == null
+                            ) {
+                                CobblemonSmartphone.LOGGER.warn(
+                                    "Skipping datapack action '{}' from {}: invalid or missing texture/hover_texture ('{}', '{}')",
+                                    definition.id, resourceId, tex, hoverTex
+                                )
+                                continue
+                            }
                             if (definition.requireMod != null && !isModLoaded(definition.requireMod)) {
                                 CobblemonSmartphone.LOGGER.info(
                                     "Skipping datapack action '{}': required mod '{}' not loaded",

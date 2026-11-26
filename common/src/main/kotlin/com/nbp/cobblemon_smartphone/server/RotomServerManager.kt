@@ -82,6 +82,21 @@ object RotomServerManager {
     private val playerCooldowns = ConcurrentHashMap<UUID, Long>()
     private val clusterCheckCooldowns = ConcurrentHashMap<UUID, Long>()
 
+    fun clearAll() {
+        openPlayers.clear()
+        horizontalPlayers.clear()
+        selfiePlayers.clear()
+        photoPlayers.clear()
+        playerConfigs.clear()
+        alertCooldowns.clear()
+        equippedSnapshots.clear()
+        activeSocialSessions.clear()
+        playerToSession.clear()
+        playerCooldowns.clear()
+        clusterCheckCooldowns.clear()
+        tickCounter = 0
+    }
+
     fun updatePlayerConfig(playerUuid: UUID, config: RotomRadarConfig) {
         playerConfigs[playerUuid] = config
     }

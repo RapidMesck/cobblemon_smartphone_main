@@ -24,7 +24,13 @@ import com.nbp.cobblemon_smartphone.client.ui.hd.HdUiStyle
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdViewport
 import com.nbp.cobblemon_smartphone.client.ui.hd.SegmentedControlNode
 import com.nbp.cobblemon_smartphone.client.ui.hd.TabsNode
+import com.nbp.cobblemon_smartphone.CobblemonSmartphone
+import com.nbp.cobblemon_smartphone.energy.getEnergy
+import com.nbp.cobblemon_smartphone.energy.getMaxEnergy
+import com.nbp.cobblemon_smartphone.energy.isInfiniteEnergy
+import com.nbp.cobblemon_smartphone.item.BatteryUpgradeItem
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.network.packet.InstallUpgradePacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveActionOrderPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveHiddenActionsPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveQuickActionsPacket
@@ -40,6 +46,12 @@ import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper
 import com.nbp.cobblemon_smartphone.theme.SmartphoneThemeRegistry
 import com.nbp.cobblemon_smartphone.theme.setTheme
+import com.nbp.cobblemon_smartphone.upgrade.addExtraEnergyCapacity
+import com.nbp.cobblemon_smartphone.upgrade.addUpgrade
+import com.nbp.cobblemon_smartphone.upgrade.getBatteryExtraCapacity
+import com.nbp.cobblemon_smartphone.upgrade.getBatteryUpgradeKey
+import com.nbp.cobblemon_smartphone.upgrade.hasUpgrade
+import com.nbp.cobblemon_smartphone.upgrade.isBatteryUpgradeFor
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
@@ -69,8 +81,23 @@ class SmartphoneSettingsScreen(
         APPS,
         THEMES,
         SKINS,
+        BATTERY,
         DISPLAY
     }
+
+    private data class BatteryTierInfo(
+        val tier: Int,
+        val upgradeKey: String,
+        val bonusFe: Int,
+        val texturePath: String,
+        val customTitle: String? = null
+    )
+
+    private val batteryTiers = listOf(
+        BatteryTierInfo(1, "upgrade_battery_tier1", 1000, "textures/item/battery_tier1.png"),
+        BatteryTierInfo(2, "upgrade_battery_tier2", 5000, "textures/item/battery_tier2.png"),
+        BatteryTierInfo(3, "upgrade_battery_tier3", 15000, "textures/item/battery_tier3.png")
+    )
 
     override val viewportMode: ViewportMode = ViewportMode.Large
     override val showBezelBackButton: Boolean = true
@@ -87,6 +114,11 @@ class SmartphoneSettingsScreen(
     private var selectedThemeId: String = SmartphoneTheme.DEFAULT_ID
     private var selectedSkinId: String = SmartphoneSkin.DEFAULT_ID
     private var selectorActionId: String? = null
+    private var pendingBatteryKey: String? = null
+    private val installedBatteriesThisSession = mutableSetOf<String>()
+
+    private val activeSmartphone: ItemStack?
+        get() = SmartphoneBatteryRenderer.resolveSmartphone(smartphoneStack) ?: smartphoneStack
 
     private val themes: List<SmartphoneTheme>
         get() = SmartphoneThemeRegistry.getThemes()
@@ -117,7 +149,39 @@ class SmartphoneSettingsScreen(
     }
 
     override fun onBackPressed() {
-        Minecraft.getInstance().setScreen(SmartphoneScreen(color, smartphoneStack))
+        Minecraft.getInstance().setScreen(SmartphoneScreen(color, activeSmartphone))
+    }
+
+    fun onBatteryInstallResult(
+        upgradeKey: String,
+        success: Boolean,
+        messageKey: String,
+        addedCapacity: Int = 0
+    ) {
+        if (pendingBatteryKey == upgradeKey) {
+            pendingBatteryKey = null
+        }
+        if (success) {
+            installedBatteriesThisSession.add(upgradeKey)
+            val targets = listOfNotNull(
+                activeSmartphone,
+                smartphoneStack,
+                SmartphoneHelper.contextSmartphone
+            )
+            for (stack in targets) {
+                if (!stack.hasUpgrade(upgradeKey)) {
+                    stack.addUpgrade(upgradeKey)
+                    if (addedCapacity > 0) {
+                        stack.addExtraEnergyCapacity(addedCapacity)
+                    }
+                }
+            }
+        }
+        showToast(
+            message = tr(messageKey),
+            kind = if (success) HdStateStore.ToastKind.SUCCESS else HdStateStore.ToastKind.ERROR,
+            icon = if (success) HdIconAtlas.Icon.CHECK else HdIconAtlas.Icon.WARNING
+        )
     }
 
     override fun buildModal(theme: SmartphoneTheme): ModalSpec? {
@@ -158,16 +222,26 @@ class SmartphoneSettingsScreen(
     }
 
     override fun buildContent(theme: SmartphoneTheme, builder: HdBuilder) {
+        val energyEnabled = CobblemonSmartphone.config.energy.enableEnergy
+        if (!energyEnabled && currentTab == SettingsTab.BATTERY) {
+            currentTab = SettingsTab.APPS
+        }
+
         val subtitle = when (currentTab) {
             SettingsTab.APPS -> "${orderedIds.size - hiddenIds.size}/${orderedIds.size} ${tr("cobblemon_smartphone.settings.tab.apps")}"
             SettingsTab.THEMES -> "${themes.size} ${tr("cobblemon_smartphone.settings.tab.themes")}"
             SettingsTab.SKINS -> "${skins.size} ${tr("cobblemon_smartphone.settings.tab.skins")}"
+            SettingsTab.BATTERY -> {
+                val installed = batteryTiers.count { isBatteryInstalled(activeSmartphone, it.upgradeKey) }
+                "$installed/${batteryTiers.size} ${tr("cobblemon_smartphone.settings.tab.battery")}"
+            }
             SettingsTab.DISPLAY -> "${currentStyle().name} • ${(HdUiPreferences.getUserScale() * 100f).roundToInt()}%"
         }
         val headerIcon = when (currentTab) {
             SettingsTab.APPS -> HdIconAtlas.Icon.FEED
             SettingsTab.THEMES -> HdIconAtlas.Icon.SPARKLES
             SettingsTab.SKINS -> HdIconAtlas.Icon.STAR
+            SettingsTab.BATTERY -> HdIconAtlas.Icon.PLUS
             SettingsTab.DISPLAY -> HdIconAtlas.Icon.SETTINGS
         }
 
@@ -187,17 +261,23 @@ class SmartphoneSettingsScreen(
                 SettingsTab.APPS -> buildAppsList(body, theme)
                 SettingsTab.THEMES -> buildThemesGrid(body, theme)
                 SettingsTab.SKINS -> buildSkinsGrid(body)
+                SettingsTab.BATTERY -> buildBatteryTab(body)
                 SettingsTab.DISPLAY -> buildDisplayTab(body)
             }
         }
 
+        val tabItems = buildList {
+            add(TabsNode.TabItem(SettingsTab.APPS.name, tr("cobblemon_smartphone.settings.tab.apps"), HdIconAtlas.Icon.FEED))
+            add(TabsNode.TabItem(SettingsTab.THEMES.name, tr("cobblemon_smartphone.settings.tab.themes"), HdIconAtlas.Icon.SPARKLES))
+            add(TabsNode.TabItem(SettingsTab.SKINS.name, tr("cobblemon_smartphone.settings.tab.skins"), HdIconAtlas.Icon.STAR))
+            if (energyEnabled) {
+                add(TabsNode.TabItem(SettingsTab.BATTERY.name, tr("cobblemon_smartphone.settings.tab.battery"), HdIconAtlas.Icon.PLUS))
+            }
+            add(TabsNode.TabItem(SettingsTab.DISPLAY.name, tr("cobblemon_smartphone.settings.tab.display"), HdIconAtlas.Icon.SETTINGS))
+        }
+
         builder.tabs(
-            items = listOf(
-                TabsNode.TabItem(SettingsTab.APPS.name, tr("cobblemon_smartphone.settings.tab.apps"), HdIconAtlas.Icon.FEED),
-                TabsNode.TabItem(SettingsTab.THEMES.name, tr("cobblemon_smartphone.settings.tab.themes"), HdIconAtlas.Icon.SPARKLES),
-                TabsNode.TabItem(SettingsTab.SKINS.name, tr("cobblemon_smartphone.settings.tab.skins"), HdIconAtlas.Icon.STAR),
-                TabsNode.TabItem(SettingsTab.DISPLAY.name, tr("cobblemon_smartphone.settings.tab.display"), HdIconAtlas.Icon.SETTINGS)
-            ),
+            items = tabItems,
             activeId = currentTab.name,
             style = TabsNode.Style.FLOATING_DOCK,
             onSelect = { id ->
@@ -606,6 +686,171 @@ class SmartphoneSettingsScreen(
                 }
             }
         }
+    }
+
+    private fun buildBatteryTab(body: HdBuilder) {
+        val player = Minecraft.getInstance().player
+        val phone = activeSmartphone
+        val maxFe = phone?.getMaxEnergy() ?: CobblemonSmartphone.config.energy.baseCapacity
+        val currentFe = phone?.getEnergy() ?: 0
+        val isInfinite = phone?.isInfiniteEnergy() == true
+
+        // Summary card
+        body.card(gap = 4f, padding = HdPadding.symmetric(horizontal = 9f, vertical = 7f), radius = 10f, shadowBlur = 4f) { c ->
+            c.text(
+                text = tr("cobblemon_smartphone.settings.battery.capacity_title"),
+                size = 9.4f,
+                weight = HdTextLayout.Weight.BOLD,
+                color = HdColorSpec.Token("text_dark")
+            )
+            val capacityText = if (isInfinite) {
+                tr("tooltip.cobblemon_smartphone.energy_rotom_infinite")
+            } else {
+                tr("cobblemon_smartphone.settings.battery.capacity_value", "%,d".format(currentFe), "%,d".format(maxFe))
+            }
+            c.text(
+                text = capacityText,
+                size = 8.4f,
+                weight = HdTextLayout.Weight.MEDIUM,
+                color = HdColorSpec.Token("primary")
+            )
+            if (!CobblemonSmartphone.config.energy.enableEnergy) {
+                c.text(
+                    text = tr("cobblemon_smartphone.settings.battery.energy_disabled_note"),
+                    size = 7.4f,
+                    color = HdColorSpec.Token("text_dark_muted"),
+                    wrap = true
+                ) {
+                    width = HdSizeSpec.Fill
+                }
+            }
+        }
+
+        // Battery tier upgrade cards (built-in + any custom datapack battery items in inventory)
+        val displayedTiers = LinkedHashMap<String, BatteryTierInfo>()
+        for (tier in batteryTiers) {
+            displayedTiers[tier.upgradeKey] = tier
+        }
+        if (player != null) {
+            val inventoryStacks = player.inventory.items + listOf(player.offhandItem)
+            for (stack in inventoryStacks) {
+                val batteryItem = stack.item as? BatteryUpgradeItem ?: continue
+                val key = stack.getBatteryUpgradeKey() ?: continue
+                if (displayedTiers.containsKey(key)) continue
+                val bonus = stack.getBatteryExtraCapacity()
+                val title = "${stack.hoverName.string} (+${"%,d".format(bonus)} FE)"
+                displayedTiers[key] = BatteryTierInfo(
+                    tier = batteryItem.tier,
+                    upgradeKey = key,
+                    bonusFe = bonus,
+                    texturePath = "textures/item/battery_tier${batteryItem.tier.coerceIn(1, 3)}.png",
+                    customTitle = title
+                )
+            }
+        }
+
+        for (tier in displayedTiers.values) {
+            val installed = isBatteryInstalled(phone, tier.upgradeKey)
+            val hasItem = player != null && (
+                player.inventory.items.any { it.isBatteryUpgradeFor(tier.upgradeKey) } ||
+                    player.offhandItem.isBatteryUpgradeFor(tier.upgradeKey)
+                )
+            val isPending = pendingBatteryKey == tier.upgradeKey
+
+            body.card(gap = 0f, padding = HdPadding.symmetric(horizontal = 8f, vertical = 6f), radius = 10f, shadowBlur = 4f) { card ->
+                card.row(gap = 8f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { row ->
+                    row.image(
+                        texture = ResourceLocation.fromNamespaceAndPath(CobblemonSmartphone.ID, tier.texturePath),
+                        w = 28f,
+                        h = 28f,
+                        filter = HdCanvas.TextureFilter.NEAREST
+                    ) {
+                        if (!installed && !hasItem) {
+                            tint = HdColorSpec.Fixed(0x99FFFFFF.toInt())
+                        }
+                    }
+
+                    row.column(gap = 2f, width = HdSizeSpec.Weight(1f)) { info ->
+                        info.text(
+                            text = tier.customTitle ?: tr("upgrade.cobblemon_smartphone.${tier.upgradeKey}"),
+                            size = 9.0f,
+                            weight = HdTextLayout.Weight.BOLD,
+                            color = HdColorSpec.Token("text_dark")
+                        )
+                        val statusText = when {
+                            installed -> tr("cobblemon_smartphone.settings.battery.status.installed")
+                            hasItem -> tr("cobblemon_smartphone.settings.battery.status.ready")
+                            else -> tr("cobblemon_smartphone.settings.battery.status.required")
+                        }
+                        val statusColor = when {
+                            installed -> HdColorSpec.Fixed(0xFF2E7D32.toInt())
+                            hasItem -> HdColorSpec.Token("primary")
+                            else -> HdColorSpec.Token("text_dark_muted")
+                        }
+                        info.text(
+                            text = statusText,
+                            size = 7.4f,
+                            weight = HdTextLayout.Weight.MEDIUM,
+                            color = statusColor
+                        )
+                    }
+
+                    when {
+                        installed -> {
+                            row.button(
+                                label = tr("cobblemon_smartphone.app_store.button.installed"),
+                                icon = HdIconAtlas.Icon.CHECK,
+                                variant = ButtonNode.Variant.SURFACE,
+                                fontSize = 7.8f,
+                                radius = 7f,
+                                enabled = false,
+                                onClick = {}
+                            ) {
+                                iconSizeDp = 9f
+                                padding = HdPadding.symmetric(horizontal = 7f, vertical = 4f)
+                            }
+                        }
+                        hasItem -> {
+                            row.button(
+                                label = if (isPending) "..." else tr("cobblemon_smartphone.app_store.button.install"),
+                                icon = HdIconAtlas.Icon.PLUS,
+                                variant = ButtonNode.Variant.PRIMARY,
+                                fontSize = 7.8f,
+                                radius = 7f,
+                                enabled = !isPending,
+                                onClick = {
+                                    playClickSound()
+                                    pendingBatteryKey = tier.upgradeKey
+                                    InstallUpgradePacket(tier.upgradeKey).sendToServer()
+                                }
+                            ) {
+                                iconSizeDp = 9f
+                                padding = HdPadding.symmetric(horizontal = 7f, vertical = 4f)
+                            }
+                        }
+                        else -> {
+                            row.button(
+                                label = tr("cobblemon_smartphone.settings.battery.button.need_item"),
+                                icon = HdIconAtlas.Icon.LOCK,
+                                variant = ButtonNode.Variant.SURFACE,
+                                fontSize = 7.6f,
+                                radius = 7f,
+                                enabled = false,
+                                onClick = {}
+                            ) {
+                                iconSizeDp = 9f
+                                padding = HdPadding.symmetric(horizontal = 6f, vertical = 4f)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun isBatteryInstalled(phone: ItemStack?, upgradeKey: String): Boolean {
+        if (upgradeKey in installedBatteriesThisSession) return true
+        return phone?.hasUpgrade(upgradeKey) == true
     }
 
     private fun applyTheme(targetTheme: SmartphoneTheme) {

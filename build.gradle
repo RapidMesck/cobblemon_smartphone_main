@@ -47,6 +47,10 @@ subprojects {
                 includeGroup "maven.modrinth"
             }
         }
+        maven {
+            name = "Jared's Maven (JEI)"
+            url = "https://maven.blamejared.com/"
+        }
     }
 
     loom {

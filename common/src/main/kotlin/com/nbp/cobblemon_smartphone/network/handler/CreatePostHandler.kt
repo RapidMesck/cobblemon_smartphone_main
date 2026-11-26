@@ -60,7 +60,10 @@ object CreatePostHandler : ServerNetworkPacketHandler<CreatePostPacket> {
             val photo = SocialPhotoManager.claim(player, packet.photoId)
             val poll = if (!packet.pollQuestion.isNullOrBlank() && packet.pollOptions.size >= 2) {
                 val cleanedQuestion = packet.pollQuestion.trim().take(120)
-                val cleanedOptions = packet.pollOptions.map { it.trim().take(50) }.filter { it.isNotBlank() }
+                val cleanedOptions = packet.pollOptions
+                    .take(CreatePostPacket.MAX_POLL_OPTIONS)
+                    .map { it.trim().take(50) }
+                    .filter { it.isNotBlank() }
                 if (cleanedOptions.size >= 2) {
                     com.nbp.cobblemon_smartphone.social.SocialPoll(cleanedQuestion, cleanedOptions)
                 } else null

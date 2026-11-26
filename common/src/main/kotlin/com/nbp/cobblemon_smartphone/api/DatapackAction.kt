@@ -10,20 +10,34 @@ import net.minecraft.client.Minecraft
 import net.minecraft.resources.ResourceLocation
 
 class DatapackAction(private val definition: DatapackActionDefinition) : SmartphoneAction {
+    val requireUpgrade: String?
+        get() = definition.requireUpgrade
+
+    val requireMod: String?
+        get() = definition.requireMod
+
     override val id: String
         get() = definition.id
 
     override val texture: ResourceLocation
-        get() {
-            val parts = definition.texture.split(":", limit = 2)
-            return ResourceLocation.fromNamespaceAndPath(parts[0], parts[1])
-        }
+        get() = parseTextureOrFallback(definition.texture)
 
     override val hoverTexture: ResourceLocation
-        get() {
-            val parts = definition.hoverTexture.split(":", limit = 2)
-            return ResourceLocation.fromNamespaceAndPath(parts[0], parts[1])
+        get() = parseTextureOrFallback(definition.hoverTexture)
+
+    private fun parseTextureOrFallback(raw: String?): ResourceLocation {
+        if (!raw.isNullOrBlank()) {
+            ResourceLocation.tryParse(raw)?.let { return it }
         }
+        return FALLBACK_TEXTURE
+    }
+
+    companion object {
+        private val FALLBACK_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            "cobblemon_smartphone",
+            "textures/gui/buttons/app_store.png"
+        )
+    }
 
     override fun onClick() {
         val player = Minecraft.getInstance().player ?: return

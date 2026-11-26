@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "cobblemon:upgrade"
+    },
+    {
+      "item": "minecraft:crafting_table"
+    }
+  ],
+  "result": {
+    "id": "cobblemon_smartphone:sd_card",
+    "count": 1,
+    "components": {
+      "minecraft:custom_data": {
+        "cobblemon_smartphone:sd_card_upgrade": "upgrade_crafting"
+      }
+    }
+  }
+}

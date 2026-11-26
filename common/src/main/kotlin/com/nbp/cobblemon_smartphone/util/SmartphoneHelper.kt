@@ -22,12 +22,22 @@ object SmartphoneHelper {
     var contextColor: SmartphoneColor? = null
 
     fun getSmartphone(player: Player): ItemStack? {
-        // If a specific smartphone context is set (e.g. from right-clicking it), use it
-        contextSmartphone?.let { if (it.item is SmartphoneItem) return it }
+        // Only honor the client-side UI context on the logical client; on the integrated server
+        // (Singleplayer / LAN host), contextSmartphone belongs to the local host UI and must never
+        // be returned for server-side logic or LAN guests.
+        if (player.level().isClientSide) {
+            contextSmartphone?.let { if (it.item is SmartphoneItem) return it }
+        }
         // Otherwise fall back to platform compat (Trinkets/Curios/inventory)
         return getSmartphoneImpl?.invoke(player)
             ?: player.inventory.items.firstOrNull { it.item is SmartphoneItem }
             ?: (if (player.offhandItem.item is SmartphoneItem) player.offhandItem else null)
+    }
+
+    fun clearClientContext() {
+        contextSmartphone = null
+        contextColor = null
+        syncedRotomEnabled = null
     }
 
     const val ROTOM_PHONE_TAG = "is_rotom"
@@ -52,23 +62,24 @@ object SmartphoneHelper {
     }
 
     fun getDyeDisplayRgb(color: DyeColor): Int {
-        return when (color) {
-            DyeColor.WHITE -> 0xF9FFFE
-            DyeColor.ORANGE -> 0xF9801D
-            DyeColor.MAGENTA -> 0xC74EBD
-            DyeColor.LIGHT_BLUE -> 0x3AB3DA
-            DyeColor.YELLOW -> 0xFED83D
-            DyeColor.LIME -> 0x80C71F
-            DyeColor.PINK -> 0xFF69B4
-            DyeColor.GRAY -> 0x555E62
-            DyeColor.LIGHT_GRAY -> 0xA8A8A2
-            DyeColor.CYAN -> 0x169C9C
-            DyeColor.PURPLE -> 0x8932B8
-            DyeColor.BLUE -> 0x3C44AA
-            DyeColor.BROWN -> 0x835432
-            DyeColor.GREEN -> 0x5E7C16
-            DyeColor.RED -> 0xE02E26
-            DyeColor.BLACK -> 0x2D2D32
+        return when (color.serializedName) {
+            "white" -> 0xF9FFFE
+            "orange" -> 0xF9801D
+            "magenta" -> 0xC74EBD
+            "light_blue" -> 0x3AB3DA
+            "yellow" -> 0xFED83D
+            "lime" -> 0x80C71F
+            "pink" -> 0xFF69B4
+            "gray" -> 0x555E62
+            "light_gray" -> 0xA8A8A2
+            "cyan" -> 0x169C9C
+            "purple" -> 0x8932B8
+            "blue" -> 0x3C44AA
+            "brown" -> 0x835432
+            "green" -> 0x5E7C16
+            "red" -> 0xE02E26
+            "black" -> 0x2D2D32
+            else -> color.textureDiffuseColor and 0xFFFFFF
         }
     }
 

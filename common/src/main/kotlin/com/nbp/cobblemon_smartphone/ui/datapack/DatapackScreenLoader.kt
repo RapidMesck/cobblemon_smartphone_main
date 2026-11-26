@@ -148,6 +148,11 @@ object DatapackScreenClientState {
     fun getData(screenId: String): ScreenDataSnapshot? =
         dataSnapshots[DatapackScreenLoader.normalizeId(screenId)]
 
+    fun clear() {
+        clientScreens.clear()
+        dataSnapshots.clear()
+    }
+
     fun clearData(screenId: String? = null) {
         if (screenId == null) dataSnapshots.clear()
         else dataSnapshots.remove(DatapackScreenLoader.normalizeId(screenId))

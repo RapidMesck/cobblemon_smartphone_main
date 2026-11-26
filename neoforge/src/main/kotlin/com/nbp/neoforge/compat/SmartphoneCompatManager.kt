@@ -37,7 +37,7 @@ object SmartphoneCompatManager {
             try {
                 CuriosCompat.register()
                 CobblemonSmartphone.LOGGER.info("Curios compatibility initialized successfully")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 CobblemonSmartphone.LOGGER.error("Failed to initialize Curios compatibility", e)
                 curiosLoaded = false
             }
@@ -53,7 +53,7 @@ object SmartphoneCompatManager {
                 SmartphoneStorageLinkRegistry.register(RefinedStorageLink)
                 RefinedStorageAccessHolder.instance = RefinedStorageAccessImpl
                 CobblemonSmartphone.LOGGER.info("Refined Storage compatibility initialized successfully")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 CobblemonSmartphone.LOGGER.error("Failed to initialize Refined Storage compatibility", e)
             }
         }
@@ -63,7 +63,7 @@ object SmartphoneCompatManager {
                 SmartphoneStorageLinkRegistry.register(AE2Link)
                 AE2AccessHolder.instance = AE2AccessImpl
                 CobblemonSmartphone.LOGGER.info("Applied Energistics 2 compatibility initialized successfully")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 CobblemonSmartphone.LOGGER.error("Failed to initialize Applied Energistics 2 compatibility", e)
             }
         }
@@ -88,7 +88,7 @@ object SmartphoneCompatManager {
         if (!curiosLoaded) return null
         return try {
             CuriosCompat.getEquippedSmartphone(player)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             CobblemonSmartphone.LOGGER.error("Error checking Curios slots", e)
             null
         }
@@ -103,7 +103,7 @@ object SmartphoneCompatManager {
         if (!accessoriesLoaded) return null
         return try {
             AccessoriesCompat.getEquippedSmartphone(player)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             CobblemonSmartphone.LOGGER.error("Error checking Accessories slots", e)
             null
         }

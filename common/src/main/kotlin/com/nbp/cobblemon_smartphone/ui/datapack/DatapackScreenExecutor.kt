@@ -26,6 +26,14 @@ import java.util.concurrent.ConcurrentHashMap
 object DatapackScreenExecutor {
     private val lastActionUse = ConcurrentHashMap<UUID, MutableMap<String, Long>>()
 
+    fun onPlayerDisconnect(playerId: UUID) {
+        lastActionUse.remove(playerId)
+    }
+
+    fun clearAll() {
+        lastActionUse.clear()
+    }
+
     fun sendDataSnapshot(player: ServerPlayer, screenId: String) {
         val def = DatapackScreenLoader.getScreen(screenId) ?: return
         if (SmartphoneHelper.getSmartphone(player) == null) return

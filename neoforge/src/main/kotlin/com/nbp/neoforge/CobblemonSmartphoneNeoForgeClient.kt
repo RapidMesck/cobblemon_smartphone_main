@@ -6,12 +6,16 @@ import com.nbp.cobblemon_smartphone.compat.refinedstorage.RefinedStorageAccessHo
 import com.nbp.neoforge.compat.refinedstorage.RefinedStorageAccessImpl
 import com.nbp.cobblemon_smartphone.compat.ae2.AE2AccessHolder
 import com.nbp.neoforge.compat.ae2.AE2AccessImpl
+import com.nbp.cobblemon_smartphone.item.SdCardItem
+import com.nbp.cobblemon_smartphone.registry.CobblemonSmartphoneItems
+import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.api.distmarker.OnlyIn
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.ModList
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
+import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent
 
 @OnlyIn(Dist.CLIENT)
@@ -19,6 +23,19 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent
 object CobblemonSmartphoneNeoForgeClient {
     private val OPEN_SMARTPHONE by lazy { SmartphoneKeybinds.OPEN_SMARTPHONE }
     private val SCANNER by lazy { SmartphoneKeybinds.SCANNER }
+
+    @SubscribeEvent
+    fun registerItemColors(event: RegisterColorHandlersEvent.Item) {
+        event.register(
+            { stack, tintIndex -> if (tintIndex == 0) SmartphoneHelper.getRibbonTintColor(stack) else -1 },
+            CobblemonSmartphoneItems.ROTOM_RIBBON,
+            CobblemonSmartphoneItems.ROTOM_BOWTIE
+        )
+        event.register(
+            { stack, tintIndex -> if (tintIndex == 1) SdCardItem.getTintColor(stack) else -1 },
+            CobblemonSmartphoneItems.SD_CARD
+        )
+    }
 
     @SubscribeEvent
     fun registerKeyMappings(event: RegisterKeyMappingsEvent) {
@@ -35,24 +52,34 @@ object CobblemonSmartphoneNeoForgeClient {
 
     @SubscribeEvent
     fun initializeOptionalClientCompat(event: FMLClientSetupEvent) {
-        // Refined Storage serializes its slot reference in the menu-open packet.
-        // Client setup runs after Refined Storage has initialized its API registry.
-        if (ModList.get().isLoaded("refinedstorage")) {
-            RefinedStorageAccessImpl.initializeClient()
-        } else {
-            RefinedStorageAccessHolder.instance?.initializeClient()
-        }
+        event.enqueueWork {
+            // Refined Storage serializes its slot reference in the menu-open packet.
+            // Client setup runs after Refined Storage has initialized its API registry.
+            try {
+                if (ModList.get().isLoaded("refinedstorage")) {
+                    RefinedStorageAccessImpl.initializeClient()
+                } else {
+                    RefinedStorageAccessHolder.instance?.initializeClient()
+                }
+            } catch (t: Throwable) {
+                com.nbp.cobblemon_smartphone.CobblemonSmartphone.LOGGER.error("Failed to initialize Refined Storage client compatibility", t)
+            }
 
-        // AE2 serializes the ItemMenuHostLocator when opening the wireless terminal.
-        // Register the smartphone locator on the client before any server menu arrives.
-        if (ModList.get().isLoaded("ae2")) {
-            AE2AccessImpl.initializeClient()
-        } else {
-            AE2AccessHolder.instance?.initializeClient()
-        }
+            // AE2 serializes the ItemMenuHostLocator when opening the wireless terminal.
+            // Register the smartphone locator on the client before any server menu arrives.
+            try {
+                if (ModList.get().isLoaded("ae2")) {
+                    AE2AccessImpl.initializeClient()
+                } else {
+                    AE2AccessHolder.instance?.initializeClient()
+                }
+            } catch (t: Throwable) {
+                com.nbp.cobblemon_smartphone.CobblemonSmartphone.LOGGER.error("Failed to initialize AE2 client compatibility", t)
+            }
 
-        com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper.clientPlayerProvider = { net.minecraft.client.Minecraft.getInstance().player }
-        com.nbp.cobblemon_smartphone.skin.SmartphoneSkinRegistry.clientResourceManagerProvider = { net.minecraft.client.Minecraft.getInstance()?.resourceManager }
-        com.nbp.cobblemon_smartphone.client.RotomInteractionClientHandler.register()
+            com.nbp.cobblemon_smartphone.theme.SmartphoneThemeHelper.clientPlayerProvider = { net.minecraft.client.Minecraft.getInstance().player }
+            com.nbp.cobblemon_smartphone.skin.SmartphoneSkinRegistry.clientResourceManagerProvider = { net.minecraft.client.Minecraft.getInstance()?.resourceManager }
+            com.nbp.cobblemon_smartphone.client.RotomInteractionClientHandler.register()
+        }
     }
 }

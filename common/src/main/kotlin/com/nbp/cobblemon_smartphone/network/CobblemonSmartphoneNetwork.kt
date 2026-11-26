@@ -219,6 +219,10 @@ import com.nbp.cobblemon_smartphone.network.packet.SaveSkinPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncSmartphoneSkinsPacket
 import com.nbp.cobblemon_smartphone.network.handler.SaveSkinHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncSmartphoneSkinsHandler
+import com.nbp.cobblemon_smartphone.network.packet.InstallUpgradePacket
+import com.nbp.cobblemon_smartphone.network.packet.InstallUpgradeResultPacket
+import com.nbp.cobblemon_smartphone.network.handler.InstallUpgradeHandler
+import com.nbp.cobblemon_smartphone.network.handler.InstallUpgradeResultHandler
 
 object CobblemonSmartphoneNetwork {
     val s2cPayloads = generateS2CPacketInfoList()
@@ -342,6 +346,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(SyncDatapackScreensPacket.ID, SyncDatapackScreensPacket::decode, SyncDatapackScreensHandler))
         list.add(PacketRegisterInfo(SyncDatapackScreenDataPacket.ID, SyncDatapackScreenDataPacket::decode, SyncDatapackScreenDataHandler))
         list.add(PacketRegisterInfo(OpenDatapackScreenPacket.ID, OpenDatapackScreenPacket::decode, OpenDatapackScreenHandler))
+        list.add(PacketRegisterInfo(InstallUpgradeResultPacket.ID, InstallUpgradeResultPacket::decode, InstallUpgradeResultHandler))
 
         return list
     }
@@ -547,6 +552,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(SaveSkinPacket.ID, SaveSkinPacket::decode, SaveSkinHandler))
         list.add(PacketRegisterInfo(RequestDatapackScreenDataPacket.ID, RequestDatapackScreenDataPacket::decode, RequestDatapackScreenDataHandler))
         list.add(PacketRegisterInfo(ExecuteDatapackScreenActionPacket.ID, ExecuteDatapackScreenActionPacket::decode, ExecuteDatapackScreenActionHandler))
+        list.add(PacketRegisterInfo(InstallUpgradePacket.ID, InstallUpgradePacket::decode, InstallUpgradeHandler))
 
         return list
     }

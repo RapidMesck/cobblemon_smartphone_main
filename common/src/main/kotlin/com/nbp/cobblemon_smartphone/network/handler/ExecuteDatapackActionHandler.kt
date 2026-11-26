@@ -14,6 +14,14 @@ import java.util.UUID
 object ExecuteDatapackActionHandler : ServerNetworkPacketHandler<ExecuteDatapackActionPacket> {
     private val lastUse = mutableMapOf<UUID, MutableMap<String, Long>>()
 
+    fun onPlayerDisconnect(playerId: UUID) {
+        lastUse.remove(playerId)
+    }
+
+    fun clearAll() {
+        lastUse.clear()
+    }
+
     override fun handle(packet: ExecuteDatapackActionPacket, server: MinecraftServer, player: ServerPlayer) {
         server.execute {
             val actionId = packet.actionId

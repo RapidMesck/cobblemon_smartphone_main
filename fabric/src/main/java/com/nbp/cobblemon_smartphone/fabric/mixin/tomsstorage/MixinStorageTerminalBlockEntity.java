@@ -24,10 +24,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * Also covers CraftingTerminalBlockEntity, which extends this class and doesn't override the
  * method. Only applied when Toms Storage is installed - see TomsStorageMixinPlugin.
  */
-@Mixin(StorageTerminalBlockEntity.class)
+@Mixin(value = StorageTerminalBlockEntity.class, remap = false)
 public class MixinStorageTerminalBlockEntity {
 
-    @Inject(method = "canInteractWith", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "canInteractWith", at = @At("HEAD"), cancellable = true, remap = false)
     private void cobblemonSmartphone$bypassForRemoteSession(Player player, boolean menuCheck, CallbackInfoReturnable<Boolean> cir) {
         // The remote session is server-owned. On a dedicated server the client
         // cannot see that session and would run Toms' original inventory check,

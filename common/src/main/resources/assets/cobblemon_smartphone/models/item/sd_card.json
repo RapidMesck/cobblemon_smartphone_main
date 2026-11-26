@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "cobblemon_smartphone:item/sd_card",
+    "layer1": "cobblemon_smartphone:item/sd_card_overlay"
+  }
+}
