@@ -119,6 +119,27 @@ object SocialPhotoClient {
         }
     }
 
+    /** Captures a clean aerial photo directly from the Rotom Drone viewfinder and uploads it to Social. */
+    fun captureImmediateFromDrone(draft: ComposeDraft) {
+        val client = Minecraft.getInstance()
+        try {
+            val source = Screenshot.takeScreenshot(client.mainRenderTarget)
+            val capture = resizeNativeTo720p(source)
+            processAndUpload(draft, capture)
+        } catch (_: Exception) {
+            client.player?.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.nbp.social.photo_failed"), true)
+            client.setScreen(
+                SocialComposeScreen(
+                    draft.color,
+                    draft.stack,
+                    draft.text,
+                    dmTargetUuid = draft.dmTargetUuid,
+                    dmTargetName = draft.dmTargetName
+                )
+            )
+        }
+    }
+
     fun renderCameraOverlay(guiGraphics: GuiGraphics) {
         if (!cameraActive) return
         val client = Minecraft.getInstance()

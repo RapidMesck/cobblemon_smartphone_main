@@ -3,6 +3,7 @@ package com.nbp.cobblemon_smartphone.client.render
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.math.Axis
 import com.nbp.cobblemon_smartphone.client.RotomDialogueClientState
+import com.nbp.cobblemon_smartphone.client.RotomDroneClientManager
 import com.nbp.cobblemon_smartphone.client.RotomRadarClientState
 import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.client.scanner.ScannerManager
@@ -259,6 +260,7 @@ class RotomPlayerRenderLayer(
             playerModel: PlayerModel<AbstractClientPlayer>? = null
         ) {
             if (player.isInvisible || player.isSleeping || player.isDeadOrDying) return
+            if (RotomDroneClientManager.isPlayerInDrone(player.uuid)) return
             if (isFirstPersonPass && (ScannerManager.isInUse() || SocialPhotoClient.isCameraActive())) return
 
             val smartphoneStack = RotomClientManager.getEffectiveSmartphone(player) ?: return

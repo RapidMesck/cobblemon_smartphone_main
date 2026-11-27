@@ -1,6 +1,7 @@
 package com.nbp.cobblemon_smartphone.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.nbp.cobblemon_smartphone.client.RotomDroneClientManager;
 import com.nbp.cobblemon_smartphone.client.scanner.ScannerManager;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
@@ -17,7 +18,7 @@ public class MixinItemInHandRenderer {
     private void onRenderHandsWithItems(float partialTicks, PoseStack poseStack,
                                          MultiBufferSource.BufferSource bufferSource,
                                          LocalPlayer player, int packedLight, CallbackInfo ci) {
-        if (ScannerManager.INSTANCE.isActive()) {
+        if (ScannerManager.INSTANCE.isActive() || RotomDroneClientManager.isActive()) {
             ci.cancel();
         }
     }

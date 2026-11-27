@@ -4,8 +4,10 @@ import com.nbp.cobblemon_smartphone.CobblemonSmartphoneFabricNetworkManager
 import com.nbp.cobblemon_smartphone.client.dev.GuiScreenshotHarness
 import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
 import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
+import com.nbp.cobblemon_smartphone.client.RotomDroneClientManager
 import com.nbp.cobblemon_smartphone.client.RotomTrackerClientState
 import com.nbp.cobblemon_smartphone.client.gui.RotomDialogueOverlay
+import com.nbp.cobblemon_smartphone.client.gui.RotomDroneOverlay
 import com.nbp.cobblemon_smartphone.client.gui.RotomTrackerOverlay
 import com.nbp.cobblemon_smartphone.client.gui.StructureCompassOverlay
 import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
@@ -84,6 +86,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
         KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.OPEN_SMARTPHONE)
         KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.SCANNER)
         KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.DISMISS_DIALOGUE)
+        KeyBindingHelper.registerKeyBinding(SmartphoneKeybinds.ROTOM_DRONE)
         SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEach { KeyBindingHelper.registerKeyBinding(it) }
         // Call hotkeys only make sense (and only appear in Controls) when Simple Voice Chat is present.
         if (VoiceChatBridge.isModPresent) {
@@ -102,6 +105,9 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
                 RotomDialogueClientState.dismissLocalDialogue()
                 RotomTrackerClientState.dismiss()
             }
+            while (SmartphoneKeybinds.ROTOM_DRONE.consumeClick()) {
+                RotomDroneClientManager.toggleFromKeybind()
+            }
             SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEachIndexed { index, keyMapping ->
                 while (keyMapping.consumeClick()) {
                     QuickActionDispatcher.trigger(index)
@@ -116,6 +122,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             FabricSmartphoneKeybindHandler.onClientTick(client)
             CallClientTicker.tick()
             RotomClientManager.tick()
+            RotomDroneClientManager.tick()
             SocialPhotoClient.tick()
             GpsClientState.tick()
             StructureCompassClientState.tick()
@@ -124,6 +131,10 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
         })
 
         HudRenderCallback.EVENT.register(HudRenderCallback { guiGraphics, _ ->
+            if (RotomDroneClientManager.isActive()) {
+                RotomDroneOverlay.render(guiGraphics)
+                return@HudRenderCallback
+            }
             CallOverlay.render(guiGraphics)
             GpsCompassOverlay.render(guiGraphics)
             StructureCompassOverlay.render(guiGraphics)
@@ -138,6 +149,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             StructureCompassClientState.reset()
             RotomTrackerClientState.reset()
             RotomScannerClientState.reset()
+            RotomDroneClientManager.reset()
             RotomClientManager.reset()
             SmartphoneHelper.clearClientContext()
             DatapackScreenClientState.clear()

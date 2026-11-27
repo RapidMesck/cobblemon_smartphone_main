@@ -1,5 +1,6 @@
 package com.nbp.cobblemon_smartphone.mixin;
 
+import com.nbp.cobblemon_smartphone.client.RotomDroneClientManager;
 import com.nbp.cobblemon_smartphone.client.scanner.ScannerManager;
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient;
 import net.minecraft.client.KeyboardHandler;
@@ -11,9 +12,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Lets ESC close the pokedex scan overlay or the social camera capture viewfinder,
- * so a smartphone user who opened the scanner or camera is never stuck in it.
- * While the scanner or camera is in use (and no screen is open) the ESC press is consumed.
+ * Lets ESC close the pokedex scan overlay, Rotom Drone freecam, or the social camera capture viewfinder,
+ * so a smartphone user who opened the scanner, drone, or camera is never stuck in it.
+ * While active (and no screen is open) the ESC press is consumed.
  */
 @Mixin(KeyboardHandler.class)
 public class KeyboardHandlerMixin {
@@ -22,7 +23,10 @@ public class KeyboardHandlerMixin {
     private void cobblemonsmartphone$closeScannerOrCameraOnEscape(long windowPointer, int key, int scanCode, int action, int modifiers, CallbackInfo ci) {
         if (action == GLFW.GLFW_PRESS && key == GLFW.GLFW_KEY_ESCAPE
                 && Minecraft.getInstance().screen == null) {
-            if (ScannerManager.INSTANCE.isInUse()) {
+            if (RotomDroneClientManager.isActive()) {
+                RotomDroneClientManager.deactivate(true);
+                ci.cancel();
+            } else if (ScannerManager.INSTANCE.isInUse()) {
                 ScannerManager.INSTANCE.deactivate();
                 ci.cancel();
             } else if (SocialPhotoClient.INSTANCE.isCameraActive()) {

@@ -25,6 +25,13 @@ object SyncRotomConfigHandler : ClientNetworkPacketHandler<SyncRotomConfigPacket
             rotom.returnTicks = packet.returnTicks
             rotom.infiniteEnergy = packet.infiniteEnergy
             rotom.curiosityLanguage = packet.curiosityLanguage
+            rotom.enableDrone = packet.enableDrone
+            rotom.droneMaxRange = packet.droneMaxRange
+            rotom.droneSpeed = packet.droneSpeed
+            rotom.droneAllowPhoto = packet.droneAllowPhoto
+            rotom.droneAllowFluids = packet.droneAllowFluids
+            rotom.droneBlockedDimensions = packet.droneBlockedDimensions
+            rotom.droneEnergyPerSecond = packet.droneEnergyPerSecond
         }
     }
 }

@@ -95,6 +95,7 @@ object RotomServerManager {
         playerCooldowns.clear()
         clusterCheckCooldowns.clear()
         tickCounter = 0
+        RotomDroneServerManager.clearAll()
     }
 
     fun updatePlayerConfig(playerUuid: UUID, config: RotomRadarConfig) {
@@ -191,10 +192,12 @@ object RotomServerManager {
         val config = RotomRadarStorage.read(player)
         playerConfigs[player.uuid] = config
         SyncRotomRadarPacket(config).sendToPlayer(player)
+        RotomDroneServerManager.onPlayerJoin(player)
     }
 
     fun onPlayerDisconnect(player: ServerPlayer) {
         RotomAutoScannerManager.onPlayerDisconnect(player)
+        RotomDroneServerManager.onPlayerDisconnect(player)
         playerConfigs.remove(player.uuid)
         equippedSnapshots.remove(player.uuid)
         val prefix = "${player.uuid}:"
@@ -325,7 +328,7 @@ object RotomServerManager {
             val invalidParticipants = mutableListOf<UUID>()
             for (pUuid in session.participants) {
                 val p = playersByUuid[pUuid]
-                val isBusy = openPlayers.contains(pUuid) || RotomAutoScannerManager.isPlayerInDialogueOrScanning(pUuid)
+                val isBusy = openPlayers.contains(pUuid) || RotomAutoScannerManager.isPlayerInDialogueOrScanning(pUuid) || RotomDroneServerManager.isPlayerInDrone(pUuid)
                 val valid = p != null &&
                     !isBusy &&
                     !p.isSleeping &&
@@ -398,7 +401,7 @@ object RotomServerManager {
         for (session in activeSocialSessions.values) {
             for (candidate in playersWithRotom) {
                 if (playerToSession.containsKey(candidate.uuid)) continue
-                val isBusy = openPlayers.contains(candidate.uuid) || RotomAutoScannerManager.isPlayerInDialogueOrScanning(candidate.uuid)
+                val isBusy = openPlayers.contains(candidate.uuid) || RotomAutoScannerManager.isPlayerInDialogueOrScanning(candidate.uuid) || RotomDroneServerManager.isPlayerInDrone(candidate.uuid)
                 if (isBusy || candidate.isSleeping) continue
                 if (now < playerCooldowns.getOrDefault(candidate.uuid, 0L)) continue
 
@@ -431,6 +434,7 @@ object RotomServerManager {
             !playerToSession.containsKey(p.uuid) &&
             !openPlayers.contains(p.uuid) &&
             !RotomAutoScannerManager.isPlayerInDialogueOrScanning(p.uuid) &&
+            !RotomDroneServerManager.isPlayerInDrone(p.uuid) &&
             !p.isSleeping &&
             now >= playerCooldowns.getOrDefault(p.uuid, 0L)
         }
@@ -529,7 +533,8 @@ object RotomServerManager {
 
         val rotomEnabled = CobblemonSmartphone.config.features.enableRotom
 
-        // Auto Pokédex Scanner ticks every single tick
+        // Auto Pokédex Scanner & Rotom Drone tick every single tick
+        RotomDroneServerManager.tick(server)
         if (rotomEnabled) {
             RotomAutoScannerManager.tick(server)
         }

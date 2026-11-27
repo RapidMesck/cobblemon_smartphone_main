@@ -67,7 +67,7 @@ object RotomAutoScannerManager {
     fun setPlayerPriorityTarget(player: ServerPlayer, target: PokemonEntity) {
         if (!CobblemonSmartphone.config.features.enableRotom) return
         if (!CobblemonSmartphone.config.features.enableScanner) return
-        if (RotomServerManager.isPlayerInPhotoMode(player.uuid)) return
+        if (RotomServerManager.isPlayerInPhotoMode(player.uuid) || RotomDroneServerManager.isPlayerInDrone(player.uuid)) return
         val rotomConfig = CobblemonSmartphone.config.rotom
 
         if (!rotomConfig.enableManualScanPriority) {
@@ -157,6 +157,22 @@ object RotomAutoScannerManager {
             val rotomPhone = SmartphoneHelper.getEquippedRotomPhone(player)
             if (rotomPhone == null || !player.isAlive || player.isSpectator) {
                 if (session.targetEntityId != -1 || session.phase != ScanPhase.IDLE) {
+                    session.targetEntityId = -1
+                    session.phase = ScanPhase.IDLE
+                    session.phaseTicks = 0
+                    session.prioritizedEntityId = null
+                    broadcastScanSync(player, session)
+                }
+                continue
+            }
+
+            // Bloqueia completamente o auto-scan enquanto o jogador estiver pilotando o Rotom Drone
+            if (RotomDroneServerManager.isPlayerInDrone(player.uuid)) {
+                if (session.isDialogueOpen) {
+                    session.isDialogueOpen = false
+                    sendToNearby(player, SyncRotomDialogueClosePacket(player.uuid))
+                }
+                if (session.targetEntityId != -1 || session.phase != ScanPhase.IDLE || session.prioritizedEntityId != null) {
                     session.targetEntityId = -1
                     session.phase = ScanPhase.IDLE
                     session.phaseTicks = 0
@@ -273,8 +289,8 @@ object RotomAutoScannerManager {
                     continue
                 }
 
-                // Bloqueia o auto scan se o jogador estiver em modo foto (câmera / selfie)
-                if (RotomServerManager.isPlayerInPhotoMode(player.uuid)) {
+                // Bloqueia o auto scan se o jogador estiver em modo foto (câmera / selfie) ou pilotando o Rotom Drone
+                if (RotomServerManager.isPlayerInPhotoMode(player.uuid) || RotomDroneServerManager.isPlayerInDrone(player.uuid)) {
                     continue
                 }
 

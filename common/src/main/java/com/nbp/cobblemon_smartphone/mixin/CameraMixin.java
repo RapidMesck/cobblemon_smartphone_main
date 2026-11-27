@@ -1,5 +1,6 @@
 package com.nbp.cobblemon_smartphone.mixin;
 
+import com.nbp.cobblemon_smartphone.client.RotomDroneClientManager;
 import com.nbp.cobblemon_smartphone.client.social.SocialPhotoClient;
 import net.minecraft.client.Camera;
 import net.minecraft.util.Mth;
@@ -19,6 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Camera.class)
 public abstract class CameraMixin {
 
+    @Shadow private boolean detached;
     @Shadow protected abstract void setPosition(Vec3 pos);
     @Shadow protected abstract void setRotation(float yRot, float xRot);
 
@@ -35,6 +37,15 @@ public abstract class CameraMixin {
     private void cobblemonsmartphone$applySelfieCamera(
             BlockGetter level, Entity entity, boolean detached, boolean mirrored, float partialTicks, CallbackInfo ci
     ) {
+        if (RotomDroneClientManager.isActive()) {
+            this.detached = true;
+            this.setRotation(
+                    RotomDroneClientManager.INSTANCE.getInterpolatedYaw(partialTicks),
+                    RotomDroneClientManager.INSTANCE.getInterpolatedPitch(partialTicks)
+            );
+            this.setPosition(RotomDroneClientManager.INSTANCE.getInterpolatedPos(partialTicks));
+            return;
+        }
         if (SocialPhotoClient.INSTANCE.isCameraActive() && detached && entity instanceof Player player) {
             double px = Mth.lerp(partialTicks, player.xOld, player.getX());
             double py = Mth.lerp(partialTicks, player.yOld, player.getY());

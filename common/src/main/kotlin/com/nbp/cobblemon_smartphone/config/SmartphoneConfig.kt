@@ -195,6 +195,27 @@ class SmartphoneConfig {
         /** Custo de energia (Forge/NeoForge/Fabric Energy) por escaneamento se o sistema de energia estiver ativo (0 = gratuito) */
         var scanEnergyCost: Int = 0
 
+        /** Se o modo Rotom Drone (freecam fairplay) está habilitado */
+        var enableDrone: Boolean = true
+
+        /** Raio máximo em blocos que o Rotom Drone pode se afastar do jogador */
+        var droneMaxRange: Double = 32.0
+
+        /** Velocidade base de voo do Rotom Drone em blocos por tick */
+        var droneSpeed: Double = 0.45
+
+        /** Se o jogador pode tirar fotos aéreas (Social) enquanto pilota o Rotom Drone */
+        var droneAllowPhoto: Boolean = true
+
+        /** Se o Rotom Drone pode voar dentro de água ou lava */
+        var droneAllowFluids: Boolean = false
+
+        /** Lista de dimensões bloqueadas para o Rotom Drone (ex: ["minecraft:the_end"]) */
+        var droneBlockedDimensions: List<String> = emptyList()
+
+        /** Custo de energia (FE) por segundo enquanto voa com o Rotom Drone se o sistema de energia estiver ativo (0 = gratuito) */
+        var droneEnergyPerSecond: Int = 0
+
         /** Raio ao quadrado pré-calculado para verificações rápidas de distância no servidor */
         val scanRadiusSqr: Double get() = scanRadius * scanRadius
     }

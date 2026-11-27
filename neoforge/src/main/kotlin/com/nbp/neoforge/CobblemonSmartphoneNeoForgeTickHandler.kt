@@ -1,12 +1,14 @@
 package com.nbp.neoforge
 
 import com.nbp.cobblemon_smartphone.client.GpsClientState
+import com.nbp.cobblemon_smartphone.client.RotomDroneClientManager
 import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.client.RotomTrackerClientState
 import com.nbp.cobblemon_smartphone.client.StructureCompassClientState
 import com.nbp.cobblemon_smartphone.client.gui.CallOverlay
 import com.nbp.cobblemon_smartphone.client.gui.GpsCompassOverlay
 import com.nbp.cobblemon_smartphone.client.gui.RotomDialogueOverlay
+import com.nbp.cobblemon_smartphone.client.gui.RotomDroneOverlay
 import com.nbp.cobblemon_smartphone.client.gui.RotomTrackerOverlay
 import com.nbp.cobblemon_smartphone.client.gui.StructureCompassOverlay
 import com.nbp.cobblemon_smartphone.client.keybind.QuickActionDispatcher
@@ -40,6 +42,9 @@ object CobblemonSmartphoneNeoForgeTickHandler {
             com.nbp.cobblemon_smartphone.client.RotomDialogueClientState.dismissLocalDialogue()
             RotomTrackerClientState.dismiss()
         }
+        while (SmartphoneKeybinds.ROTOM_DRONE.consumeClick()) {
+            RotomDroneClientManager.toggleFromKeybind()
+        }
         SmartphoneKeybinds.QUICK_ACTION_SLOTS.forEachIndexed { index, keyMapping ->
             while (keyMapping.consumeClick()) {
                 QuickActionDispatcher.trigger(index)
@@ -54,6 +59,7 @@ object CobblemonSmartphoneNeoForgeTickHandler {
         NeoForgeSmartphoneKeybindHandler.onClientTick(net.minecraft.client.Minecraft.getInstance())
         CallClientTicker.tick()
         RotomClientManager.tick()
+        RotomDroneClientManager.tick()
         SocialPhotoClient.tick()
         GpsClientState.tick()
         StructureCompassClientState.tick()
@@ -62,6 +68,10 @@ object CobblemonSmartphoneNeoForgeTickHandler {
 
     @SubscribeEvent
     fun onRenderGui(event: RenderGuiEvent.Post) {
+        if (RotomDroneClientManager.isActive()) {
+            RotomDroneOverlay.render(event.guiGraphics)
+            return
+        }
         CallOverlay.render(event.guiGraphics)
         GpsCompassOverlay.render(event.guiGraphics)
         StructureCompassOverlay.render(event.guiGraphics)
@@ -77,6 +87,7 @@ object CobblemonSmartphoneNeoForgeTickHandler {
         StructureCompassClientState.reset()
         RotomTrackerClientState.reset()
         RotomScannerClientState.reset()
+        RotomDroneClientManager.reset()
         RotomClientManager.reset()
         com.nbp.cobblemon_smartphone.util.SmartphoneHelper.clearClientContext()
         com.nbp.cobblemon_smartphone.ui.datapack.DatapackScreenClientState.clear()

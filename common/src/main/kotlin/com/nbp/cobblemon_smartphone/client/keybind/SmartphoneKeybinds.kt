@@ -28,6 +28,12 @@ object SmartphoneKeybinds {
         CATEGORY
     )
 
+    val ROTOM_DRONE: KeyMapping = KeyMapping(
+        "key.cobblemon_smartphone.rotom_drone",
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    )
+
     // Call answer/decline hotkeys. Registered only when Simple Voice Chat is present (see the
     // platform client initializers). "Decline" doubles as cancel (outgoing) and hang up (in-call).
     val ANSWER_CALL: KeyMapping = KeyMapping(

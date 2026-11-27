@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.client.render
 
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
+import com.nbp.cobblemon_smartphone.client.RotomDroneClientManager
 import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import net.minecraft.client.Camera
 import net.minecraft.client.Minecraft
@@ -31,6 +32,9 @@ object RotomAutoScannerRenderer {
 
         try {
             for (scan in activeScans) {
+                if (RotomDroneClientManager.isPlayerInDrone(scan.scannerPlayerUuid)) {
+                    continue
+                }
                 if (scan.phase == com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_RETURNING ||
                     scan.phase == com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket.PHASE_IDLE) {
                     continue

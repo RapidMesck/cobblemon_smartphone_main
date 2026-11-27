@@ -141,6 +141,37 @@ class SocialComposeScreen(
                     width = HdSizeSpec.Weight(1f)
                 }
 
+                val canDronePhoto = com.nbp.cobblemon_smartphone.client.RotomScannerClientState.clientConfig.let {
+                    it.enableRotom && it.enableDrone && it.droneAllowPhoto
+                } && (smartphoneStack?.let { com.nbp.cobblemon_smartphone.util.SmartphoneHelper.run { it.isRotomPhone() } } == true)
+
+                if (canDronePhoto) {
+                    ab.pill(
+                        label = lang("drone_photo"),
+                        icon = HdIconAtlas.Icon.SPARKLES,
+                        active = false,
+                        onClick = {
+                            if (pendingRequestId != null) return@pill
+                            playClickSound()
+                            selectedSlot = -1
+                            photoId?.let(SocialPhotoClient::removeDraft)
+                            photoId = null
+                            attachmentMode = AttachmentMode.PHOTO
+                            val bodyText = stateStore.getInputText("compose_body")
+                            val draft = SocialPhotoClient.ComposeDraft(
+                                color = color,
+                                stack = smartphoneStack?.copy(),
+                                text = bodyText,
+                                dmTargetUuid = dmTargetUuid,
+                                dmTargetName = dmTargetName
+                            )
+                            com.nbp.cobblemon_smartphone.client.RotomDroneClientManager.activate(color, smartphoneStack, draft)
+                        }
+                    ) {
+                        width = HdSizeSpec.Weight(1f)
+                    }
+                }
+
                 if (!isDmCompose) {
                     ab.pill(
                         label = lang("poll"),

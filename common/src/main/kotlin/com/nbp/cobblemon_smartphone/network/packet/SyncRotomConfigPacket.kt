@@ -21,7 +21,15 @@ class SyncRotomConfigPacket(
     val enableSocialDataShare: Boolean = true,
     val socialDataShareChance: Double = 0.35,
     val curiosityLanguage: String = "en",
-    val enableRotom: Boolean = true
+    val enableRotom: Boolean = true,
+    val enableDrone: Boolean = true,
+    val droneMaxRange: Double = 32.0,
+    val droneSpeed: Double = 0.45,
+    val droneAllowPhoto: Boolean = true,
+    val droneAllowFluids: Boolean = false,
+    val droneBlockedDimensions: List<String> = emptyList(),
+    val droneEnergyPerSecond: Int = 0,
+    val enableSocial: Boolean = true
 ) : CobblemonSmartphoneNetworkPacket<SyncRotomConfigPacket> {
     companion object {
         val ID = smartphoneResource("sync_rotom_config")
@@ -44,6 +52,19 @@ class SyncRotomConfigPacket(
             val socialDataShareChance = if (buffer.readableBytes() >= 8) buffer.readDouble() else 0.35
             val curiosityLanguage = if (buffer.isReadable) buffer.readUtf(16) else "en"
             val enableRotom = if (buffer.isReadable) buffer.readBoolean() else true
+            val enableDrone = if (buffer.isReadable) buffer.readBoolean() else true
+            val droneMaxRange = if (buffer.readableBytes() >= 8) buffer.readDouble() else 32.0
+            val droneSpeed = if (buffer.readableBytes() >= 8) buffer.readDouble() else 0.45
+            val droneAllowPhoto = if (buffer.isReadable) buffer.readBoolean() else true
+            val droneAllowFluids = if (buffer.isReadable) buffer.readBoolean() else false
+            val droneBlockedDimensions = if (buffer.isReadable) {
+                val count = buffer.readVarInt().coerceIn(0, 256)
+                List(count) { buffer.readUtf(128) }
+            } else {
+                emptyList()
+            }
+            val droneEnergyPerSecond = if (buffer.isReadable) buffer.readVarInt() else 0
+            val enableSocial = if (buffer.isReadable) buffer.readBoolean() else true
             return SyncRotomConfigPacket(
                 enableScanner = enableScanner,
                 enableAutoScanner = enableAutoScanner,
@@ -61,7 +82,15 @@ class SyncRotomConfigPacket(
                 enableSocialDataShare = enableSocialDataShare,
                 socialDataShareChance = socialDataShareChance,
                 curiosityLanguage = curiosityLanguage,
-                enableRotom = enableRotom
+                enableRotom = enableRotom,
+                enableDrone = enableDrone,
+                droneMaxRange = droneMaxRange,
+                droneSpeed = droneSpeed,
+                droneAllowPhoto = droneAllowPhoto,
+                droneAllowFluids = droneAllowFluids,
+                droneBlockedDimensions = droneBlockedDimensions,
+                droneEnergyPerSecond = droneEnergyPerSecond,
+                enableSocial = enableSocial
             )
         }
 
@@ -85,7 +114,15 @@ class SyncRotomConfigPacket(
                 enableSocialDataShare = rotom.enableSocialDataShare,
                 socialDataShareChance = rotom.socialDataShareChance,
                 curiosityLanguage = rotom.curiosityLanguage,
-                enableRotom = cfg.features.enableRotom
+                enableRotom = cfg.features.enableRotom,
+                enableDrone = rotom.enableDrone,
+                droneMaxRange = rotom.droneMaxRange,
+                droneSpeed = rotom.droneSpeed,
+                droneAllowPhoto = rotom.droneAllowPhoto,
+                droneAllowFluids = rotom.droneAllowFluids,
+                droneBlockedDimensions = rotom.droneBlockedDimensions,
+                droneEnergyPerSecond = rotom.droneEnergyPerSecond,
+                enableSocial = cfg.features.enableSocial
             )
         }
     }
@@ -110,5 +147,17 @@ class SyncRotomConfigPacket(
         buffer.writeDouble(socialDataShareChance)
         buffer.writeUtf(curiosityLanguage, 16)
         buffer.writeBoolean(enableRotom)
+        buffer.writeBoolean(enableDrone)
+        buffer.writeDouble(droneMaxRange)
+        buffer.writeDouble(droneSpeed)
+        buffer.writeBoolean(droneAllowPhoto)
+        buffer.writeBoolean(droneAllowFluids)
+        val dims = droneBlockedDimensions.take(256)
+        buffer.writeVarInt(dims.size)
+        for (dim in dims) {
+            buffer.writeUtf(dim, 128)
+        }
+        buffer.writeVarInt(droneEnergyPerSecond)
+        buffer.writeBoolean(enableSocial)
     }
 }

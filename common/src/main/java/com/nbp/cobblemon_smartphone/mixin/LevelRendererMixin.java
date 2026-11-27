@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.nbp.cobblemon_smartphone.client.render.RotomAutoScannerRenderer;
+import com.nbp.cobblemon_smartphone.client.render.RotomDroneRenderer;
 import com.nbp.cobblemon_smartphone.client.render.RotomPlayerRenderLayer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
@@ -67,6 +68,13 @@ public abstract class LevelRendererMixin {
         }
 
         RotomAutoScannerRenderer.render(
+            new PoseStack(),
+            this.renderBuffers.bufferSource(),
+            camera,
+            partialTick
+        );
+
+        RotomDroneRenderer.render(
             new PoseStack(),
             this.renderBuffers.bufferSource(),
             camera,

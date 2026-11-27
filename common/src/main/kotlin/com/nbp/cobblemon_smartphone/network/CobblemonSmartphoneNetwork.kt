@@ -203,6 +203,10 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncRotomScanPacket
 import com.nbp.cobblemon_smartphone.network.packet.RotomScanCompletePacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomConfigPacket
 import com.nbp.cobblemon_smartphone.network.packet.SyncRotomDialogueClosePacket
+import com.nbp.cobblemon_smartphone.network.packet.RotomDroneStatePacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncRotomDroneStatePacket
+import com.nbp.cobblemon_smartphone.network.handler.RotomDroneStateHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncRotomDroneStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.SetSmartphoneOpenStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomEquipStateHandler
 import com.nbp.cobblemon_smartphone.network.handler.SyncRotomSocialSessionHandler
@@ -346,6 +350,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(RotomScanCompletePacket.ID, RotomScanCompletePacket::decode, RotomScanCompleteHandler))
         list.add(PacketRegisterInfo(SyncRotomConfigPacket.ID, SyncRotomConfigPacket::decode, SyncRotomConfigHandler))
         list.add(PacketRegisterInfo(SyncRotomDialogueClosePacket.ID, SyncRotomDialogueClosePacket::decode, SyncRotomDialogueCloseHandler))
+        list.add(PacketRegisterInfo(SyncRotomDroneStatePacket.ID, SyncRotomDroneStatePacket::decode, SyncRotomDroneStateHandler))
         list.add(PacketRegisterInfo(SyncSmartphoneSkinsPacket.ID, SyncSmartphoneSkinsPacket::decode, SyncSmartphoneSkinsHandler))
         list.add(PacketRegisterInfo(SyncDatapackScreensPacket.ID, SyncDatapackScreensPacket::decode, SyncDatapackScreensHandler))
         list.add(PacketRegisterInfo(SyncDatapackScreenDataPacket.ID, SyncDatapackScreenDataPacket::decode, SyncDatapackScreenDataHandler))
@@ -554,6 +559,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(CloseRotomDialoguePacket.ID, CloseRotomDialoguePacket::decode, CloseRotomDialogueHandler))
         list.add(PacketRegisterInfo(FuseRotomPacket.ID, FuseRotomPacket::decode, FuseRotomHandler))
         list.add(PacketRegisterInfo(DefuseRotomPacket.ID, DefuseRotomPacket::decode, DefuseRotomHandler))
+        list.add(PacketRegisterInfo(RotomDroneStatePacket.ID, RotomDroneStatePacket::decode, RotomDroneStateHandler))
         list.add(PacketRegisterInfo(SaveSkinPacket.ID, SaveSkinPacket::decode, SaveSkinHandler))
         list.add(PacketRegisterInfo(RequestDatapackScreenDataPacket.ID, RequestDatapackScreenDataPacket::decode, RequestDatapackScreenDataHandler))
         list.add(PacketRegisterInfo(ExecuteDatapackScreenActionPacket.ID, ExecuteDatapackScreenActionPacket::decode, ExecuteDatapackScreenActionHandler))

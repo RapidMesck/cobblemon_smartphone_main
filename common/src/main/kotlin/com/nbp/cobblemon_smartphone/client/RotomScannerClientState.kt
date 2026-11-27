@@ -31,7 +31,15 @@ object RotomScannerClientState {
         var infiniteEnergy: Boolean = true,
         var enableSocialDataShare: Boolean = true,
         var socialDataShareChance: Double = 0.35,
-        var curiosityLanguage: String = "en"
+        var curiosityLanguage: String = "en",
+        var enableDrone: Boolean = true,
+        var droneMaxRange: Double = 32.0,
+        var droneSpeed: Double = 0.45,
+        var droneAllowPhoto: Boolean = true,
+        var droneAllowFluids: Boolean = false,
+        var droneBlockedDimensions: List<String> = emptyList(),
+        var droneEnergyPerSecond: Int = 0,
+        var enableSocial: Boolean = true
     )
 
     var clientConfig: ClientRotomConfig = ClientRotomConfig()
@@ -55,7 +63,15 @@ object RotomScannerClientState {
             infiniteEnergy = packet.infiniteEnergy,
             enableSocialDataShare = packet.enableSocialDataShare,
             socialDataShareChance = packet.socialDataShareChance,
-            curiosityLanguage = packet.curiosityLanguage
+            curiosityLanguage = packet.curiosityLanguage,
+            enableDrone = packet.enableDrone,
+            droneMaxRange = packet.droneMaxRange,
+            droneSpeed = packet.droneSpeed,
+            droneAllowPhoto = packet.droneAllowPhoto,
+            droneAllowFluids = packet.droneAllowFluids,
+            droneBlockedDimensions = packet.droneBlockedDimensions,
+            droneEnergyPerSecond = packet.droneEnergyPerSecond,
+            enableSocial = packet.enableSocial
         )
     }
 

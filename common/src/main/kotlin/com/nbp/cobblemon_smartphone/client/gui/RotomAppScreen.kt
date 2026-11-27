@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone.client.gui
 
 import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
+import com.nbp.cobblemon_smartphone.client.RotomDroneClientManager
 import com.nbp.cobblemon_smartphone.client.RotomRadarClientState
 import com.nbp.cobblemon_smartphone.client.RotomScannerClientState
 import com.nbp.cobblemon_smartphone.client.ui.hd.ButtonNode
@@ -172,6 +173,9 @@ class RotomAppScreen(
             gap = 5f,
             padding = HdPadding.symmetric(horizontal = 8f, vertical = 6f)
         ) { list ->
+            if (RotomScannerClientState.clientConfig.enableDrone) {
+                buildDroneLaunchRow(list)
+            }
             buildToggleRow(
                 list,
                 lang("setting_radar_title"),
@@ -270,6 +274,45 @@ class RotomAppScreen(
                 RotomRadarClientState.saveConfig()
             }
             buildDefuseRow(list)
+        }
+    }
+
+    private fun buildDroneLaunchRow(builder: HdBuilder) {
+        val maxRange = RotomScannerClientState.clientConfig.droneMaxRange.toInt()
+        builder.card(
+            gap = 4f,
+            padding = HdPadding.symmetric(horizontal = 8f, vertical = 7f),
+            radius = 8f,
+            shadowBlur = 3f,
+            hoverHighlight = true
+        ) { card ->
+            card.row(gap = 8f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { row ->
+                row.column(gap = 1.5f, width = HdSizeSpec.Weight(1f)) { col ->
+                    col.text(
+                        lang("setting_drone_title"),
+                        size = 9.6f,
+                        weight = HdTextLayout.Weight.BOLD,
+                        color = HdColorSpec.Token("text_dark")
+                    )
+                    col.text(
+                        lang("setting_drone_desc", maxRange),
+                        size = 8.2f,
+                        color = HdColorSpec.Token("text_dark_muted"),
+                        wrap = true
+                    ) {
+                        width = HdSizeSpec.Fill
+                    }
+                }
+                row.button(
+                    label = lang("btn_launch_drone"),
+                    variant = ButtonNode.Variant.PRIMARY,
+                    fontSize = 8.6f,
+                    onClick = {
+                        playClickSound()
+                        RotomDroneClientManager.activate(color, smartphoneStack)
+                    }
+                )
+            }
         }
     }
 
