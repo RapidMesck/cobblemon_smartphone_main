@@ -632,8 +632,58 @@ def draw_wireless(c: Canvas) -> None:
     c.vline(19, 16, 19, c.w)
 
 
+def draw_calculator(c: Canvas) -> None:
+    # Minimalist calculator: rounded body, wide dark LCD display on top, 3x3 key grid below
+    art = [
+        "..WWWWWWWWWWWW..",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKKKKKKKKKWW.",
+        ".WWKDDDDDDDDKWW.",
+        ".WWKDDDDDWDDKWW.",
+        ".WWKDDDDDDDDKWW.",
+        ".WWKKKKKKKKKKWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKWWKKWWKKWW.",
+        ".WWKKWWKKWWKKWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKWWKKWWKKWW.",
+        ".WWKKWWKKWWKKWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKWWKKWWMMWW.",
+        ".WWKKWWKKWWMMWW.",
+        ".MMMMMMMMMMMMMM.",
+        "..MMMMMMMMMMMM..",
+    ]
+    c.draw_bitmap(10, 9, art, {"W": c.w, "M": c.m, "D": c.d, "K": c.k})
+
+
+def draw_notes(c: Canvas) -> None:
+    # Minimalist notepad with top binding rings and horizontal text lines
+    art = [
+        "...WW..WW..WW...",
+        "..WWWWWWWWWWWW..",
+        ".WWWWWWWWWWWWWW.",
+        ".WWMMMMMMMMMMWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKKKKKKKKKWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKKKKKKKKKWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKKKKKKKKKWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKKKKKWWWWWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWWWWWWWWWKKWW.",
+        ".WWWWWWWWWWKMWW.",
+        ".MMMMMMMMMMMMMM.",
+        "..MMMMMMMMMMMM..",
+    ]
+    c.draw_bitmap(10, 9, art, {"W": c.w, "M": c.m, "K": c.k})
+
+
 APPS: list[tuple[str, Callable[[Canvas], None]]] = [
     ("app_store", draw_app_store),
+    ("calculator", draw_calculator),
     ("pokedex", draw_pokedex),
     ("heal", draw_heal),
     ("pc", draw_pc),
@@ -642,6 +692,7 @@ APPS: list[tuple[str, Callable[[Canvas], None]]] = [
     ("structure_compass", draw_structure_compass),
     ("crafting", draw_crafting),
     ("cloud", draw_cloud),
+    ("notes", draw_notes),
     ("pokeinfo", draw_pokeinfo),
     ("rotom", draw_rotom),
     ("cobbledollars", draw_cobbledollars),

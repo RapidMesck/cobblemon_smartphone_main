@@ -31,8 +31,8 @@ object SmartphoneAppIconRenderer {
     )
 
     val BUILTIN_GLYPH_STEMS: Set<String> = setOf(
-        "ae2", "app_store", "cloud", "cobbledollars", "crafting", "fishnav", "gps", "heal",
-        "patchouli", "pc", "pokedex", "pokeinfo", "pokenav", "refinedstorage",
+        "ae2", "app_store", "calculator", "cloud", "cobbledollars", "crafting", "fishnav", "gps", "heal",
+        "notes", "patchouli", "pc", "pokedex", "pokeinfo", "pokenav", "refinedstorage",
         "rotom", "social", "structure_compass", "toms_storage", "trainer",
         "waystone", "wireless"
     )

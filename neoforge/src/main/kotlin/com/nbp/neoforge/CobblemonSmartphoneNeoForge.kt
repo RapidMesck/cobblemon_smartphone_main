@@ -105,6 +105,9 @@ class CobblemonSmartphoneNeoForge : Implementation {
             SyncActionOrderPacket(ActionOrderStorage.read(player)).sendToPlayer(player)
             SyncHiddenActionsPacket(HiddenActionsStorage.read(player)).sendToPlayer(player)
             SyncQuickActionsPacket(QuickActionBindingsStorage.read(player)).sendToPlayer(player)
+            com.nbp.cobblemon_smartphone.network.packet.SyncNotesPacket(
+                com.nbp.cobblemon_smartphone.util.NotesStorage.read(player)
+            ).sendToPlayer(player)
             // DMs received while offline are already persisted; this lights up the badge on login.
             player.server?.let { srv ->
                 SyncUnreadPacket(SocialData.get(srv).totalUnreadFor(player.uuid)).sendToPlayer(player)

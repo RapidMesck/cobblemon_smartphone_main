@@ -86,6 +86,8 @@ class SmartphoneConfig {
         val enableSocial: Boolean = true
         val enableCalls: Boolean = true
         val enableRotom: Boolean = true
+        val enableCalculator: Boolean = true
+        val enableNotes: Boolean = true
         val enableAppStore: Boolean = true
     }
 

@@ -11,8 +11,8 @@ object SmartphoneThemeRegistry {
     private var lastResourceManager: ResourceManager? = null
 
     val STANDARD_APP_BUTTONS = listOf(
-        "ae2", "app_store", "cloud", "cobbledollars", "crafting", "fishnav", "gps", "heal",
-        "patchouli", "pc", "pokedex", "pokeinfo", "pokenav", "refinedstorage",
+        "ae2", "app_store", "calculator", "cloud", "cobbledollars", "crafting", "fishnav", "gps", "heal",
+        "notes", "patchouli", "pc", "pokedex", "pokeinfo", "pokenav", "refinedstorage",
         "rotom", "social", "structure_compass", "toms_storage", "trainer",
         "waystone", "wireless"
     )
@@ -20,12 +20,14 @@ object SmartphoneThemeRegistry {
     val STANDARD_BUTTON_ACTIONS = mapOf(
         "ae2" to listOf("cobblemon_smartphone:ae2_terminal", "cobblemon_smartphone:ae2_crafting_terminal"),
         "app_store" to listOf("cobblemon_smartphone:app_store"),
+        "calculator" to listOf("cobblemon_smartphone:calculator"),
         "cloud" to listOf("cobblemon_smartphone:cloud"),
         "cobbledollars" to listOf("cobblemon_smartphone:cobbledollars_shop"),
         "crafting" to listOf("cobblemon_smartphone:crafting"),
         "fishnav" to listOf("cobblemon_smartphone:cobblenav_fishingnav"),
         "gps" to listOf("cobblemon_smartphone:gps"),
         "heal" to listOf("cobblemon_smartphone:heal"),
+        "notes" to listOf("cobblemon_smartphone:notes"),
         "pc" to listOf("cobblemon_smartphone:pc"),
         "pokedex" to listOf("cobblemon_smartphone:pokedex"),
         "pokeinfo" to listOf("cobblemon_smartphone:pokeinfo"),

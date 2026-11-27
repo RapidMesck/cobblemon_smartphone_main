@@ -1,10 +1,12 @@
 package com.nbp.cobblemon_smartphone
 
 import com.nbp.cobblemon_smartphone.actions.AppStoreAction
+import com.nbp.cobblemon_smartphone.actions.CalculatorAction
 import com.nbp.cobblemon_smartphone.actions.CraftingAction
 import com.nbp.cobblemon_smartphone.actions.EnderAction
 import com.nbp.cobblemon_smartphone.actions.GpsAction
 import com.nbp.cobblemon_smartphone.actions.HealAction
+import com.nbp.cobblemon_smartphone.actions.NotesAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobblenavFishingnavAction
 import com.nbp.cobblemon_smartphone.actions.OpenCobbledollarsAction
@@ -69,6 +71,8 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(StructureCompassAction)
         SmartphoneActionRegistry.register(SocialAction)
         SmartphoneActionRegistry.register(RotomAppAction)
+        SmartphoneActionRegistry.register(CalculatorAction)
+        SmartphoneActionRegistry.register(NotesAction)
         SmartphoneActionRegistry.register(AppStoreAction)
     }
 

@@ -15,6 +15,7 @@ public interface PreferencesSaver {
     String THEME_KEY = "theme";
     String WALLPAPER_KEY = "wallpaper";
     String ROTOM_RADAR_KEY = "rotom_radar";
+    String NOTES_KEY = "notes";
 
     CompoundTag cobblemonsmartphone$getSavedPreferences();
 }
