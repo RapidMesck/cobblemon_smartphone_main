@@ -728,6 +728,8 @@ class PokeInfoDetailScreen(
             padding = HdPadding.symmetric(horizontal = 4f, vertical = 1.5f),
             width = HdSizeSpec.Fill
         ) { row ->
+            tooltip = moveDescription(move.name)
+            hoverBackground = HdBackground(color = HdColorSpec.Token("surface_hover"), radius = 4f)
             row.text(col1, size = 8.0f, color = HdColorSpec.Token("text_dark_muted")) {
                 width = HdSizeSpec.Fixed(28f)
             }
@@ -886,6 +888,11 @@ class PokeInfoDetailScreen(
 
     private fun moveName(move: String): String =
         translatedOrFallback("cobblemon.move.${move.lowercase()}", humanize(move))
+
+    private fun moveDescription(move: String): String? {
+        val key = "cobblemon.move.${move.lowercase()}.desc"
+        return if (I18n.exists(key)) Component.translatable(key).string.takeIf { it.isNotBlank() } else null
+    }
 
     private fun abilityName(ability: String): String =
         translatedOrFallback("cobblemon.ability.${ability.lowercase()}", humanize(ability))

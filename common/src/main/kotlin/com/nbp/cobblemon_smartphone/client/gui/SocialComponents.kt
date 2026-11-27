@@ -14,7 +14,6 @@ import com.nbp.cobblemon_smartphone.client.ui.hd.HdColorSpec
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdColors
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdIconAtlas
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdPadding
-import com.nbp.cobblemon_smartphone.client.ui.hd.HdPhoneScreen
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdSizeSpec
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdTextLayout
 import com.nbp.cobblemon_smartphone.client.ui.hd.TabsNode
@@ -106,7 +105,6 @@ object SocialComponents {
         onDeleteClick: () -> Unit,
         onReportClick: () -> Unit,
         onHashtagClick: (String) -> Unit,
-        onPokemonDetailsClick: (PokemonAttachment) -> Unit,
         onVotePoll: (Int) -> Unit,
         onLoadPhoto: (java.util.UUID) -> Unit
     ) {
@@ -140,9 +138,7 @@ object SocialComponents {
 
             // Pokemon attachment
             post.attachment?.let { att ->
-                buildPokemonAttachmentBox(cb, att, colors, floatingState) {
-                    onPokemonDetailsClick(att)
-                }
+                buildPokemonAttachmentBox(cb, att, colors, floatingState)
             }
 
             // Photo attachment
@@ -253,15 +249,15 @@ object SocialComponents {
         attachment: PokemonAttachment,
         colors: SmartphoneThemeColors,
         floatingState: FloatingState,
-        compact: Boolean = false,
-        onShowDetails: () -> Unit
+        compact: Boolean = false
     ) {
-        val boxSize = if (compact) 46f else 56f
+        val boxSize = if (compact) 44f else 54f
+        val hasIvs = attachment.ivs.size == 6
+        val hasEvs = attachment.evs.size == 6
 
-        builder.row(
-            gap = 9f,
-            crossAlign = HdAlign.CENTER,
-            padding = HdPadding.all(5f),
+        builder.column(
+            gap = if (compact) 4f else 5f,
+            padding = HdPadding.all(if (compact) 5f else 6f),
             width = HdSizeSpec.Fill,
             background = HdBackground(
                 color = HdColorSpec.Token("surface_alt"),
@@ -269,45 +265,154 @@ object SocialComponents {
                 borderWidth = 0.8f,
                 borderColor = HdColorSpec.Token("primary_border")
             )
-        ) { rb ->
-            // Model box
-            rb.stack(
-                hAlign = HdAlign.CENTER,
-                vAlign = HdAlign.CENTER,
-                width = HdSizeSpec.Fixed(boxSize),
-                height = HdSizeSpec.Fixed(boxSize)
-            ) { sb ->
-                this.background = HdBackground(
-                    color = HdColorSpec.Fixed(HdColors.mix(colors.headerNavy, colors.primary, 0.35f)),
-                    radius = 8f,
-                    borderWidth = 0.7f,
-                    borderColor = HdColorSpec.Fixed(0x33FFFFFF)
-                )
-                sb.pokemonView(
-                    speciesId = attachment.species,
-                    aspects = attachment.aspects,
-                    size = boxSize - 2f,
-                    floatingState = floatingState
-                )
-            }
+        ) { card ->
+            card.row(
+                gap = if (compact) 7f else 9f,
+                crossAlign = HdAlign.CENTER,
+                width = HdSizeSpec.Fill
+            ) { rb ->
+                // Model box
+                rb.stack(
+                    hAlign = HdAlign.CENTER,
+                    vAlign = HdAlign.CENTER,
+                    width = HdSizeSpec.Fixed(boxSize),
+                    height = HdSizeSpec.Fixed(boxSize)
+                ) { sb ->
+                    this.background = HdBackground(
+                        color = HdColorSpec.Fixed(HdColors.mix(colors.headerNavy, colors.primary, 0.35f)),
+                        radius = 8f,
+                        borderWidth = 0.7f,
+                        borderColor = HdColorSpec.Fixed(0x33FFFFFF)
+                    )
+                    sb.pokemonView(
+                        speciesId = attachment.species,
+                        aspects = attachment.aspects,
+                        size = boxSize - 2f,
+                        floatingState = floatingState
+                    )
+                }
 
-            rb.column(gap = 3f, width = HdSizeSpec.Weight(1f)) { ib ->
-                ib.row(gap = 4f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { topRow ->
-                    val speciesLabel = speciesName(attachment.species)
-                    val fullName = attachment.nickname?.let { "$it ($speciesLabel)" } ?: speciesLabel
-                    topRow.text(fullName, size = if (compact) 9.4f else 10.2f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark")) {
-                        width = HdSizeSpec.Weight(1f)
+                rb.column(gap = if (compact) 2f else 2.5f, width = HdSizeSpec.Weight(1f)) { ib ->
+                    ib.row(gap = 4f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { topRow ->
+                        val speciesLabel = speciesName(attachment.species)
+                        val fullName = attachment.nickname?.let { "$it ($speciesLabel)" } ?: speciesLabel
+                        topRow.text(
+                            fullName,
+                            size = if (compact) 9.2f else 10.0f,
+                            weight = HdTextLayout.Weight.BOLD,
+                            color = HdColorSpec.Token("text_dark")
+                        ) {
+                            width = HdSizeSpec.Weight(1f)
+                        }
+                        when (attachment.gender?.uppercase()) {
+                            "MALE" -> topRow.text("♂", size = 10.2f, weight = HdTextLayout.Weight.BOLD, color = GENDER_MALE_COLOR)
+                            "FEMALE" -> topRow.text("♀", size = 10.2f, weight = HdTextLayout.Weight.BOLD, color = GENDER_FEMALE_COLOR)
+                        }
                     }
-                    when (attachment.gender?.uppercase()) {
-                        "MALE" -> topRow.text("♂", size = 10.5f, weight = HdTextLayout.Weight.BOLD, color = GENDER_MALE_COLOR)
-                        "FEMALE" -> topRow.text("♀", size = 10.5f, weight = HdTextLayout.Weight.BOLD, color = GENDER_FEMALE_COLOR)
+
+                    ib.row(gap = 4f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { metaRow ->
+                        metaRow.text(
+                            "Lv. ${attachment.level}",
+                            size = if (compact) 8.0f else 8.6f,
+                            weight = HdTextLayout.Weight.MEDIUM,
+                            color = HdColorSpec.Token("text_dark_muted")
+                        )
+                        attachment.types.forEach { type ->
+                            metaRow.row(
+                                padding = HdPadding.symmetric(horizontal = if (compact) 4f else 5f, vertical = 1f),
+                                background = HdBackground(
+                                    color = HdColorSpec.Fixed(PokeInfoDetailScreen.typeColor(type)),
+                                    radius = 4f
+                                )
+                            ) { pill ->
+                                pill.text(
+                                    text = Component.translatable("cobblemon.type.${type.lowercase()}").string,
+                                    size = if (compact) 6.8f else 7.2f,
+                                    weight = HdTextLayout.Weight.BOLD,
+                                    color = HdColorSpec.Fixed(0xFFFFFFFF.toInt())
+                                )
+                            }
+                        }
+                    }
+
+                    attachment.ability?.let { ab ->
+                        ib.text(
+                            "${lang("ability")}: ${Component.translatable(ab).string}",
+                            size = if (compact) 7.4f else 8.0f,
+                            color = HdColorSpec.Token("text_dark_muted"),
+                            wrap = true
+                        ) {
+                            width = HdSizeSpec.Fill
+                        }
+                    }
+                    attachment.nature?.let { nat ->
+                        ib.text(
+                            "${lang("nature")}: ${Component.translatable(nat).string}",
+                            size = if (compact) 7.4f else 8.0f,
+                            color = HdColorSpec.Token("text_dark_muted"),
+                            wrap = true
+                        ) {
+                            width = HdSizeSpec.Fill
+                        }
                     }
                 }
-                ib.text("Lv. ${attachment.level}", size = 8.8f, weight = HdTextLayout.Weight.MEDIUM, color = HdColorSpec.Token("text_dark_muted"))
-                if (hasPokemonDetails(attachment)) {
-                    ib.button(lang("show_more"), variant = ButtonNode.Variant.SURFACE, fontSize = 8.4f, radius = 9f) {
-                        padding = HdPadding.symmetric(horizontal = 9f, vertical = 3.5f)
-                        onClick = onShowDetails
+            }
+
+            if (hasIvs || hasEvs) {
+                card.divider()
+                val labelW = if (compact) 18f else 22f
+                val statHeaderSize = if (compact) 7.0f else 7.6f
+                val statValSize = if (compact) 7.4f else 8.0f
+                card.column(gap = 2f, width = HdSizeSpec.Fill) { statsCol ->
+                    statsCol.row(gap = 2f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { sr ->
+                        sr.spacer(w = labelW)
+                        STAT_LABELS.forEachIndexed { idx, stat ->
+                            sr.text(
+                                stat,
+                                size = statHeaderSize,
+                                weight = HdTextLayout.Weight.BOLD,
+                                color = HdColorSpec.Fixed(STAT_COLORS[idx]),
+                                align = HdAlign.CENTER
+                            ) {
+                                width = HdSizeSpec.Weight(1f)
+                            }
+                        }
+                    }
+                    if (hasIvs) {
+                        statsCol.row(gap = 2f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { ir ->
+                            ir.text("IV", size = statValSize, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark")) {
+                                width = HdSizeSpec.Fixed(labelW)
+                            }
+                            attachment.ivs.take(6).forEachIndexed { idx, v ->
+                                ir.text(
+                                    v.toString(),
+                                    size = statValSize,
+                                    weight = HdTextLayout.Weight.BOLD,
+                                    color = HdColorSpec.Fixed(STAT_COLORS[idx]),
+                                    align = HdAlign.CENTER
+                                ) {
+                                    width = HdSizeSpec.Weight(1f)
+                                }
+                            }
+                        }
+                    }
+                    if (hasEvs) {
+                        statsCol.row(gap = 2f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { er ->
+                            er.text("EV", size = statValSize, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark")) {
+                                width = HdSizeSpec.Fixed(labelW)
+                            }
+                            attachment.evs.take(6).forEachIndexed { idx, v ->
+                                er.text(
+                                    v.toString(),
+                                    size = statValSize,
+                                    weight = HdTextLayout.Weight.BOLD,
+                                    color = HdColorSpec.Fixed(STAT_COLORS[idx]),
+                                    align = HdAlign.CENTER
+                                ) {
+                                    width = HdSizeSpec.Weight(1f)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -403,74 +508,6 @@ object SocialComponents {
             }
 
             pb.text("${poll.totalVotes} ${lang("poll_votes")}", size = 8.2f, color = HdColorSpec.Token("text_dark_muted"))
-        }
-    }
-
-    fun buildPokemonModalSpec(
-        attachment: PokemonAttachment,
-        onClose: () -> Unit
-    ): HdPhoneScreen.ModalSpec {
-        val speciesLabel = speciesName(attachment.species)
-        val pokemonLabel = attachment.nickname?.let { "$it ($speciesLabel)" } ?: speciesLabel
-        return HdPhoneScreen.ModalSpec(
-            title = lang("pokemon_details"),
-            widthDp = 278f,
-            onClose = onClose
-        ) { mb ->
-            mb.text(pokemonLabel, size = 11f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark"))
-
-            if (attachment.types.isNotEmpty()) {
-                val typeNames = attachment.types.joinToString(" / ") {
-                    Component.translatable("cobblemon.type.${it.lowercase()}").string
-                }
-                mb.text("${lang("types")}: $typeNames", size = 9.4f, color = HdColorSpec.Token("text_dark_muted"), wrap = true) {
-                    width = HdSizeSpec.Fill
-                }
-            }
-            attachment.ability?.let {
-                mb.text("${lang("ability")}: ${Component.translatable(it).string}", size = 9.4f, color = HdColorSpec.Token("text_dark_muted"))
-            }
-            attachment.nature?.let {
-                mb.text("${lang("nature")}: ${Component.translatable(it).string}", size = 9.4f, color = HdColorSpec.Token("text_dark_muted"))
-            }
-
-            val hasIvs = attachment.ivs.size == 6
-            val hasEvs = attachment.evs.size == 6
-            if (hasIvs || hasEvs) {
-                mb.divider()
-                mb.row(gap = 4f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { sr ->
-                    sr.spacer(w = 24f)
-                    STAT_LABELS.forEachIndexed { idx, stat ->
-                        sr.text(stat, size = 8.6f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Fixed(STAT_COLORS[idx]), align = HdAlign.CENTER) {
-                            width = HdSizeSpec.Weight(1f)
-                        }
-                    }
-                }
-                if (hasIvs) {
-                    mb.row(gap = 4f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { ir ->
-                        ir.text("IV", size = 9f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark")) {
-                            width = HdSizeSpec.Fixed(24f)
-                        }
-                        attachment.ivs.take(6).forEachIndexed { idx, v ->
-                            ir.text(v.toString(), size = 9f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Fixed(STAT_COLORS[idx]), align = HdAlign.CENTER) {
-                                width = HdSizeSpec.Weight(1f)
-                            }
-                        }
-                    }
-                }
-                if (hasEvs) {
-                    mb.row(gap = 4f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { er ->
-                        er.text("EV", size = 9f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark")) {
-                            width = HdSizeSpec.Fixed(24f)
-                        }
-                        attachment.evs.take(6).forEachIndexed { idx, v ->
-                            er.text(v.toString(), size = 9f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Fixed(STAT_COLORS[idx]), align = HdAlign.CENTER) {
-                                width = HdSizeSpec.Weight(1f)
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }

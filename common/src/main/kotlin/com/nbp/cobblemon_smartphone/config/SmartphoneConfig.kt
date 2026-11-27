@@ -50,6 +50,8 @@ class SmartphoneConfig {
         val callRingTimeoutSeconds: Int = 30
         val maxCommentsPerPost: Int = 100
         val maxCommentLength: Int = 200
+        val enableRemoteBattle: Boolean = true
+        val enableRemoteTrade: Boolean = true
     }
 
     class Gps {

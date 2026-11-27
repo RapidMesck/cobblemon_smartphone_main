@@ -5,6 +5,8 @@ object SocialClientSession {
     data class Capabilities(
         val enabled: Boolean = false,
         val callsEnabled: Boolean = false,
+        val battleEnabled: Boolean = false,
+        val tradeEnabled: Boolean = false,
         val maxPostLength: Int = 280,
         val maxMessageLength: Int = 280,
         val postCooldownSeconds: Int = 30,

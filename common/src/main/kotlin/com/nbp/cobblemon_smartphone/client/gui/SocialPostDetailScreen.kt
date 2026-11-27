@@ -26,7 +26,6 @@ import com.nbp.cobblemon_smartphone.network.packet.DeletePostPacket
 import com.nbp.cobblemon_smartphone.network.packet.LikePostPacket
 import com.nbp.cobblemon_smartphone.network.packet.ReportContentPacket
 import com.nbp.cobblemon_smartphone.network.packet.VotePollPacket
-import com.nbp.cobblemon_smartphone.social.PokemonAttachment
 import com.nbp.cobblemon_smartphone.social.ReportTargetType
 import com.nbp.cobblemon_smartphone.social.SocialCommentView
 import com.nbp.cobblemon_smartphone.social.SocialPostView
@@ -44,7 +43,6 @@ class SocialPostDetailScreen(
     private var post: SocialPostView
 ) : HdPhoneScreen(color, smartphoneStack, Component.literal("Post Details")) {
 
-    private var pokemonPopup: PokemonAttachment? = null
     private val posableState = FloatingState()
 
     override val viewportMode: ViewportMode = ViewportMode.Large
@@ -63,11 +61,6 @@ class SocialPostDetailScreen(
     override fun onBackPressed() {
         Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack))
     }
-
-    override fun buildModal(theme: SmartphoneTheme): ModalSpec? =
-        pokemonPopup?.let { att ->
-            SocialComponents.buildPokemonModalSpec(att) { pokemonPopup = null }
-        }
 
     override fun buildContent(theme: SmartphoneTheme, builder: HdBuilder) {
         SocialFeedCache.posts().find { it.id == post.id }?.let { post = it }
@@ -129,10 +122,6 @@ class SocialPostDetailScreen(
                     playClickSound()
                     SocialFeedCache.setHashtag(tag)
                     onBackPressed()
-                },
-                onPokemonDetailsClick = { att ->
-                    playClickSound()
-                    pokemonPopup = att
                 },
                 onVotePoll = { optIdx ->
                     playClickSound()

@@ -727,6 +727,8 @@
   "message.nbp.social.delete_comment_denied": "Você só pode apagar os seus próprios comentários",
   "message.nbp.social.delete_denied": "Você só pode apagar os seus próprios posts",
   "message.nbp.social.disabled": "O recurso social está desabilitado neste servidor",
+  "message.nbp.social.battle_disabled": "Batalhas remotas pelo Social estão desabilitadas neste servidor",
+  "message.nbp.social.trade_disabled": "Trocas remotas pelo Social estão desabilitadas neste servidor",
   "message.nbp.social.dm_banned": "Você está banido de enviar mensagens",
   "message.nbp.social.empty_comment": "Seu comentário está vazio",
   "message.nbp.social.empty_post": "Seu post está vazio",

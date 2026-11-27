@@ -727,6 +727,8 @@
   "message.nbp.social.delete_comment_denied": "你只能删除自己的评论",
   "message.nbp.social.delete_denied": "您只能删除自己的帖子",
   "message.nbp.social.disabled": "此服务器禁用了社交功能",
+  "message.nbp.social.battle_disabled": "此服务器禁用了通过社交进行远程对战",
+  "message.nbp.social.trade_disabled": "此服务器禁用了通过社交进行远程交换",
   "message.nbp.social.dm_banned": "您被禁止发送消息",
   "message.nbp.social.empty_comment": "评论内容不能为空",
   "message.nbp.social.empty_post": "您的帖子是空的",

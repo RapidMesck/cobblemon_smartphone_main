@@ -19,6 +19,11 @@ object ChallengeBattleHandler : ServerNetworkPacketHandler<ChallengeBattlePacket
                 return@execute
             }
 
+            if (!CobblemonSmartphone.config.social.enableRemoteBattle) {
+                player.displayClientMessage(Component.translatable("message.nbp.social.battle_disabled").withColor(ERROR_COLOR), false)
+                return@execute
+            }
+
             if (!SocialRequestLimiter.allow(player.uuid, SocialRequestLimiter.Action.FEED_PAGE)) return@execute
 
             SmartphoneInteractionManager.sendRequest(player, packet.targetUuid, SmartphoneInteractionManager.InteractionType.BATTLE)

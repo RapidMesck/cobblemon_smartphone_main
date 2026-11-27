@@ -727,6 +727,8 @@
   "message.nbp.social.delete_comment_denied": "You can only delete your own comments",
   "message.nbp.social.delete_denied": "You can only delete your own posts",
   "message.nbp.social.disabled": "The social feature is disabled on this server",
+  "message.nbp.social.battle_disabled": "Remote battles via Social are disabled on this server",
+  "message.nbp.social.trade_disabled": "Remote trades via Social are disabled on this server",
   "message.nbp.social.dm_banned": "You are banned from sending messages",
   "message.nbp.social.empty_comment": "Your comment is empty",
   "message.nbp.social.empty_post": "Your post is empty",

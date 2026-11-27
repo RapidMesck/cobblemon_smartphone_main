@@ -359,19 +359,34 @@ abstract class HdPhoneScreen(
     }
 
     private fun renderTooltipDp(canvas: HdCanvas, screenRect: HdBounds, tip: String, mx: Float, my: Float) {
-        val maxTooltipW = (screenRect.width - 6f).coerceAtLeast(40f)
-        val displayTip = canvas.truncate(tip, (maxTooltipW - 14f).coerceAtLeast(16f), 8.6f, HdTextLayout.Weight.MEDIUM)
-        val tw = (canvas.measureText(displayTip, 8.6f, HdTextLayout.Weight.MEDIUM) + 14f).coerceAtMost(maxTooltipW)
-        val th = 18f
+        val fontSize = 8.6f
+        val weight = HdTextLayout.Weight.MEDIUM
+        val padX = 7f
+        val padY = 4.5f
+        val lineGap = 1.5f
+        val maxTooltipW = minOf(screenRect.width - 12f, 220f).coerceAtLeast(40f)
+        val maxTextW = (maxTooltipW - padX * 2f).coerceAtLeast(16f)
+        val lines = HdTextLayout.wrapPlainText(tip, maxTextW, fontSize, weight, canvas.viewport.scale)
+            .ifEmpty { listOf(tip) }
+        val lineH = canvas.lineHeight(fontSize, weight)
+        val contentW = lines.maxOf { canvas.measureText(it, fontSize, weight) }
+        val tw = (contentW + padX * 2f).coerceAtMost(maxTooltipW)
+        val totalTextH = lines.size * lineH + (lines.size - 1) * lineGap
+        val th = maxOf(18f, totalTextH + padY * 2f)
         val minX = screenRect.x + 2f
         val maxX = maxOf(minX, screenRect.right - tw - 2f)
         val minY = screenRect.y + 2f
         val maxY = maxOf(minY, screenRect.bottom - th - 2f)
         val tx = (mx + 8f).coerceIn(minX, maxX)
-        val ty = (my + 12f).coerceIn(minY, maxY)
+        val preferredY = if (my + 12f + th <= screenRect.bottom - 2f) my + 12f else my - th - 6f
+        val ty = preferredY.coerceIn(minY, maxY)
         canvas.shadow(tx, ty, tw, th, 6f, blur = 5f, offsetY = 1.5f, color = 0x55000000)
         canvas.rect(tx, ty, tw, th, 0xEE101824.toInt(), 6f, 0.7f, 0x55FFFFFF)
-        canvas.text(displayTip, tx + 7f, ty + 4f, 8.6f, 0xFFFFFFFF.toInt(), HdTextLayout.Weight.MEDIUM)
+        var curY = ty + (th - totalTextH) * 0.5f
+        for (line in lines) {
+            canvas.text(line, tx + padX, curY, fontSize, 0xFFFFFFFF.toInt(), weight)
+            curY += lineH + lineGap
+        }
     }
 
     private fun renderToastDp(

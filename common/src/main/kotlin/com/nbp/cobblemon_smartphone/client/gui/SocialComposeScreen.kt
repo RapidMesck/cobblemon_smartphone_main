@@ -48,11 +48,11 @@ class SocialComposeScreen(
     private var pendingRequestId: Long? = null
     private var selectedSlot = -1
     private var attachmentMode = if (photoId != null) AttachmentMode.PHOTO else AttachmentMode.POKEMON
-    private var showDetails = false
-    private var showIvs = false
-    private var showEvs = false
-    private var showAbility = false
-    private var showNature = false
+    private var showDetails = true
+    private var showIvs = true
+    private var showEvs = true
+    private var showAbility = true
+    private var showNature = true
     private val partyModelState = FloatingState()
 
     private val isDmCompose get() = dmTargetUuid != null
@@ -263,11 +263,11 @@ class SocialComposeScreen(
                         this.onClick = {
                             playClickSound()
                             selectedSlot = if (selectedSlot == index) -1 else index
-                            showDetails = false
-                            showIvs = false
-                            showEvs = false
-                            showAbility = false
-                            showNature = false
+                            showDetails = true
+                            showIvs = true
+                            showEvs = true
+                            showAbility = true
+                            showNature = true
                         }
                     }
                     slotRow.column(gap = 1f, width = HdSizeSpec.Weight(1f)) { tb ->
@@ -293,7 +293,7 @@ class SocialComposeScreen(
         // Privacy options
         val available = selectedSlot >= 0
         sb.card(gap = 4f, padding = HdPadding.symmetric(horizontal = 8f, vertical = 6f), shadowBlur = 3f) { pb ->
-            pb.checkbox(lang("show_more"), showDetails, enabled = available, onToggle = {
+            pb.checkbox(lang("pokemon_details"), showDetails, enabled = available, onToggle = {
                 playClickSound()
                 showDetails = it
             })

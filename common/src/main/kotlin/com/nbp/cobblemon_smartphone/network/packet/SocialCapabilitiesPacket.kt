@@ -16,6 +16,8 @@ class SocialCapabilitiesPacket(
             SocialClientSession.Capabilities(
                 enabled = buffer.readBoolean(),
                 callsEnabled = buffer.readBoolean(),
+                battleEnabled = buffer.readBoolean(),
+                tradeEnabled = buffer.readBoolean(),
                 maxPostLength = buffer.readVarInt(),
                 maxMessageLength = buffer.readVarInt(),
                 postCooldownSeconds = buffer.readVarInt(),
@@ -30,6 +32,8 @@ class SocialCapabilitiesPacket(
                 SocialClientSession.Capabilities(
                     enabled = config.features.enableSocial,
                     callsEnabled = config.features.enableSocial && config.features.enableCalls && VoiceChatBridge.isAvailable(),
+                    battleEnabled = config.features.enableSocial && config.social.enableRemoteBattle,
+                    tradeEnabled = config.features.enableSocial && config.social.enableRemoteTrade,
                     maxPostLength = config.social.maxPostLength.coerceIn(1, 4_096),
                     maxMessageLength = config.social.maxMessageLength.coerceIn(1, 4_096),
                     postCooldownSeconds = config.cooldowns.socialPost.coerceAtLeast(0),
@@ -46,6 +50,8 @@ class SocialCapabilitiesPacket(
         with(capabilities) {
             buffer.writeBoolean(enabled)
             buffer.writeBoolean(callsEnabled)
+            buffer.writeBoolean(battleEnabled)
+            buffer.writeBoolean(tradeEnabled)
             buffer.writeVarInt(maxPostLength)
             buffer.writeVarInt(maxMessageLength)
             buffer.writeVarInt(postCooldownSeconds)

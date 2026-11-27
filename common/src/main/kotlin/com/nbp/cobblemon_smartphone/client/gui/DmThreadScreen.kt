@@ -31,7 +31,6 @@ import com.nbp.cobblemon_smartphone.network.packet.SocialMutationResultPacket
 import com.nbp.cobblemon_smartphone.network.packet.ToggleFollowPacket
 import com.nbp.cobblemon_smartphone.social.CallStatus
 import com.nbp.cobblemon_smartphone.social.DmMessage
-import com.nbp.cobblemon_smartphone.social.PokemonAttachment
 import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
 import com.nbp.cobblemon_smartphone.util.SmartphoneHelper
 import net.minecraft.client.Minecraft
@@ -61,7 +60,6 @@ class DmThreadScreen(
     private var pendingRequestId: Long? = null
     private var callNoticeUntil = 0L
     private val pokemonModelState = FloatingState()
-    private var pokemonPopup: PokemonAttachment? = null
 
     private val messageCooldownSec get() = SocialClientSession.capabilities.messageCooldownSeconds
     private val isOtherPlayer get() = Minecraft.getInstance().player?.uuid != otherUuid
@@ -87,11 +85,6 @@ class DmThreadScreen(
     override fun onBackPressed() {
         Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack, startOnDms = true))
     }
-
-    override fun buildModal(theme: SmartphoneTheme): ModalSpec? =
-        pokemonPopup?.let { att ->
-            SocialComponents.buildPokemonModalSpec(att) { pokemonPopup = null }
-        }
 
     fun showCallOffline(targetUuid: UUID) {
         if (targetUuid == otherUuid) {
@@ -270,6 +263,10 @@ class DmThreadScreen(
         val isMutual = profile?.isMutualFollow == true
         val isFollowed = profile?.isFollowedByMe == true
 
+        val canBattle = isMutual && SocialClientSession.capabilities.battleEnabled
+        val canTrade = isMutual && SocialClientSession.capabilities.tradeEnabled
+        val hasInteractionButtons = canBattle || canTrade
+
         builder.row(
             gap = 5f,
             crossAlign = HdAlign.CENTER,
@@ -284,7 +281,7 @@ class DmThreadScreen(
                 fontSize = 8.2f,
                 radius = 7f
             ) {
-                if (isMutual) width = HdSizeSpec.Weight(1f)
+                if (hasInteractionButtons) width = HdSizeSpec.Weight(1f)
                 padding = HdPadding.symmetric(horizontal = 9f, vertical = 3.5f)
                 tooltip = Component.translatable(
                     if (isFollowed) "cobblemon_smartphone.tooltip.social_unfollow" else "cobblemon_smartphone.tooltip.social_follow"
@@ -295,7 +292,7 @@ class DmThreadScreen(
                 }
             }
 
-            if (isMutual) {
+            if (canBattle) {
                 ab.button(
                     label = lang("battle_action"),
                     icon = HdIconAtlas.Icon.SWORDS,
@@ -312,6 +309,8 @@ class DmThreadScreen(
                         ChallengeBattlePacket(otherUuid).sendToServer()
                     }
                 }
+            }
+            if (canTrade) {
                 ab.button(
                     label = lang("trade_action"),
                     icon = HdIconAtlas.Icon.TRADE,
@@ -369,10 +368,7 @@ class DmThreadScreen(
                             colors = theme.colors,
                             floatingState = pokemonModelState,
                             compact = true
-                        ) {
-                            playClickSound()
-                            pokemonPopup = att
-                        }
+                        )
                     }
                 }
                 message.photo?.let { photo ->

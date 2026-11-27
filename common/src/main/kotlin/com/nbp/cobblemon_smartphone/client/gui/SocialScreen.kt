@@ -26,7 +26,6 @@ import com.nbp.cobblemon_smartphone.network.packet.LikePostPacket
 import com.nbp.cobblemon_smartphone.network.packet.ReportContentPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveSocialMutePacket
 import com.nbp.cobblemon_smartphone.network.packet.VotePollPacket
-import com.nbp.cobblemon_smartphone.social.PokemonAttachment
 import com.nbp.cobblemon_smartphone.social.ReportTargetType
 import com.nbp.cobblemon_smartphone.social.SocialNotificationPrefs
 import com.nbp.cobblemon_smartphone.social.SocialNotificationType
@@ -53,7 +52,6 @@ class SocialScreen(
 
     private var tab = initialTab
     private var notifSubTab = initialNotifSubTab
-    private var pokemonPopup: PokemonAttachment? = null
     private val posableState = FloatingState()
 
     override val viewportMode: ViewportMode = ViewportMode.Large
@@ -65,11 +63,6 @@ class SocialScreen(
         if (tab == Tab.DMS) SocialDmCache.refreshThreads()
         SocialNotificationCache.refresh()
     }
-
-    override fun buildModal(theme: SmartphoneTheme): ModalSpec? =
-        pokemonPopup?.let { att ->
-            SocialComponents.buildPokemonModalSpec(att) { pokemonPopup = null }
-        }
 
     override fun buildContent(theme: SmartphoneTheme, builder: HdBuilder) {
         buildHeader(builder)
@@ -289,10 +282,6 @@ class SocialScreen(
                     playClickSound()
                     SocialFeedCache.setHashtag(tag)
                     stateStore.scroll("social_main_scroll_FEED").offset = 0f
-                },
-                onPokemonDetailsClick = { att ->
-                    playClickSound()
-                    pokemonPopup = att
                 },
                 onVotePoll = { optIdx ->
                     playClickSound()

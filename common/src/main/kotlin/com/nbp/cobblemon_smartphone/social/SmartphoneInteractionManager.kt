@@ -59,6 +59,8 @@ object SmartphoneInteractionManager {
     fun sendRequest(sender: ServerPlayer, targetUuid: UUID, type: InteractionType) {
         val server = sender.server ?: return
 
+        if (!isInteractionEnabled(sender, type)) return
+
         if (sender.uuid == targetUuid) return
 
         val target = server.playerList.getPlayer(targetUuid)
@@ -260,6 +262,8 @@ object SmartphoneInteractionManager {
             return false
         }
 
+        if (!isInteractionEnabled(acceptingPlayer, request.type)) return false
+
         val sender = server.playerList.getPlayer(request.senderUuid)
         if (sender == null) {
             acceptingPlayer.displayClientMessage(
@@ -413,6 +417,23 @@ object SmartphoneInteractionManager {
             Component.translatable("message.nbp.social.request_declined_sender", decliningPlayer.gameProfile.name).withStyle(ChatFormatting.RED),
             false
         )
+        return true
+    }
+
+    private fun isInteractionEnabled(player: ServerPlayer, type: InteractionType): Boolean {
+        val cfg = CobblemonSmartphone.config
+        if (!cfg.features.enableSocial) {
+            player.displayClientMessage(Component.translatable("message.nbp.social.disabled").withColor(ERROR_COLOR), false)
+            return false
+        }
+        if (type == InteractionType.BATTLE && !cfg.social.enableRemoteBattle) {
+            player.displayClientMessage(Component.translatable("message.nbp.social.battle_disabled").withColor(ERROR_COLOR), false)
+            return false
+        }
+        if (type == InteractionType.TRADE && !cfg.social.enableRemoteTrade) {
+            player.displayClientMessage(Component.translatable("message.nbp.social.trade_disabled").withColor(ERROR_COLOR), false)
+            return false
+        }
         return true
     }
 
