@@ -78,6 +78,9 @@ import com.nbp.cobblemon_smartphone.network.handler.DeleteCommentHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestCommentsHandler
 import com.nbp.cobblemon_smartphone.network.handler.CommentsListHandler
 import com.nbp.cobblemon_smartphone.network.handler.RequestProfileHandler
+import com.nbp.cobblemon_smartphone.network.handler.PinPostHandler
+import com.nbp.cobblemon_smartphone.network.handler.RequestProfileListHandler
+import com.nbp.cobblemon_smartphone.network.handler.ProfileListResponseHandler
 import com.nbp.cobblemon_smartphone.network.handler.UpdateProfileHandler
 import com.nbp.cobblemon_smartphone.network.handler.ToggleFollowHandler
 import com.nbp.cobblemon_smartphone.network.handler.ProfileResponseHandler
@@ -170,6 +173,9 @@ import com.nbp.cobblemon_smartphone.network.packet.RequestProfilePacket
 import com.nbp.cobblemon_smartphone.network.packet.ProfileResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.UpdateProfilePacket
 import com.nbp.cobblemon_smartphone.network.packet.ToggleFollowPacket
+import com.nbp.cobblemon_smartphone.network.packet.PinPostPacket
+import com.nbp.cobblemon_smartphone.network.packet.RequestProfileListPacket
+import com.nbp.cobblemon_smartphone.network.packet.ProfileListResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.RequestNotificationsPacket
 import com.nbp.cobblemon_smartphone.network.packet.NotificationListPacket
 import com.nbp.cobblemon_smartphone.network.packet.PushNotificationPacket
@@ -323,6 +329,7 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(CallOfflinePacket.ID, CallOfflinePacket::decode, CallOfflineHandler))
         list.add(PacketRegisterInfo(CommentsListPacket.ID, CommentsListPacket::decode, CommentsListHandler))
         list.add(PacketRegisterInfo(ProfileResponsePacket.ID, ProfileResponsePacket::decode, ProfileResponseHandler))
+        list.add(PacketRegisterInfo(ProfileListResponsePacket.ID, ProfileListResponsePacket::decode, ProfileListResponseHandler))
         list.add(PacketRegisterInfo(NotificationListPacket.ID, NotificationListPacket::decode, NotificationListHandler))
         list.add(PacketRegisterInfo(PushNotificationPacket.ID, PushNotificationPacket::decode, PushNotificationHandler))
         list.add(PacketRegisterInfo(SocialCapabilitiesPacket.ID, SocialCapabilitiesPacket::decode, SocialCapabilitiesHandler))
@@ -522,6 +529,8 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(RequestProfilePacket.ID, RequestProfilePacket::decode, RequestProfileHandler))
         list.add(PacketRegisterInfo(UpdateProfilePacket.ID, UpdateProfilePacket::decode, UpdateProfileHandler))
         list.add(PacketRegisterInfo(ToggleFollowPacket.ID, ToggleFollowPacket::decode, ToggleFollowHandler))
+        list.add(PacketRegisterInfo(PinPostPacket.ID, PinPostPacket::decode, PinPostHandler))
+        list.add(PacketRegisterInfo(RequestProfileListPacket.ID, RequestProfileListPacket::decode, RequestProfileListHandler))
         list.add(PacketRegisterInfo(RequestNotificationsPacket.ID, RequestNotificationsPacket::decode, RequestNotificationsHandler))
         list.add(PacketRegisterInfo(MarkNotificationReadPacket.ID, MarkNotificationReadPacket::decode, MarkNotificationReadHandler))
         list.add(

@@ -128,10 +128,18 @@ object SendDmHandler : ServerNetworkPacketHandler<SendDmPacket> {
             val target = server.playerList.getPlayer(packet.targetUuid)
             val targetName = target?.gameProfile?.name
                 ?: server.profileCache?.get(packet.targetUuid)?.orElse(null)?.name
+                ?: data.findProfile(packet.targetUuid)?.name?.takeIf { it.isNotBlank() }
                 ?: run {
                     result(player, packet, SocialMutationResultPacket.Status.INVALID_TARGET)
                     return@execute
                 }
+
+            val targetProfile = data.findProfile(packet.targetUuid)
+            if (targetProfile?.dmMutualOnly == true && !data.isMutualFollow(player.uuid, packet.targetUuid)) {
+                player.socialError("message.nbp.social.dm_mutual_only")
+                result(player, packet, SocialMutationResultPacket.Status.PRIVATE)
+                return@execute
+            }
 
             val attachment = resolveAttachment(player, packet)
             val photo = SocialPhotoManager.claim(player, packet.photoId)

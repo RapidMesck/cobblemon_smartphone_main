@@ -2,6 +2,8 @@ package com.nbp.cobblemon_smartphone.client.gui
 
 import com.nbp.cobblemon_smartphone.client.gui.SocialComponents.lang
 import com.nbp.cobblemon_smartphone.client.social.FakePlayerFilter
+import com.nbp.cobblemon_smartphone.client.social.SocialProfileCache
+import com.nbp.cobblemon_smartphone.client.ui.hd.ButtonNode
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdAlign
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdBackground
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdBuilder
@@ -11,42 +13,43 @@ import com.nbp.cobblemon_smartphone.client.ui.hd.HdPadding
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdPhoneScreen
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdSizeSpec
 import com.nbp.cobblemon_smartphone.client.ui.hd.HdTextLayout
-import com.nbp.cobblemon_smartphone.client.ui.hd.TextInputNode
 import com.nbp.cobblemon_smartphone.item.SmartphoneColor
+import com.nbp.cobblemon_smartphone.social.SocialTrainerSummary
 import com.nbp.cobblemon_smartphone.theme.SmartphoneTheme
 import net.minecraft.client.Minecraft
-import net.minecraft.client.multiplayer.PlayerInfo
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 
 /**
- * Online trainer directory built on [HdPhoneScreen] with instant HD search and DM thread launch.
+ * Trainer directory built on [HdPhoneScreen] supporting both online and offline trainer
+ * discovery, instant HD search, profile viewing, and quick DM thread launch.
  */
 class DmNewScreen(
     color: SmartphoneColor,
     smartphoneStack: ItemStack? = null
 ) : HdPhoneScreen(color, smartphoneStack, Component.literal("Trainers")) {
 
-    private var lastCandidatesUpdate = 0L
-    private var cachedCandidates: List<PlayerInfo> = emptyList()
+    private var onlineOnly = false
+    private var lastOnlineUpdate = 0L
+    private var cachedOnline: List<SocialTrainerSummary> = emptyList()
 
     override val viewportMode: ViewportMode = ViewportMode.Large
 
     override fun init() {
         super.init()
-        lastCandidatesUpdate = 0L
-        val st = stateStore.input("trainer_search")
-        // Keep focus ready when user clicks input
+        lastOnlineUpdate = 0L
+        SocialProfileCache.requestDirectory()
+        stateStore.input("trainer_search")
     }
 
     override fun onBackPressed() {
         Minecraft.getInstance().setScreen(SocialScreen(color, smartphoneStack, initialTab = SocialScreen.Tab.FEED))
     }
 
-    private fun candidates(): List<PlayerInfo> {
+    private fun onlineFallbackCandidates(): List<SocialTrainerSummary> {
         val now = System.currentTimeMillis()
-        if (now - lastCandidatesUpdate < 500L) return cachedCandidates
-        lastCandidatesUpdate = now
+        if (now - lastOnlineUpdate < 500L) return cachedOnline
+        lastOnlineUpdate = now
 
         val minecraft = Minecraft.getInstance()
         val selfId = minecraft.player?.uuid ?: return emptyList()
@@ -57,7 +60,7 @@ class DmNewScreen(
         val hasTabFakePlayers = allPlayers.any { FakePlayerFilter.isFakePlayer(it) }
         val source = if (hasTabFakePlayers) allPlayers else connection.listedOnlinePlayers
 
-        cachedCandidates = source
+        cachedOnline = source
             .filter {
                 it.profile.id != selfId &&
                     (selfName == null || !it.profile.name.equals(selfName, ignoreCase = true)) &&
@@ -65,14 +68,19 @@ class DmNewScreen(
             }
             .distinctBy { it.profile.id }
             .sortedBy { it.profile.name.lowercase() }
-        return cachedCandidates
+            .map { SocialTrainerSummary(uuid = it.profile.id, name = it.profile.name, isOnline = true) }
+        return cachedOnline
     }
 
-    private fun filteredCandidates(): List<PlayerInfo> {
+    private fun filteredCandidates(): List<SocialTrainerSummary> {
+        val serverDir = SocialProfileCache.getDirectory()
+        val base = if (serverDir.isNotEmpty()) serverDir else onlineFallbackCandidates()
+        val scoped = if (onlineOnly) base.filter { it.isOnline } else base
         val query = stateStore.getInputText("trainer_search").trim()
-        val all = candidates()
-        if (query.isEmpty()) return all
-        return all.filter { it.profile.name.contains(query, ignoreCase = true) }
+        if (query.isEmpty()) return scoped
+        return scoped.filter {
+            it.name.contains(query, ignoreCase = true) || it.status.contains(query, ignoreCase = true)
+        }
     }
 
     override fun buildContent(theme: SmartphoneTheme, builder: HdBuilder) {
@@ -83,12 +91,35 @@ class DmNewScreen(
             iconColor = HdColorSpec.Token("primary")
         )
 
-        // Search input row
-        builder.row(
-            padding = HdPadding.symmetric(horizontal = 7f, vertical = 5f),
+        // Filter pills (All / Online) + Search input
+        builder.column(
+            gap = 4f,
+            padding = HdPadding.symmetric(horizontal = 7f, vertical = 4f),
             width = HdSizeSpec.Fill
-        ) { sb ->
-            sb.textInput(
+        ) { top ->
+            top.row(gap = 5f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { pills ->
+                pills.pill(
+                    label = lang("directory_all"),
+                    icon = HdIconAtlas.Icon.USERS,
+                    active = !onlineOnly,
+                    onClick = {
+                        playClickSound()
+                        onlineOnly = false
+                        stateStore.scroll("dm_new_scroll").offset = 0f
+                    }
+                )
+                pills.pill(
+                    label = lang("online"),
+                    icon = HdIconAtlas.Icon.GLOBE,
+                    active = onlineOnly,
+                    onClick = {
+                        playClickSound()
+                        onlineOnly = true
+                        stateStore.scroll("dm_new_scroll").offset = 0f
+                    }
+                )
+            }
+            top.textInput(
                 inputId = "trainer_search",
                 placeholder = lang("search_trainers"),
                 maxLength = 32
@@ -106,6 +137,11 @@ class DmNewScreen(
             padding = HdPadding.symmetric(horizontal = 7f, vertical = 2f)
         ) { lb ->
             if (players.isEmpty()) {
+                val emptyMsg = when {
+                    SocialProfileCache.isDirectoryLoading() -> lang("loading")
+                    onlineOnly -> lang("nobody_online")
+                    else -> lang("no_trainers_found")
+                }
                 lb.column(
                     gap = 10f,
                     crossAlign = HdAlign.CENTER,
@@ -119,31 +155,63 @@ class DmNewScreen(
                     ) { ib ->
                         ib.icon(HdIconAtlas.Icon.USER, size = 20f, color = HdColorSpec.Token("text_primary"))
                     }
-                    eb.text(lang("nobody_online"), size = 10f, weight = HdTextLayout.Weight.MEDIUM, color = HdColorSpec.Token("text_primary"), align = HdAlign.CENTER)
+                    eb.text(emptyMsg, size = 10f, weight = HdTextLayout.Weight.MEDIUM, color = HdColorSpec.Token("text_primary"), align = HdAlign.CENTER)
                 }
             } else {
-                players.forEach { info ->
+                players.forEach { trainer ->
                     lb.card(
                         padding = HdPadding.symmetric(horizontal = 9f, vertical = 7f),
                         hoverHighlight = true,
                         onClick = {
                             playClickSound()
                             Minecraft.getInstance().setScreen(
-                                DmThreadScreen(color, smartphoneStack, info.profile.id, info.profile.name)
+                                SocialProfileScreen(
+                                    color = color,
+                                    smartphoneStack = smartphoneStack,
+                                    targetUuid = trainer.uuid,
+                                    fallbackName = trainer.name,
+                                    returnScreen = { DmNewScreen(color, smartphoneStack) }
+                                )
                             )
                         }
                     ) { cb ->
-                        this.tooltip = Component.translatable("cobblemon_smartphone.tooltip.social_open_conversation").string
-                        cb.row(gap = 9f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { rb ->
-                            rb.avatar(info.profile.id, info.profile.name, size = 26f)
-                            rb.text(info.profile.name, size = 10.2f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark")) {
-                                width = HdSizeSpec.Weight(1f)
+                        this.tooltip = Component.translatable("cobblemon_smartphone.tooltip.social_view_profile").string
+                        cb.row(gap = 8f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { rb ->
+                            rb.avatar(trainer.uuid, trainer.name, trainer.skinUrl, size = 26f)
+                            rb.column(gap = 1f, width = HdSizeSpec.Weight(1f)) { tb ->
+                                tb.row(gap = 4f, crossAlign = HdAlign.CENTER) { nameRow ->
+                                    nameRow.text(trainer.name, size = 10.0f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark"))
+                                    if (trainer.isMutualFollow) {
+                                        nameRow.icon(HdIconAtlas.Icon.STAR_FILLED, size = 9f, color = HdColorSpec.Token("content_gold"))
+                                    }
+                                }
+                                tb.text(
+                                    trainer.status.ifBlank { if (trainer.isOnline) lang("online") else lang("offline") },
+                                    size = 7.8f,
+                                    color = HdColorSpec.Token("text_dark_muted")
+                                )
                             }
+                            val dotColor = if (trainer.isOnline) HdColorSpec.Token("success") else HdColorSpec.Fixed(0xFF94A3B8.toInt())
                             rb.column(
-                                width = HdSizeSpec.Fixed(8f),
-                                height = HdSizeSpec.Fixed(8f),
-                                background = HdBackground(color = HdColorSpec.Token("success"), radius = 4f)
+                                width = HdSizeSpec.Fixed(7f),
+                                height = HdSizeSpec.Fixed(7f),
+                                background = HdBackground(color = dotColor, radius = 3.5f)
                             ) {}
+                            rb.button(
+                                icon = HdIconAtlas.Icon.MESSAGE,
+                                variant = ButtonNode.Variant.SURFACE,
+                                radius = 7f
+                            ) {
+                                padding = HdPadding.all(4.5f)
+                                iconSizeDp = 10.5f
+                                tooltip = Component.translatable("cobblemon_smartphone.tooltip.social_open_conversation").string
+                                onClick = {
+                                    playClickSound()
+                                    Minecraft.getInstance().setScreen(
+                                        DmThreadScreen(color, smartphoneStack, trainer.uuid, trainer.name)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

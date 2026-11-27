@@ -82,6 +82,15 @@ object SmartphoneInteractionManager {
             return
         }
 
+        // Privacy setting: target must accept battle/trade challenges
+        if (socialData.findProfile(target.uuid)?.acceptInteractions == false) {
+            sender.displayClientMessage(
+                Component.translatable("message.nbp.social.interactions_disabled_target").withColor(ERROR_COLOR),
+                false
+            )
+            return
+        }
+
         // Check if either player is already in battle
         if (sender.isInBattle() || target.isInBattle()) {
             sender.displayClientMessage(

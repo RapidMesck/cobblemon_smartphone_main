@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.net.ClientNetworkPacketHandler
 import com.nbp.cobblemon_smartphone.client.social.SocialDmCache
 import com.nbp.cobblemon_smartphone.client.social.SocialFeedCache
 import com.nbp.cobblemon_smartphone.client.social.SocialMutationState
+import com.nbp.cobblemon_smartphone.client.social.SocialProfileCache
 import com.nbp.cobblemon_smartphone.network.packet.FeedPostUpdatePacket
 import com.nbp.cobblemon_smartphone.network.packet.SocialMutationResultPacket
 import com.nbp.cobblemon_smartphone.network.packet.ThreadSummaryUpdatePacket
@@ -15,8 +16,12 @@ object SocialMutationResultHandler : ClientNetworkPacketHandler<SocialMutationRe
 }
 
 object FeedPostUpdateHandler : ClientNetworkPacketHandler<FeedPostUpdatePacket> {
-    override fun handle(packet: FeedPostUpdatePacket, client: Minecraft) =
-        SocialFeedCache.applyUpdate(packet.deletedId, packet.post)
+    override fun handle(packet: FeedPostUpdatePacket, client: Minecraft) {
+        client.execute {
+            SocialFeedCache.applyUpdate(packet.deletedId, packet.post)
+            SocialProfileCache.applyPostUpdate(packet.deletedId, packet.post)
+        }
+    }
 }
 
 object ThreadSummaryUpdateHandler : ClientNetworkPacketHandler<ThreadSummaryUpdatePacket> {

@@ -20,6 +20,8 @@ object SocialRequestLimiter {
         REQUEST_PROFILE(250),
         UPDATE_PROFILE(1_000),
         TOGGLE_FOLLOW(500),
+        PIN_POST(500),
+        REQUEST_PROFILE_LIST(250),
         REQUEST_NOTIFICATIONS(200),
         MARK_NOTIFICATION_READ(150)
     }

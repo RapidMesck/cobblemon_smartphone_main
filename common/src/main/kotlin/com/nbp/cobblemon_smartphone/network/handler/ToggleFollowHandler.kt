@@ -19,7 +19,10 @@ object ToggleFollowHandler : ServerNetworkPacketHandler<ToggleFollowPacket> {
 
             val data = SocialData.get(server)
             val targetPlayer = server.playerList.getPlayer(packet.targetUuid)
-            val targetName = targetPlayer?.gameProfile?.name ?: data.profileFor(packet.targetUuid).name
+            val targetName = targetPlayer?.gameProfile?.name
+                ?: data.findProfile(packet.targetUuid)?.name?.takeIf { it.isNotBlank() }
+                ?: server.profileCache?.get(packet.targetUuid)?.orElse(null)?.name
+                ?: return@execute
 
             val isNowFollowing = data.toggleFollow(player.uuid, player.gameProfile.name, packet.targetUuid, targetName)
 
@@ -37,12 +40,7 @@ object ToggleFollowHandler : ServerNetworkPacketHandler<ToggleFollowPacket> {
                 }
             }
 
-            val profile = data.profileFor(packet.targetUuid, targetName)
-            val userPosts = data.feed().filter { it.authorUuid == packet.targetUuid }
-            val postViews = userPosts.map { SocialPostView.of(it, player.uuid, server) }
-            val profileView = SocialProfileView.of(profile, player.uuid, userPosts.size, targetPlayer != null, server)
-
-            ProfileResponsePacket(profileView, postViews).sendToPlayer(player)
+            RequestProfileHandler.sendProfileResponse(server, player, packet.targetUuid)
         }
     }
 }

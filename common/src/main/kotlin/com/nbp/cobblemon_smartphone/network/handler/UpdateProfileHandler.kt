@@ -4,11 +4,9 @@ import com.cobblemon.mod.common.api.net.ServerNetworkPacketHandler
 import com.cobblemon.mod.common.util.party
 import com.nbp.cobblemon_smartphone.CobblemonSmartphone
 import com.nbp.cobblemon_smartphone.network.SocialRequestLimiter
-import com.nbp.cobblemon_smartphone.network.packet.ProfileResponsePacket
 import com.nbp.cobblemon_smartphone.network.packet.UpdateProfilePacket
+import com.nbp.cobblemon_smartphone.social.PokemonAttachment
 import com.nbp.cobblemon_smartphone.social.SocialData
-import com.nbp.cobblemon_smartphone.social.SocialPostView
-import com.nbp.cobblemon_smartphone.social.SocialProfileView
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 
@@ -19,29 +17,42 @@ object UpdateProfileHandler : ServerNetworkPacketHandler<UpdateProfilePacket> {
             if (!SocialRequestLimiter.allow(player.uuid, SocialRequestLimiter.Action.UPDATE_PROFILE)) return@execute
 
             val data = SocialData.get(server)
-            val bio = packet.bio.trim().take(150)
-            data.updateBio(player.uuid, player.gameProfile.name, bio)
+            val playerName = player.gameProfile.name
+            data.updateProfileSettings(
+                uuid = player.uuid,
+                name = playerName,
+                bio = packet.bio,
+                status = packet.status,
+                bannerType = packet.bannerType,
+                showTeam = packet.showTeam,
+                acceptInteractions = packet.acceptInteractions,
+                dmMutualOnly = packet.dmMutualOnly
+            )
 
             if (packet.favoritePartySlot in 0..5) {
                 val pokemon = player.party().get(packet.favoritePartySlot)
                 if (pokemon != null) {
                     data.setFavoritePokemon(
                         player.uuid,
-                        player.gameProfile.name,
+                        playerName,
                         pokemon.species.resourceIdentifier.toString(),
                         pokemon.aspects
                     )
                 }
             } else if (packet.favoritePartySlot == -2) {
-                data.setFavoritePokemon(player.uuid, player.gameProfile.name, null, emptySet())
+                data.setFavoritePokemon(player.uuid, playerName, null, emptySet())
             }
 
-            val profile = data.profileFor(player.uuid, player.gameProfile.name)
-            val userPosts = data.feed().filter { it.authorUuid == player.uuid }
-            val postViews = userPosts.map { SocialPostView.of(it, player.uuid, server) }
-            val profileView = SocialProfileView.of(profile, player.uuid, userPosts.size, true, server)
+            if (packet.syncTeamAction == 1) {
+                val team = (0..5).mapNotNull { slot ->
+                    player.party().get(slot)?.let { PokemonAttachment.fromPokemon(it) }
+                }
+                data.setTeamShowcase(player.uuid, playerName, team)
+            } else if (packet.syncTeamAction == -1) {
+                data.setTeamShowcase(player.uuid, playerName, emptyList())
+            }
 
-            ProfileResponsePacket(profileView, postViews).sendToPlayer(player)
+            RequestProfileHandler.sendProfileResponse(server, player, player.uuid)
         }
     }
 }

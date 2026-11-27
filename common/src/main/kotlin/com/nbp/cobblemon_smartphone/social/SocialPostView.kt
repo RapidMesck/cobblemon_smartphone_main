@@ -23,7 +23,8 @@ data class SocialPostView(
     val likedByMe: Boolean,
     val skinUrl: String? = null,
     val commentCount: Int = 0,
-    val poll: SocialPollView? = null
+    val poll: SocialPollView? = null,
+    val authorStatus: String = ""
 ) {
     fun encode(buffer: RegistryFriendlyByteBuf) {
         buffer.writeVarLong(id)
@@ -65,6 +66,7 @@ data class SocialPostView(
         buffer.writeVarInt(commentCount)
         buffer.writeBoolean(poll != null)
         poll?.encode(buffer)
+        buffer.writeUtf(authorStatus)
     }
 
     companion object {
@@ -80,7 +82,8 @@ data class SocialPostView(
             likedByMe = post.isLikedBy(viewer),
             skinUrl = server?.let { SkinUrlResolver.resolve(it, post.authorUuid) },
             commentCount = post.comments.size,
-            poll = post.poll?.let { SocialPollView.of(it, viewer) }
+            poll = post.poll?.let { SocialPollView.of(it, viewer) },
+            authorStatus = server?.let { SocialData.get(it).findProfile(post.authorUuid)?.status } ?: ""
         )
 
         fun decode(buffer: RegistryFriendlyByteBuf): SocialPostView {
@@ -113,6 +116,7 @@ data class SocialPostView(
             val skinUrl = if (buffer.readBoolean()) buffer.readUtf() else null
             val commentCount = buffer.readVarInt()
             val poll = if (buffer.readBoolean()) SocialPollView.decode(buffer) else null
+            val authorStatus = buffer.readUtf()
             return SocialPostView(
                 id = id,
                 authorUuid = authorUuid,
@@ -125,7 +129,8 @@ data class SocialPostView(
                 likedByMe = likedByMe,
                 skinUrl = skinUrl,
                 commentCount = commentCount,
-                poll = poll
+                poll = poll,
+                authorStatus = authorStatus
             )
         }
     }

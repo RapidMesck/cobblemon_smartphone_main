@@ -7,6 +7,8 @@ import net.minecraft.client.Minecraft
 
 object ProfileResponseHandler : ClientNetworkPacketHandler<ProfileResponsePacket> {
     override fun handle(packet: ProfileResponsePacket, client: Minecraft) {
-        SocialProfileCache.accept(packet.profile, packet.posts)
+        client.execute {
+            SocialProfileCache.accept(packet.profile, packet.posts)
+        }
     }
 }

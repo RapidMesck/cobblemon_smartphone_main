@@ -86,11 +86,16 @@ class SocialPostDetailScreen(
                 floatingState = posableState,
                 onOpenPost = null,
                 onAuthorClick = {
-                    val me = Minecraft.getInstance().player
-                    if (me == null || post.authorUuid != me.uuid) {
-                        playClickSound()
-                        Minecraft.getInstance().setScreen(DmThreadScreen(color, smartphoneStack, post.authorUuid, post.authorName))
-                    }
+                    playClickSound()
+                    Minecraft.getInstance().setScreen(
+                        SocialProfileScreen(
+                            color = color,
+                            smartphoneStack = smartphoneStack,
+                            targetUuid = post.authorUuid,
+                            fallbackName = post.authorName,
+                            returnScreen = { SocialPostDetailScreen(color, smartphoneStack, post) }
+                        )
+                    )
                 },
                 onLikeClick = {
                     playClickSound()
@@ -216,12 +221,18 @@ class SocialPostDetailScreen(
             cb.row(gap = 6f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { hb ->
                 hb.row(gap = 6f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Weight(1f)) { ab ->
                     this.onClick = {
-                        val me = Minecraft.getInstance().player
-                        if (me == null || comment.authorUuid != me.uuid) {
-                            playClickSound()
-                            Minecraft.getInstance().setScreen(DmThreadScreen(color, smartphoneStack, comment.authorUuid, comment.authorName))
-                        }
+                        playClickSound()
+                        Minecraft.getInstance().setScreen(
+                            SocialProfileScreen(
+                                color = color,
+                                smartphoneStack = smartphoneStack,
+                                targetUuid = comment.authorUuid,
+                                fallbackName = comment.authorName,
+                                returnScreen = { SocialPostDetailScreen(color, smartphoneStack, post) }
+                            )
+                        )
                     }
+                    this.tooltip = Component.translatable("cobblemon_smartphone.tooltip.social_view_profile").string
                     ab.avatar(comment.authorUuid, comment.authorName, comment.skinUrl, size = 18f)
                     ab.text(comment.authorName, size = 9.4f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark")) {
                         width = HdSizeSpec.Weight(1f)

@@ -199,6 +199,34 @@ class SocialScreen(
                     }
                 }
 
+                // My Profile button (avatar shortcut in header)
+                Minecraft.getInstance().player?.let { me ->
+                    hb.row(
+                        padding = HdPadding.all(1.5f),
+                        background = HdBackground(
+                            color = HdColorSpec.Token("surface_alt"),
+                            radius = 10f,
+                            borderWidth = 0.8f,
+                            borderColor = HdColorSpec.Token("primary_border")
+                        )
+                    ) { pb ->
+                        this.onClick = {
+                            playClickSound()
+                            Minecraft.getInstance().setScreen(
+                                SocialProfileScreen(
+                                    color = color,
+                                    smartphoneStack = smartphoneStack,
+                                    targetUuid = me.uuid,
+                                    fallbackName = me.gameProfile.name,
+                                    returnScreen = { SocialScreen(color, smartphoneStack, initialTab = tab) }
+                                )
+                            )
+                        }
+                        this.tooltip = Component.translatable("cobblemon_smartphone.tooltip.social_my_profile").string
+                        pb.avatar(me.uuid, me.gameProfile.name, size = 18f)
+                    }
+                }
+
                 // Compose button (+)
                 if (tab != Tab.NOTIFICATIONS) {
                     hb.button(
@@ -249,11 +277,16 @@ class SocialScreen(
                     Minecraft.getInstance().setScreen(SocialPostDetailScreen(color, smartphoneStack, post))
                 },
                 onAuthorClick = {
-                    val me = Minecraft.getInstance().player
-                    if (me == null || post.authorUuid != me.uuid) {
-                        playClickSound()
-                        Minecraft.getInstance().setScreen(DmThreadScreen(color, smartphoneStack, post.authorUuid, post.authorName))
-                    }
+                    playClickSound()
+                    Minecraft.getInstance().setScreen(
+                        SocialProfileScreen(
+                            color = color,
+                            smartphoneStack = smartphoneStack,
+                            targetUuid = post.authorUuid,
+                            fallbackName = post.authorName,
+                            returnScreen = { SocialScreen(color, smartphoneStack, initialTab = tab) }
+                        )
+                    )
                 },
                 onLikeClick = {
                     playClickSound()
@@ -368,7 +401,13 @@ class SocialScreen(
                     SocialNotificationCache.markRead(notif.id)
                     when (notif.type) {
                         SocialNotificationType.FOLLOW -> Minecraft.getInstance().setScreen(
-                            DmThreadScreen(color, smartphoneStack, notif.actorUuid, notif.actorName)
+                            SocialProfileScreen(
+                                color = color,
+                                smartphoneStack = smartphoneStack,
+                                targetUuid = notif.actorUuid,
+                                fallbackName = notif.actorName,
+                                returnScreen = { SocialScreen(color, smartphoneStack, initialTab = Tab.NOTIFICATIONS) }
+                            )
                         )
                         SocialNotificationType.LIKE,
                         SocialNotificationType.COMMENT,
@@ -377,14 +416,22 @@ class SocialScreen(
                             if (target != null) {
                                 Minecraft.getInstance().setScreen(SocialPostDetailScreen(color, smartphoneStack, target))
                             } else {
-                                Minecraft.getInstance().setScreen(DmThreadScreen(color, smartphoneStack, notif.actorUuid, notif.actorName))
+                                Minecraft.getInstance().setScreen(
+                                    SocialProfileScreen(
+                                        color = color,
+                                        smartphoneStack = smartphoneStack,
+                                        targetUuid = notif.actorUuid,
+                                        fallbackName = notif.actorName,
+                                        returnScreen = { SocialScreen(color, smartphoneStack, initialTab = Tab.NOTIFICATIONS) }
+                                    )
+                                )
                             }
                         }
                     }
                 }
             ) { cb ->
                 val tipKey = when (notif.type) {
-                    SocialNotificationType.FOLLOW -> "social_open_conversation"
+                    SocialNotificationType.FOLLOW -> "social_view_profile"
                     else -> "social_view_post"
                 }
                 this.tooltip = Component.translatable("cobblemon_smartphone.tooltip.$tipKey").string

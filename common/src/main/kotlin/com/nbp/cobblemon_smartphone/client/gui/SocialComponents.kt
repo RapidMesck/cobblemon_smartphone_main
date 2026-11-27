@@ -99,24 +99,45 @@ object SocialComponents {
         colors: SmartphoneThemeColors,
         floatingState: FloatingState,
         onOpenPost: (() -> Unit)? = null,
-        onAuthorClick: () -> Unit,
+        onAuthorClick: (() -> Unit)? = null,
         onLikeClick: () -> Unit,
         onCommentClick: () -> Unit,
         onDeleteClick: () -> Unit,
         onReportClick: () -> Unit,
         onHashtagClick: (String) -> Unit,
         onVotePoll: (Int) -> Unit,
-        onLoadPhoto: (java.util.UUID) -> Unit
+        onLoadPhoto: (java.util.UUID) -> Unit,
+        isPinned: Boolean = false,
+        onPinClick: (() -> Unit)? = null
     ) {
         builder.card(gap = 7f, padding = HdPadding.all(10f), onClick = onOpenPost) { cb ->
+            if (isPinned) {
+                cb.row(gap = 4f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { pb ->
+                    pb.icon(HdIconAtlas.Icon.STAR_FILLED, size = 9.5f, color = HdColorSpec.Token("content_gold"))
+                    pb.text(
+                        lang("pinned_post"),
+                        size = 7.8f,
+                        weight = HdTextLayout.Weight.BOLD,
+                        color = HdColorSpec.Token("content_gold")
+                    )
+                }
+            }
+
             // Header row
             cb.row(gap = 8f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Fill) { hb ->
                 hb.row(gap = 8f, crossAlign = HdAlign.CENTER, width = HdSizeSpec.Weight(1f)) { ab ->
-                    this.onClick = onAuthorClick
+                    if (onAuthorClick != null) {
+                        this.onClick = onAuthorClick
+                        this.tooltip = Component.translatable("cobblemon_smartphone.tooltip.social_view_profile").string
+                    }
                     ab.avatar(post.authorUuid, post.authorName, post.skinUrl, size = 24f)
                     ab.column(gap = 1f, width = HdSizeSpec.Weight(1f)) { nb ->
                         nb.text(post.authorName, size = 10.4f, weight = HdTextLayout.Weight.BOLD, color = HdColorSpec.Token("text_dark"))
-                        nb.text("Trainer", size = 7.8f, color = HdColorSpec.Token("text_dark_muted"))
+                        nb.text(
+                            post.authorStatus.ifBlank { lang("trainer_role") },
+                            size = 7.8f,
+                            color = HdColorSpec.Token("text_dark_muted")
+                        )
                     }
                 }
                 hb.text(relativeTime(post.timestamp), size = 8.6f, color = HdColorSpec.Token("text_dark_muted"))
@@ -217,6 +238,24 @@ object SocialComponents {
                 }
 
                 fb.spacer(weight = 1f)
+
+                if (onPinClick != null) {
+                    val pinColor = if (isPinned) HdColorSpec.Token("content_gold") else HdColorSpec.Token("text_dark_muted")
+                    fb.row(
+                        gap = 3f,
+                        crossAlign = HdAlign.CENTER,
+                        padding = HdPadding.symmetric(horizontal = 6f, vertical = 3f)
+                    ) { pb ->
+                        this.onClick = onPinClick
+                        this.hoverBackground = HdBackground(color = HdColorSpec.Fixed(0x1AF2C14E), radius = 9f)
+                        this.tooltip = lang(if (isPinned) "unpin_post" else "pin_post")
+                        pb.icon(
+                            if (isPinned) HdIconAtlas.Icon.STAR_FILLED else HdIconAtlas.Icon.STAR,
+                            size = 11f,
+                            color = pinColor
+                        )
+                    }
+                }
 
                 if (canDeletePost(post)) {
                     fb.row(

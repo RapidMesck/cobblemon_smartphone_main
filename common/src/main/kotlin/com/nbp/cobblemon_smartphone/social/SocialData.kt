@@ -76,7 +76,10 @@ class SocialData : SavedData() {
 
     fun removePost(id: Long): Boolean {
         val removed = posts.removeIf { it.id == id }
-        if (removed) setDirty()
+        if (removed) {
+            profiles.values.forEach { if (it.pinnedPostId == id) it.pinnedPostId = 0L }
+            setDirty()
+        }
         return removed
     }
 
@@ -271,6 +274,9 @@ class SocialData : SavedData() {
 
     // --- Profiles ---
 
+    /** Read-only lookup; does not create a ghost entry for unknown UUIDs. */
+    fun findProfile(uuid: UUID): SocialProfile? = profiles[uuid]
+
     fun profileFor(uuid: UUID, fallbackName: String = ""): SocialProfile {
         return profiles.getOrPut(uuid) {
             SocialProfile(uuid = uuid, name = fallbackName)
@@ -291,6 +297,82 @@ class SocialData : SavedData() {
         profile.name = name
         profile.favoriteSpecies = species
         profile.favoriteAspects = aspects
+        setDirty()
+    }
+
+    fun updateProfileSettings(
+        uuid: UUID,
+        name: String,
+        bio: String,
+        status: String,
+        bannerType: String,
+        showTeam: Boolean,
+        acceptInteractions: Boolean,
+        dmMutualOnly: Boolean
+    ) {
+        val profile = profileFor(uuid, name)
+        profile.name = name
+        profile.bio = bio.trim().take(SocialProfile.MAX_BIO_LENGTH)
+        profile.status = status.trim().take(SocialProfile.MAX_STATUS_LENGTH)
+        profile.bannerType = SocialProfile.sanitizeBannerType(bannerType)
+        profile.showTeam = showTeam
+        profile.acceptInteractions = acceptInteractions
+        profile.dmMutualOnly = dmMutualOnly
+        setDirty()
+    }
+
+    fun setTeamShowcase(uuid: UUID, name: String, team: List<PokemonAttachment>) {
+        val profile = profileFor(uuid, name)
+        profile.name = name
+        profile.teamShowcase.clear()
+        profile.teamShowcase.addAll(team.take(SocialProfile.MAX_TEAM_SIZE))
+        setDirty()
+    }
+
+    fun setPinnedPost(uuid: UUID, name: String, postId: Long): Boolean {
+        val profile = profileFor(uuid, name)
+        profile.name = name
+        if (postId <= 0L) {
+            if (profile.pinnedPostId == 0L) return false
+            profile.pinnedPostId = 0L
+            setDirty()
+            return true
+        }
+        val post = postById(postId) ?: return false
+        if (post.authorUuid != uuid) return false
+        profile.pinnedPostId = if (profile.pinnedPostId == postId) 0L else postId
+        setDirty()
+        return true
+    }
+
+    fun recordBattleResult(winnerUuid: UUID, winnerName: String, loserUuid: UUID, loserName: String) {
+        val winner = profileFor(winnerUuid, winnerName)
+        if (winnerName.isNotBlank()) winner.name = winnerName
+        winner.battleWins++
+
+        val loser = profileFor(loserUuid, loserName)
+        if (loserName.isNotBlank()) loser.name = loserName
+        loser.battleLosses++
+        setDirty()
+    }
+
+    fun recordTrade(uuid1: UUID, name1: String, uuid2: UUID, name2: String) {
+        val p1 = profileFor(uuid1, name1)
+        if (name1.isNotBlank()) p1.name = name1
+        p1.tradesCompleted++
+
+        val p2 = profileFor(uuid2, name2)
+        if (name2.isNotBlank()) p2.name = name2
+        p2.tradesCompleted++
+        setDirty()
+    }
+
+    fun recordCapture(uuid: UUID, name: String, isShiny: Boolean, isLegendary: Boolean) {
+        if (!isShiny && !isLegendary) return
+        val profile = profileFor(uuid, name)
+        if (name.isNotBlank()) profile.name = name
+        if (isShiny) profile.shiniesCaught++
+        if (isLegendary) profile.legendariesCaught++
         setDirty()
     }
 

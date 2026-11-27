@@ -9,7 +9,7 @@ class SocialMutationResultPacket(
     val requestId: Long,
     val status: Status
 ) : CobblemonSmartphoneNetworkPacket<SocialMutationResultPacket> {
-    enum class Status { SUCCESS, DISABLED, BANNED, RATE_LIMITED, INVALID_TARGET, EMPTY, ERROR;
+    enum class Status { SUCCESS, DISABLED, BANNED, RATE_LIMITED, INVALID_TARGET, EMPTY, ERROR, PRIVATE;
         companion object { fun byId(id: Int) = entries.getOrElse(id) { ERROR } }
     }
     companion object {

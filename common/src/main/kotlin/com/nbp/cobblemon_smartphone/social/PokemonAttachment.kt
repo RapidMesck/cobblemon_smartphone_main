@@ -1,5 +1,7 @@
 package com.nbp.cobblemon_smartphone.social
 
+import com.cobblemon.mod.common.api.pokemon.stats.Stats
+import com.cobblemon.mod.common.pokemon.Pokemon
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.nbt.StringTag
@@ -66,17 +68,45 @@ data class PokemonAttachment(
     }
 
     companion object {
+        private val ORDERED_STATS = listOf(
+            Stats.HP, Stats.ATTACK, Stats.DEFENCE, Stats.SPECIAL_ATTACK, Stats.SPECIAL_DEFENCE, Stats.SPEED
+        )
+
+        fun fromPokemon(
+            pokemon: Pokemon,
+            showDetails: Boolean = true,
+            showIvs: Boolean = true,
+            showEvs: Boolean = true,
+            showAbility: Boolean = true,
+            showNature: Boolean = true
+        ): PokemonAttachment = PokemonAttachment(
+            species = pokemon.species.resourceIdentifier.toString(),
+            aspects = pokemon.aspects,
+            level = pokemon.level,
+            nickname = pokemon.nickname?.string,
+            ivs = if (showDetails && showIvs) ORDERED_STATS.map { pokemon.ivs[it] ?: 0 } else emptyList(),
+            evs = if (showDetails && showEvs) ORDERED_STATS.map { pokemon.evs[it] ?: 0 } else emptyList(),
+            gender = pokemon.gender.name,
+            ability = if (showDetails && showAbility) pokemon.ability.displayName else null,
+            nature = if (showDetails && showNature) pokemon.effectiveNature.displayName else null,
+            types = if (showDetails) listOfNotNull(pokemon.form.primaryType.name, pokemon.form.secondaryType?.name) else emptyList()
+        )
+
         fun decode(buffer: net.minecraft.network.RegistryFriendlyByteBuf): PokemonAttachment {
-            val species = buffer.readUtf()
-            val aspects = List(buffer.readVarInt()) { buffer.readUtf() }.toSet()
+            val species = buffer.readUtf(128)
+            val aspectCount = buffer.readVarInt().coerceIn(0, 64)
+            val aspects = List(aspectCount) { buffer.readUtf(64) }.toSet()
             val level = buffer.readVarInt()
-            val nickname = if (buffer.readBoolean()) buffer.readUtf() else null
-            val ivs = List(buffer.readVarInt()) { buffer.readVarInt() }
-            val evs = List(buffer.readVarInt()) { buffer.readVarInt() }
-            val gender = if (buffer.readBoolean()) buffer.readUtf() else null
-            val ability = if (buffer.readBoolean()) buffer.readUtf() else null
-            val nature = if (buffer.readBoolean()) buffer.readUtf() else null
-            val types = List(buffer.readVarInt()) { buffer.readUtf() }
+            val nickname = if (buffer.readBoolean()) buffer.readUtf(64) else null
+            val ivCount = buffer.readVarInt().coerceIn(0, 6)
+            val ivs = List(ivCount) { buffer.readVarInt() }
+            val evCount = buffer.readVarInt().coerceIn(0, 6)
+            val evs = List(evCount) { buffer.readVarInt() }
+            val gender = if (buffer.readBoolean()) buffer.readUtf(32) else null
+            val ability = if (buffer.readBoolean()) buffer.readUtf(128) else null
+            val nature = if (buffer.readBoolean()) buffer.readUtf(128) else null
+            val typeCount = buffer.readVarInt().coerceIn(0, 8)
+            val types = List(typeCount) { buffer.readUtf(32) }
             return PokemonAttachment(species, aspects, level, nickname, ivs, evs, gender, ability, nature, types)
         }
         private const val SPECIES_KEY = "species"

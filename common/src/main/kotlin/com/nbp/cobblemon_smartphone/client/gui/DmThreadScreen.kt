@@ -106,6 +106,28 @@ class DmThreadScreen(
             icon = HdIconAtlas.Icon.MESSAGE,
             iconColor = HdColorSpec.Token("primary")
         ) { hb ->
+            hb.button(
+                icon = HdIconAtlas.Icon.USER,
+                variant = ButtonNode.Variant.SURFACE,
+                radius = 9f
+            ) {
+                padding = HdPadding.all(4.5f)
+                iconSizeDp = 11f
+                tooltip = Component.translatable("cobblemon_smartphone.tooltip.social_view_profile").string
+                onClick = {
+                    playClickSound()
+                    Minecraft.getInstance().setScreen(
+                        SocialProfileScreen(
+                            color = color,
+                            smartphoneStack = smartphoneStack,
+                            targetUuid = otherUuid,
+                            fallbackName = name,
+                            returnScreen = { DmThreadScreen(color, smartphoneStack, otherUuid, name) }
+                        )
+                    )
+                }
+            }
+
             if (callAvailable()) {
                 val activeCall = CallState.isBusyWith(otherUuid)
                 val callTipKey = when {
@@ -262,9 +284,10 @@ class DmThreadScreen(
         val profile = SocialProfileCache.getProfile(otherUuid)
         val isMutual = profile?.isMutualFollow == true
         val isFollowed = profile?.isFollowedByMe == true
+        val targetAccepts = profile?.acceptInteractions != false
 
-        val canBattle = isMutual && SocialClientSession.capabilities.battleEnabled
-        val canTrade = isMutual && SocialClientSession.capabilities.tradeEnabled
+        val canBattle = isMutual && targetAccepts && SocialClientSession.capabilities.battleEnabled
+        val canTrade = isMutual && targetAccepts && SocialClientSession.capabilities.tradeEnabled
         val hasInteractionButtons = canBattle || canTrade
 
         builder.row(
