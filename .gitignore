@@ -127,3 +127,9 @@ common/bin
 runClientA
 runClientB
 runServerMp
+
+# Cobblemon Smartphone Studio (web)
+studio/node_modules/
+studio/dist/
+studio/.vite/
+studio/public/mod-assets/

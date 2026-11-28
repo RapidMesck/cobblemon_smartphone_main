@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "pnpm --dir studio install --frozen-lockfile",
+  "buildCommand": "pnpm --dir studio run build",
+  "outputDirectory": "studio/dist",
+  "rewrites": [
+    {
+      "source": "/((?!assets/|mod-assets/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/mod-assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}
