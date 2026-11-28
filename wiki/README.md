@@ -6,13 +6,13 @@ Welcome to the Cobblemon Smartphone developer documentation. This mod provides a
 - **Mod API** — Add actions programmatically from your own mod. Full control with Kotlin/Java.
 - **Theme System** — Customize wallpapers, frames, app icons, UI elements, and color palettes via resource packs.
 - **3D Skin & Case System** — Customize 3D Smartphone and Rotom Phone models via resource packs & datapacks, with optional craftable unlocks.
-- **Theme Creator Studio** — Visual standalone HTML tool (`theme_creator.html`) to preview and generate themes and resource packs.
+- **Cobblemon Smartphone Studio** — 100% client-side web creator hub ([cobblemon-smartphone-studio.vercel.app](https://cobblemon-smartphone-studio.vercel.app/)) to visually design and export Themes, HD/Pixel UI Screens, Actions & Apps, 3D Skins, and Datapack Recipes & SD Cards.
 
 ## Quick Start
 
 | I want to... | Use |
 |---|---|
-| Visually design & export a theme pack | [Theme Creator Studio](themes.md#theme-creator-studio-visual-web-tool) (`theme_creator.html`) |
+| Visually design & export themes, UI screens, actions, 3D skins, or recipes | [Cobblemon Smartphone Studio](https://cobblemon-smartphone-studio.vercel.app/) ([Guide](studio.md)) |
 | Add a button that runs commands | [Datapack API](datapack-api.md) |
 | Open PC, Pokédex, healing, or another supported interface | [Datapack API](datapack-api.md#built-in-functions) |
 | Add an unsupported GUI or custom logic | [Mod API](mod-api.md) |
@@ -185,5 +185,6 @@ Both can coexist in the same JSON — each loader ignores the other's field.
 
 ## Links
 
+- [Cobblemon Smartphone Studio (Web Editor)](https://cobblemon-smartphone-studio.vercel.app/)
 - [Cobblemon Mod](https://modrinth.com/mod/cobblemon)
 - [Architectury API](https://docs.architectury.dev/)

@@ -4,8 +4,11 @@ The Cobblemon Smartphone **3D Skin System** allows pack creators to customize th
 
 Skins can be:
 - **Unlocked by default** (available immediately in Settings → Skins)
-- **Locked** (`"locked": true`) and unlocked through **Smithing Table crafts**, **Smartphone Upgrades**, **loot tables**, or **commands**
+- **Locked** (`"locked": true`) and unlocked through **craftable recipes**, **Smartphone Upgrades**, **loot tables**, or **commands**
 - **Restricted to specific smartphone colors** or available for all 16 colors
+
+> [!TIP]
+> Prefer a visual editor? Use **[Cobblemon Smartphone Studio](https://cobblemon-smartphone-studio.vercel.app/)** ([Guide](studio.md)) to preview your Blockbench `.json` 3D models with Minecraft lighting, manage multi-texture PNG slots, create unlock recipes, and export your pack in one click.
 
 ---
 

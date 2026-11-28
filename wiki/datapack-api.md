@@ -2,6 +2,9 @@
 
 Add custom action buttons to the Cobblemon Smartphone using JSON files — no coding required. Actions can execute commands, call built-in smartphone functions, have cooldowns, require specific mods, and be locked behind smartphone upgrades.
 
+> [!TIP]
+> You can also build actions, custom UI screens, and SD Card / crafting recipes visually using **[Cobblemon Smartphone Studio](https://cobblemon-smartphone-studio.vercel.app/)** ([Guide](studio.md)).
+
 ## Quick Start
 
 Create a JSON file in any datapack or resource pack under:

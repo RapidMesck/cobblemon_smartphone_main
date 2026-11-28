@@ -11,29 +11,17 @@ Themes can customize:
 
 ---
 
-## Theme Creator Studio (Visual Web Tool)
+## Cobblemon Smartphone Studio (Visual Web Editor)
 
-The mod includes an interactive, standalone HTML tool: **Theme Creator Studio**.
-You can open [`theme_creator.html`](file:///home/rapid/workspace/rapidmesck/cobblemon_smartphone_main/theme_creator.html) (located in the repository root or [`tools/theme-creator/index.html`](file:///home/rapid/workspace/rapidmesck/cobblemon_smartphone_main/tools/theme-creator/index.html)) directly in any modern web browser without needing a web server or internet connection (works 100% offline via `file://`).
+You can design, preview, and export complete theme packs visually in your browser using **[Cobblemon Smartphone Studio](https://cobblemon-smartphone-studio.vercel.app/)** (replaces the legacy standalone `theme_creator.html`).
 
-### Studio Capabilities
-- **Real-Time Pixel-Perfect Preview**: High-DPI canvas preview rendering Small (`131×207` px) and Large (`211×207` px) phone interfaces with nearest-neighbor scaling.
-- **Interactive Screen Switcher**:
-  - **Home Screen**: App icon grid (2×3), clock, battery indicator, and footer navigation buttons.
-  - **Settings Screen**: Apps and Themes tabs, list items, drag handles, and eye visibility toggles.
-  - **Large Screen**: Header pokéball branding, search bar, contact list cards, and wide wallpaper.
-- **16 Dyed Phone Casings**: Switch between all 16 smartphone colors (Black, White, Red, Blue, Yellow, Pink, Cyan, etc.) to test how your theme looks on dyed items.
-- **Asset Uploaders**:
-  - Custom standard wallpaper (`131×207`) & large wallpaper (`211×207`).
-  - Custom standard phone casing frame & large casing frame.
-  - Custom UI elements (`home_button`, `prev_button`, `next_button`, `settings_button`, `drag_handle`, `view_select`, `social_pokeball`).
-  - Custom app icons (36×36 px with hover state support).
-- **22 Semantic GUI Color Controls**: Live color pickers with instant preview updates across surfaces, texts, highlights, and borders.
-- **Dynamic Battery Tester**: Slider (0%–100%) and charging toggle to preview real-time battery border, cavity, and charge level tinting (`battery_high`, `battery_med`, `battery_low`).
-- **One-Click Export & Import**:
-  - **Export JSON**: Download `<theme_id>.json` directly.
-  - **Export Resource Pack ZIP**: Generates and downloads a complete, ready-to-load Minecraft resource pack (`.zip`) containing `pack.mcmeta` and all PNG textures arranged in the correct `assets/<namespace>/...` folder structure.
-  - **Import JSON**: Load existing theme files to modify colors and metadata visually.
+### Theme Studio Highlights
+- **Real-Time WebGL2 Preview (Pixel & HD)**: Live preview of **Home**, **Settings**, and **Social** screens with crisp nearest-neighbor Pixel Style (default) and HD Style modes.
+- **16 Dyed Phone Casings**: Switch between all 16 smartphone colors to test your theme on every dyed item.
+- **Asset Uploaders & 22 Semantic Colors**: Upload standard & large wallpapers (`131×207` / `211×207`), frames, UI elements, and `36×36` app icons (with hover states), plus live color pickers and a dynamic battery tester (0%–100% + charging).
+- **One-Click Pack Export & Import**: Clone any of the 16 built-in mod themes, import existing `.json` files, inspect generated files in the **Code** tab, and export ready-to-load Resource Packs or Combined Packs (`.zip`).
+
+→ [Full Cobblemon Smartphone Studio Guide](studio.md)
 
 ---
 
