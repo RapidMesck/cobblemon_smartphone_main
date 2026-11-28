@@ -127,6 +127,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
             GpsClientState.tick()
             StructureCompassClientState.tick()
             RotomTrackerClientState.tick()
+            com.nbp.cobblemon_smartphone.client.CalendarClientState.tick()
             GuiScreenshotHarness.tick(client)
         })
 
@@ -145,6 +146,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
 
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
             SocialClientSession.clear()
+            com.nbp.cobblemon_smartphone.client.CalendarClientState.clear()
             GpsClientState.reset()
             StructureCompassClientState.reset()
             RotomTrackerClientState.reset()

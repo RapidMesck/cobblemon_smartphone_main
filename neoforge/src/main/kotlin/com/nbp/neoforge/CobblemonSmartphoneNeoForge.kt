@@ -108,6 +108,15 @@ class CobblemonSmartphoneNeoForge : Implementation {
             com.nbp.cobblemon_smartphone.network.packet.SyncNotesPacket(
                 com.nbp.cobblemon_smartphone.util.NotesStorage.read(player)
             ).sendToPlayer(player)
+            com.nbp.cobblemon_smartphone.network.packet.SyncPersonalCalendarPacket(
+                com.nbp.cobblemon_smartphone.calendar.CalendarPersonalStorage.read(player),
+                player.hasPermissions(com.nbp.cobblemon_smartphone.calendar.CalendarServerData.OP_PERMISSION_LEVEL)
+            ).sendToPlayer(player)
+            player.server?.let { srv ->
+                com.nbp.cobblemon_smartphone.network.packet.SyncServerCalendarPacket(
+                    com.nbp.cobblemon_smartphone.calendar.CalendarServerData.get(srv).listEvents()
+                ).sendToPlayer(player)
+            }
             // DMs received while offline are already persisted; this lights up the badge on login.
             player.server?.let { srv ->
                 SyncUnreadPacket(SocialData.get(srv).totalUnreadFor(player.uuid)).sendToPlayer(player)

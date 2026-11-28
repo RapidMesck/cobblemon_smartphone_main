@@ -2,6 +2,7 @@ package com.nbp.cobblemon_smartphone
 
 import com.nbp.cobblemon_smartphone.actions.AppStoreAction
 import com.nbp.cobblemon_smartphone.actions.CalculatorAction
+import com.nbp.cobblemon_smartphone.actions.CalendarAction
 import com.nbp.cobblemon_smartphone.actions.CraftingAction
 import com.nbp.cobblemon_smartphone.actions.EnderAction
 import com.nbp.cobblemon_smartphone.actions.GpsAction
@@ -73,6 +74,7 @@ object CobblemonSmartphone {
         SmartphoneActionRegistry.register(RotomAppAction)
         SmartphoneActionRegistry.register(CalculatorAction)
         SmartphoneActionRegistry.register(NotesAction)
+        SmartphoneActionRegistry.register(CalendarAction)
         SmartphoneActionRegistry.register(AppStoreAction)
     }
 

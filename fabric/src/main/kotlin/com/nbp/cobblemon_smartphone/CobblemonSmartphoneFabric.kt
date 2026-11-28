@@ -102,6 +102,13 @@ class CobblemonSmartphoneFabric : ModInitializer, Implementation {
             com.nbp.cobblemon_smartphone.network.packet.SyncNotesPacket(
                 com.nbp.cobblemon_smartphone.util.NotesStorage.read(handler.player)
             ).sendToPlayer(handler.player)
+            com.nbp.cobblemon_smartphone.network.packet.SyncPersonalCalendarPacket(
+                com.nbp.cobblemon_smartphone.calendar.CalendarPersonalStorage.read(handler.player),
+                handler.player.hasPermissions(com.nbp.cobblemon_smartphone.calendar.CalendarServerData.OP_PERMISSION_LEVEL)
+            ).sendToPlayer(handler.player)
+            com.nbp.cobblemon_smartphone.network.packet.SyncServerCalendarPacket(
+                com.nbp.cobblemon_smartphone.calendar.CalendarServerData.get(_server).listEvents()
+            ).sendToPlayer(handler.player)
             // DMs received while offline are already persisted; this lights up the badge on login.
             SyncUnreadPacket(SocialData.get(_server).totalUnreadFor(handler.player.uuid))
                 .sendToPlayer(handler.player)

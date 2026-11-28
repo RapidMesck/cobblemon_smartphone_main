@@ -51,6 +51,7 @@ object SmartphoneCommands {
                                 }
                         )
                 )
+                .then(CalendarCommands.buildSubcommand())
         )
     }
 }

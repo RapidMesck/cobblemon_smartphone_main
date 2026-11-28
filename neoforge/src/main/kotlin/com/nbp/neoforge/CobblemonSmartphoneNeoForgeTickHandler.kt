@@ -64,6 +64,7 @@ object CobblemonSmartphoneNeoForgeTickHandler {
         GpsClientState.tick()
         StructureCompassClientState.tick()
         RotomTrackerClientState.tick()
+        com.nbp.cobblemon_smartphone.client.CalendarClientState.tick()
     }
 
     @SubscribeEvent
@@ -83,6 +84,7 @@ object CobblemonSmartphoneNeoForgeTickHandler {
     @SubscribeEvent
     fun onLogout(event: ClientPlayerNetworkEvent.LoggingOut) {
         SocialClientSession.clear()
+        com.nbp.cobblemon_smartphone.client.CalendarClientState.clear()
         GpsClientState.reset()
         StructureCompassClientState.reset()
         RotomTrackerClientState.reset()

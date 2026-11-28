@@ -237,6 +237,16 @@ import com.nbp.cobblemon_smartphone.network.packet.SyncNotesPacket
 import com.nbp.cobblemon_smartphone.network.packet.SaveNotesPacket
 import com.nbp.cobblemon_smartphone.network.handler.SyncNotesHandler
 import com.nbp.cobblemon_smartphone.network.handler.SaveNotesHandler
+import com.nbp.cobblemon_smartphone.network.packet.SyncPersonalCalendarPacket
+import com.nbp.cobblemon_smartphone.network.packet.SyncServerCalendarPacket
+import com.nbp.cobblemon_smartphone.network.packet.SavePersonalCalendarPacket
+import com.nbp.cobblemon_smartphone.network.packet.UpsertServerCalendarEventPacket
+import com.nbp.cobblemon_smartphone.network.packet.DeleteServerCalendarEventPacket
+import com.nbp.cobblemon_smartphone.network.handler.SyncPersonalCalendarHandler
+import com.nbp.cobblemon_smartphone.network.handler.SyncServerCalendarHandler
+import com.nbp.cobblemon_smartphone.network.handler.SavePersonalCalendarHandler
+import com.nbp.cobblemon_smartphone.network.handler.UpsertServerCalendarEventHandler
+import com.nbp.cobblemon_smartphone.network.handler.DeleteServerCalendarEventHandler
 
 object CobblemonSmartphoneNetwork {
     val s2cPayloads = generateS2CPacketInfoList()
@@ -364,6 +374,8 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(OpenDatapackScreenPacket.ID, OpenDatapackScreenPacket::decode, OpenDatapackScreenHandler))
         list.add(PacketRegisterInfo(InstallUpgradeResultPacket.ID, InstallUpgradeResultPacket::decode, InstallUpgradeResultHandler))
         list.add(PacketRegisterInfo(SyncNotesPacket.ID, SyncNotesPacket::decode, SyncNotesHandler))
+        list.add(PacketRegisterInfo(SyncPersonalCalendarPacket.ID, SyncPersonalCalendarPacket::decode, SyncPersonalCalendarHandler))
+        list.add(PacketRegisterInfo(SyncServerCalendarPacket.ID, SyncServerCalendarPacket::decode, SyncServerCalendarHandler))
 
         return list
     }
@@ -574,6 +586,9 @@ object CobblemonSmartphoneNetwork {
         list.add(PacketRegisterInfo(ExecuteDatapackScreenActionPacket.ID, ExecuteDatapackScreenActionPacket::decode, ExecuteDatapackScreenActionHandler))
         list.add(PacketRegisterInfo(InstallUpgradePacket.ID, InstallUpgradePacket::decode, InstallUpgradeHandler))
         list.add(PacketRegisterInfo(SaveNotesPacket.ID, SaveNotesPacket::decode, SaveNotesHandler))
+        list.add(PacketRegisterInfo(SavePersonalCalendarPacket.ID, SavePersonalCalendarPacket::decode, SavePersonalCalendarHandler))
+        list.add(PacketRegisterInfo(UpsertServerCalendarEventPacket.ID, UpsertServerCalendarEventPacket::decode, UpsertServerCalendarEventHandler))
+        list.add(PacketRegisterInfo(DeleteServerCalendarEventPacket.ID, DeleteServerCalendarEventPacket::decode, DeleteServerCalendarEventHandler))
 
         return list
     }

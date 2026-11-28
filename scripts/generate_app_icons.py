@@ -681,9 +681,34 @@ def draw_notes(c: Canvas) -> None:
     c.draw_bitmap(10, 9, art, {"W": c.w, "M": c.m, "K": c.k})
 
 
+def draw_calendar(c: Canvas) -> None:
+    # Minimalist calendar with top rings, header bar, and 3x3 date grid (highlighted day)
+    art = [
+        "...WW......WW...",
+        "...WW......WW...",
+        ".WWWWWWWWWWWWWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".MMMMMMMMMMMMMM.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKWWKKWWKKWW.",
+        ".WWKKWWKKWWKKWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKWWMMWWKKWW.",
+        ".WWKKWWMMWWKKWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".WWKKWWKKWWKKWW.",
+        ".WWKKWWKKWWKKWW.",
+        ".WWWWWWWWWWWWWW.",
+        ".MMMMMMMMMMMMMM.",
+        "..MMMMMMMMMMMM..",
+    ]
+    c.draw_bitmap(10, 9, art, {"W": c.w, "M": c.m, "K": c.k})
+
+
 APPS: list[tuple[str, Callable[[Canvas], None]]] = [
     ("app_store", draw_app_store),
     ("calculator", draw_calculator),
+    ("calendar", draw_calendar),
     ("pokedex", draw_pokedex),
     ("heal", draw_heal),
     ("pc", draw_pc),

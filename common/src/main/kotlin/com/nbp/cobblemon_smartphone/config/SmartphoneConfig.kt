@@ -17,6 +17,7 @@ class SmartphoneConfig {
     val gps = Gps()
     val structureCompass = StructureCompass()
     val social = Social()
+    val calendar = CalendarConfig()
     val energy = EnergyConfig()
     val rotom = RotomConfig()
 
@@ -90,7 +91,14 @@ class SmartphoneConfig {
         val enableRotom: Boolean = true
         val enableCalculator: Boolean = true
         val enableNotes: Boolean = true
+        val enableCalendar: Boolean = true
         val enableAppStore: Boolean = true
+    }
+
+    class CalendarConfig {
+        val maxPersonalEvents: Int = 50
+        val maxServerEvents: Int = 100
+        val reminderLeadMinutes: Int = 15
     }
 
     class PokeInfo {
