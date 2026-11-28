@@ -85,6 +85,7 @@ object CobblemonSmartphoneNeoForgeTickHandler {
     fun onLogout(event: ClientPlayerNetworkEvent.LoggingOut) {
         SocialClientSession.clear()
         com.nbp.cobblemon_smartphone.client.CalendarClientState.clear()
+        com.nbp.cobblemon_smartphone.client.NotesClientState.clear()
         GpsClientState.reset()
         StructureCompassClientState.reset()
         RotomTrackerClientState.reset()

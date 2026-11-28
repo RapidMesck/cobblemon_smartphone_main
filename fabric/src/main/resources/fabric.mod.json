@@ -48,6 +48,7 @@
     "cobbledollars": "*",
     "voicechat": "*",
     "waystones": "*",
-    "rctmod": "*"
+    "rctmod": "*",
+    "jei": "*"
   }
 }

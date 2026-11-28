@@ -741,6 +741,7 @@
   "message.cobblemon_smartphone.no_rotom_phone_equipped": "Você precisa ter um Rotom Phone equipado ou no inventário!",
   "message.cobblemon_smartphone.no_smartphone": "Você não possui um smartphone!",
   "message.cobblemon_smartphone.no_smartphone_to_fuse": "Você não tem um smartphone compatível para fundir com o Rotom!",
+  "message.cobblemon_smartphone.not_enough_energy": "Bateria insuficiente!",
   "message.cobblemon_smartphone.remover_defuse_hint": "Nenhum acessório para remover. Agache e use para desfundir o Rotom!",
   "message.cobblemon_smartphone.rotom_defused_party": "⚡ Rotom foi desfundido do smartphone e retornou para a sua equipe!",
   "message.cobblemon_smartphone.rotom_defused_pc": "⚡ Sua equipe estava cheia! Rotom foi desfundido e enviado para o seu PC.",

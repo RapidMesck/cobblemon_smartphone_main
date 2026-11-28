@@ -741,6 +741,7 @@
   "message.cobblemon_smartphone.no_rotom_phone_equipped": "You need to have an equipped Rotom Phone or in your inventory!",
   "message.cobblemon_smartphone.no_smartphone": "You don't have a smartphone!",
   "message.cobblemon_smartphone.no_smartphone_to_fuse": "You don't have an eligible smartphone to fuse with Rotom!",
+  "message.cobblemon_smartphone.not_enough_energy": "Not enough battery energy!",
   "message.cobblemon_smartphone.remover_defuse_hint": "No accessory to remove. Sneak and use to defuse Rotom!",
   "message.cobblemon_smartphone.rotom_defused_party": "⚡ Rotom was defused from the smartphone and returned to your party!",
   "message.cobblemon_smartphone.rotom_defused_pc": "⚡ Your party was full! Rotom was defused and sent to your PC.",

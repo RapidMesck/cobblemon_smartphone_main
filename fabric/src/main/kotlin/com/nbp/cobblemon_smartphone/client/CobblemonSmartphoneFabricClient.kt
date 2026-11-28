@@ -147,6 +147,7 @@ class CobblemonSmartphoneFabricClient : ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
             SocialClientSession.clear()
             com.nbp.cobblemon_smartphone.client.CalendarClientState.clear()
+            com.nbp.cobblemon_smartphone.client.NotesClientState.clear()
             GpsClientState.reset()
             StructureCompassClientState.reset()
             RotomTrackerClientState.reset()

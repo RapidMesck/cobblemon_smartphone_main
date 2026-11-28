@@ -13,7 +13,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent
 import net.neoforged.neoforge.network.registration.HandlerThread
 
 object CobblemonSmartphoneNeoForgeNetworkManager : NetworkManager {
-    const val PROTOCOL_VERSION = "1.0.0"
+    const val PROTOCOL_VERSION = "2.5.0"
 
     fun registerMessages(event: RegisterPayloadHandlersEvent) {
         val registrar = event.registrar(CobblemonSmartphone.ID).versioned(PROTOCOL_VERSION)

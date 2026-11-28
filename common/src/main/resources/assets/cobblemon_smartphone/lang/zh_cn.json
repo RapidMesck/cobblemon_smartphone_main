@@ -741,6 +741,7 @@
   "message.cobblemon_smartphone.no_rotom_phone_equipped": "你需要装备或背包中持有洛托姆手机！",
   "message.cobblemon_smartphone.no_smartphone": "你没有智能手机！",
   "message.cobblemon_smartphone.no_smartphone_to_fuse": "你没有可以与洛托姆融合的智能手机！",
+  "message.cobblemon_smartphone.not_enough_energy": "电量不足！",
   "message.cobblemon_smartphone.remover_defuse_hint": "没有可移除的配件。潜行并使用以解除融合！",
   "message.cobblemon_smartphone.rotom_defused_party": "⚡ 洛托姆已从智能手机解除融合并返回队伍！",
   "message.cobblemon_smartphone.rotom_defused_pc": "⚡ 队伍已满！洛托姆已从智能手机解除融合并传送至电脑。",
